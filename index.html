@@ -1305,13 +1305,14 @@ function renderActions(s) {
 function renderProjects() {
   const projs = getProjects();
   const anyExpanded = projs.some(p=>!state.projCollapsed[p]);
-  // Side panel + main content layout
   const sideOpen = state.projSideOpen;
-  let h = `<div class="fade-in" style="display:flex;gap:16px">
-  <!-- Project side panel toggle -->
-  ${sideOpen ? `<div style="width:200px;flex-shrink:0;position:sticky;top:0;max-height:calc(100vh - 60px);overflow-y:auto;transition:all .2s">
+  let h = `<div class="fade-in" style="display:flex;gap:16px">`;
+
+  // Side panel (conditionally rendered)
+  if(sideOpen) {
+    h += `<div style="width:200px;flex-shrink:0;position:sticky;top:0;max-height:calc(100vh - 60px);overflow-y:auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <span style="font-size:13px;font-weight:700">Projects</span>` : ''}
+      <span style="font-size:13px;font-weight:700">Projects</span>
       <div style="display:flex;gap:2px;flex-wrap:wrap">
         <button class="btn btn-ghost" style="padding:2px 5px;font-size:8px" onclick="collapseAll(true)" title="Collapse all">\u25B2\u25B2</button>
         <button class="btn btn-ghost" style="padding:2px 5px;font-size:8px" onclick="collapseSubsOnly(true)" title="Collapse subs">\u25B2</button>
@@ -1345,9 +1346,10 @@ function renderProjects() {
     </div>`;
   });
   h += `<button class="btn btn-default" style="width:100%;padding:6px;font-size:10px;margin-top:6px" onclick="createProject()">+ New project</button>
-  </div>` : ''}
-  <!-- Main content -->
-  <div style="flex:1;min-width:0">
+  </div>`;
+  } // end sidebar if
+
+  h += `<div style="flex:1;min-width:0">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:8px">
         <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="state.projSideOpen=!state.projSideOpen;saveState();render()">${sideOpen?'\u25C0 Hide panel':'\u25B6 Show panel'}</button>
