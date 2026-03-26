@@ -1,1 +1,1667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Action Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
 
+:root {
+  --bg: #F5F6F8; --sidebar: #1B2332; --side-active: #2D3C55;
+  --accent: #4A7BF7; --danger: #E5484D; --success: #30A46C;
+  --text: #1A2332; --text-mid: #5A6578; --text-light: #8896A6;
+  --card: #FFFFFF; --border: #E8EBF0;
+  --mono: 'DM Mono','JetBrains Mono',monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; transition: color 0.15s, background-color 0.15s, border-color 0.15s; }
+body { font-family: 'DM Sans', system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes progressFill { from { width: 0%; } }
+.fade-in { animation: fadeIn 0.3s ease-out both; }
+.progress-fill { animation: progressFill 0.8s ease-out both; }
+input:focus, select:focus, textarea:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 2px rgba(74,123,247,0.12); outline: none; }
+::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+/* Sidebar */
+.sidebar { width: 200px; background: linear-gradient(180deg, #111827 0%, #1a2234 100%); display: flex; flex-direction: column; flex-shrink: 0; }
+.sidebar .logo { padding: 20px 16px 8px; color: #F1F5F9; }
+.sidebar .logo h2 { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; }
+.sidebar .logo p { font-size: 10.5px; color: #64748B; margin-top: 2px; }
+.sidebar nav { flex: 1; padding: 8px 6px; }
+.sidebar nav button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border-radius: 6px; border: none; cursor: pointer; font-size: 12.5px; font-weight: 600; font-family: inherit; background: transparent; color: #8896A6; margin-bottom: 1px; text-align: left; transition: all 0.12s; position: relative; }
+.sidebar nav button:hover { background: rgba(255,255,255,0.05); }
+.sidebar nav button.active { background: var(--side-active); color: #F1F5F9; }
+.sidebar nav button .badge { margin-left: auto; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 8px; color: #fff; }
+
+/* Main */
+main { flex: 1; padding: 20px 24px; overflow: auto; }
+h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+
+/* Cards */
+.card { background: var(--card); border-radius: 10px; border: 1px solid var(--border); transition: border-color 0.12s; }
+.card-hover { transition: all 0.15s ease; }
+.card-hover:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+
+/* Inputs */
+.input, .select { padding: 7px 10px; border-radius: 6px; border: 1px solid var(--border); font-size: 12.5px; font-family: inherit; background: #fff; color: var(--text); outline: none; }
+.select { cursor: pointer; }
+textarea.input { resize: vertical; }
+
+/* Buttons */
+.btn { padding: 7px 14px; border-radius: 6px; border: none; cursor: pointer; font-size: 12.5px; font-weight: 600; font-family: inherit; transition: all 0.12s; }
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #3B6DE0; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-success { background: var(--success); color: #fff; }
+.btn-default { background: #E8EBF0; color: var(--text); }
+.btn-default:hover { background: #D8DCE4; }
+.btn-ghost { background: transparent; color: var(--text-mid); }
+
+/* Badge */
+.status-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 10px; font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+
+/* Project tag */
+.proj-tag { display: inline-flex; gap: 3px; padding: 2px 7px; border-radius: 4px; font-size: 9.5px; font-weight: 600; white-space: nowrap; }
+
+/* Action buttons (star, circle, select) */
+.action-btns { display: flex; gap: 3px; align-items: center; flex-shrink: 0; }
+.action-btns .toggle-btn { background: none; border: none; cursor: pointer; font-size: 13px; padding: 0; line-height: 1; transition: color 0.15s, transform 0.15s; }
+.action-btns .toggle-btn:hover { transform: scale(1.15); }
+.action-btns .toggle-btn.on-prio { color: #D946EF; }
+.action-btns .toggle-btn.on-today { color: #4A7BF7; }
+.action-btns .toggle-btn.off { color: #CBD5E1; }
+.action-btns select { padding: 2px 4px; border-radius: 5px; border: 1px solid #E8EBF0; font-size: 10px; font-family: inherit; cursor: pointer; background: #fff; color: var(--text); width: 68px; }
+
+/* Table */
+table { width: 100%; border-collapse: separate; border-spacing: 0; }
+th { padding: 8px 10px; font-size: 9.5px; font-weight: 700; text-transform: uppercase; color: var(--text-light); background: #F8F9FB; border-bottom: 2px solid var(--border); text-align: left; }
+td { padding: 8px 10px; font-size: 12.5px; border-bottom: 1px solid #F3F4F6; vertical-align: top; }
+tr { cursor: pointer; transition: background 0.1s; }
+tr:hover { background: #F8FAFF; }
+
+/* Modal */
+.modal-overlay { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; background: rgba(15,23,42,0.45); }
+.modal { background: var(--card); border-radius: 12px; padding: 22px; width: 92%; max-width: 540px; max-height: 85vh; overflow: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+
+/* Toast */
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1B2332; color: #F1F5F9; padding: 10px 24px; border-radius: 8px; font-size: 13px; font-weight: 600; z-index: 9999; animation: fadeIn 0.2s ease-out; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+
+/* Sync bar */
+.sync-bar { padding: 8px 16px; display: flex; align-items: center; gap: 8px; border-top: 1px solid rgba(255,255,255,0.06); }
+.sync-bar .sync-dot { width: 6px; height: 6px; border-radius: 3px; }
+.sync-bar .sync-dot.synced { background: #30A46C; }
+.sync-bar .sync-dot.local { background: #F59E0B; }
+
+/* Google sign-in overlay */
+.gauth-overlay {
+  position: fixed; inset: 0; z-index: 9999; background: #F5F6F8;
+  display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+.gauth-overlay h1 { font-size: 28px; font-weight: 800; color: #1A2332; letter-spacing: -0.02em; }
+.gauth-overlay p { font-size: 14px; color: #5A6578; max-width: 400px; text-align: center; line-height: 1.6; }
+.gauth-btn { padding: 12px 28px; border-radius: 8px; border: 1px solid #E8EBF0; background: #fff; color: #1A2332; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); transition: all 0.15s; }
+.gauth-btn:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); transform: translateY(-1px); }
+.gauth-btn svg { width: 20px; height: 20px; }
+.gauth-skip { background: none; border: none; color: #8896A6; font-size: 12px; cursor: pointer; font-family: inherit; margin-top: 8px; }
+.gauth-skip:hover { color: #5A6578; }
+.sync-status { font-size: 10px; display: flex; align-items: center; gap: 4px; }
+.sync-status .dot { width: 6px; height: 6px; border-radius: 3px; }
+.sync-status .dot.cloud { background: #30A46C; }
+.sync-status .dot.local { background: #F59E0B; }
+.sync-status .dot.offline { background: #E5484D; }
+
+body.dark { --bg:#0F1117; --card:#1A1D27; --border:#2A2D3A; --accent:#6C8AFF; --danger:#F76E6E; --success:#4ADE80;
+  --text:#E5E7EB; --text-mid:#9CA3AF; --text-light:#6B7280; }
+body.dark .sidebar { background:linear-gradient(180deg,#0A0C14,#111320); }
+body.dark .sidebar nav button.active { background:rgba(108,138,255,.15); color:#93A5F8; }
+body.dark .modal { background:#1A1D27; border:1px solid #2A2D3A; }
+body.dark .input, body.dark .select { background:#1A1D27; color:#E5E7EB; border-color:#2A2D3A; }
+body.dark tr:hover { background:#1F2233; }
+body.dark th { background:#14161F; border-color:#2A2D3A; }
+body.dark .gauth-overlay { background:#0F1117; }
+body.dark .gauth-overlay h1 { color:#E5E7EB; }
+body.dark .gauth-btn { background:#1A1D27; color:#E5E7EB; border-color:#2A2D3A; }
+body.dark .toast { background:#E5E7EB; color:#111827; }
+</style>
+</head>
+<body>
+
+<!-- Google Auth Overlay (shown until signed in or skipped) -->
+<div class="gauth-overlay" id="auth-overlay">
+  <h1>Action Tracker</h1>
+  <p>Sign in with Google to sync your data across all devices via Google Drive. No app installation needed.</p>
+  <button class="gauth-btn" onclick="handleGoogleSignIn()">
+    <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+    Sign in with Google
+  </button>
+  <button class="gauth-skip" onclick="skipAuth()">Skip — use local storage only</button>
+  <p style="font-size:11px;color:#8896A6;margin-top:20px">First time? See the setup guide below for the one-time Google Cloud config.</p>
+</div>
+
+<div class="sidebar">
+  <div class="logo">
+    <h2>Action Tracker</h2>
+    <p id="action-count">149 actions</p>
+  </div>
+  <nav id="nav"></nav>
+  <div style="padding:6px 12px;border-top:1px solid rgba(255,255,255,.06)">
+    <button class="btn btn-ghost" style="font-size:10px;padding:4px 8px;width:100%" onclick="state.dark=!state.dark;document.body.classList.toggle('dark');localStorage.setItem('at-dark',state.dark);applyTheme()">&#9681; Dark mode</button>
+  </div>
+  <div class="sync-bar">
+    <div id="sync-indicator" class="sync-status"><div class="dot local" id="sync-dot"></div><span id="sync-label">Local</span></div>
+    <button class="btn btn-ghost" style="font-size:10px;padding:4px 8px" onclick="forceSyncFromDrive()">Pull</button>
+    <button class="btn btn-ghost" style="font-size:10px;padding:4px 8px" onclick="forceSyncToDrive()">Push</button>
+  </div>
+  <div class="sync-bar" style="padding:4px 12px">
+    <button class="btn btn-ghost" style="font-size:10px;padding:4px 8px" onclick="exportJSON()">JSON</button>
+    <button class="btn btn-ghost" style="font-size:10px;padding:4px 8px" onclick="exportMD()">Report</button>
+    <button class="btn btn-ghost" style="font-size:10px;padding:4px 8px" onclick="toggleDark()" title="Toggle dark mode (D)">&#9681;</button>
+    <button class="btn btn-ghost" style="font-size:10px;padding:4px 8px" onclick="document.getElementById('import-file').click()" title="Import JSON data file">JSON Import</button>
+    <input type="file" id="import-file" accept=".json" hidden onchange="importJSON(event)">
+  </div>
+</div>
+<main id="main"></main>
+<div id="toast-container"></div>
+
+<script>
+// ═══════════════════════════════════════
+// GOOGLE DRIVE API CONFIG
+// ═══════════════════════════════════════
+// *** REPLACE THESE WITH YOUR OWN VALUES ***
+// See setup guide at the bottom of this file
+const GDRIVE_CLIENT_ID = '459978244160-e3fr4idsonk1bfupul2c7ts4rlk69f1r.apps.googleusercontent.com';
+const GDRIVE_API_KEY = 'YOUR_API_KEY_HERE';
+const GDRIVE_FILE_NAME = 'action_tracker_data.json';
+const GDRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.file';
+
+let gdriveToken = null;
+let gdriveFileId = null;
+let gdriveEnabled = false;
+let syncDebounceTimer = null;
+
+// ═══════════════════════════════════════
+// GOOGLE AUTH
+// ═══════════════════════════════════════
+async function handleGoogleSignIn() {
+  if (GDRIVE_CLIENT_ID === 'YOUR_CLIENT_ID_HERE.apps.googleusercontent.com') {
+    alert('Setup required!\n\nYou need to configure Google Cloud credentials first.\n\nSee the setup guide:\n1. Go to console.cloud.google.com\n2. Create a project\n3. Enable Drive API\n4. Create OAuth credentials\n5. Paste the Client ID and API Key into this HTML file\n\nDetailed steps are in the README.');
+    return;
+  }
+  try {
+    // Use Google Identity Services (GIS) tokenClient
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: GDRIVE_CLIENT_ID,
+      scope: GDRIVE_SCOPES,
+      callback: async (response) => {
+        if (response.error) { console.error('Auth error:', response); return; }
+        gdriveToken = response.access_token;
+        gdriveEnabled = true;
+        document.getElementById('auth-overlay').style.display = 'none';
+        updateSyncStatus('cloud', 'Google Drive');
+        await findOrCreateDriveFile();
+        await loadFromDrive();
+        render();
+      }
+    });
+    client.requestAccessToken();
+  } catch(e) {
+    console.error('Sign-in failed:', e);
+    alert('Sign-in failed. Check console for details.');
+  }
+}
+
+function skipAuth() {
+  document.getElementById('auth-overlay').style.display = 'none';
+  gdriveEnabled = false;
+  updateSyncStatus('local', 'Local only');
+  state.dark = localStorage.getItem('at-dark')==='true';
+  if(state.dark) document.body.classList.add('dark');
+  loadState(); applyTheme(); render();
+}
+
+function updateSyncStatus(type, label) {
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-label');
+  dot.className = 'dot ' + type;
+  lbl.textContent = label;
+}
+
+// ═══════════════════════════════════════
+// GOOGLE DRIVE FILE OPERATIONS
+// ═══════════════════════════════════════
+async function gdriveRequest(url, options = {}) {
+  if (!gdriveToken) return null;
+  const resp = await fetch(url, {
+    ...options,
+    headers: { 'Authorization': 'Bearer ' + gdriveToken, ...(options.headers || {}) }
+  });
+  if (resp.status === 401) { gdriveToken = null; gdriveEnabled = false; updateSyncStatus('offline', 'Token expired'); return null; }
+  return resp;
+}
+
+async function findOrCreateDriveFile() {
+  // Search for existing file
+  const searchResp = await gdriveRequest(
+    `https://www.googleapis.com/drive/v3/files?q=name='${GDRIVE_FILE_NAME}'+and+trashed=false&spaces=drive&fields=files(id,name,modifiedTime)`
+  );
+  if (!searchResp) return;
+  const data = await searchResp.json();
+  if (data.files && data.files.length > 0) {
+    gdriveFileId = data.files[0].id;
+    console.log('Found Drive file:', gdriveFileId);
+    return;
+  }
+  // Create new file
+  const metadata = { name: GDRIVE_FILE_NAME, mimeType: 'application/json' };
+  const createResp = await gdriveRequest('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(metadata)
+  });
+  if (!createResp) return;
+  const created = await createResp.json();
+  gdriveFileId = created.id;
+  console.log('Created Drive file:', gdriveFileId);
+  // Write initial data
+  await saveToDrive();
+}
+
+async function loadFromDrive() {
+  if (!gdriveFileId || !gdriveToken) return false;
+  try {
+    const resp = await gdriveRequest(`https://www.googleapis.com/drive/v3/files/${gdriveFileId}?alt=media`);
+    if (!resp || !resp.ok) return false;
+    const text = await resp.text();
+    if (!text || text.length < 10) return false;
+    const d = JSON.parse(text);
+    if (d.actions && d.actions.length) {
+      state.actions = d.actions.map(a => ({startDate:"",deps:[],isMilestone:false,gantt:false,priority:false,todayFocus:false,sortIdx:0,...a}));
+      state.meetings = d.meetings || [];
+      state.archived = d.archived || [];
+      state.subProjects = d.subProjects || {};
+      state.milestones = d.milestones || [];
+      state.diary = d.diary || {areas:[],entries:{},habits:{}};
+      // Also save to localStorage as backup
+      localStorage.setItem(STORE_KEY, JSON.stringify(d));
+      updateSyncStatus('cloud', 'Synced');
+      return true;
+    }
+  } catch(e) { console.error('Load from Drive failed:', e); }
+  return false;
+}
+
+async function saveToDrive() {
+  if (!gdriveFileId || !gdriveToken) return;
+  const d = { actions: state.actions, meetings: state.meetings, archived: state.archived, subProjects: state.subProjects, milestones: state.milestones, diary: state.diary };
+  try {
+    await gdriveRequest(`https://www.googleapis.com/upload/drive/v3/files/${gdriveFileId}?uploadType=media`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(d)
+    });
+    updateSyncStatus('cloud', 'Synced');
+  } catch(e) {
+    console.error('Save to Drive failed:', e);
+    updateSyncStatus('offline', 'Sync failed');
+  }
+}
+
+function debouncedDriveSync() {
+  if (!gdriveEnabled) return;
+  clearTimeout(syncDebounceTimer);
+  updateSyncStatus('local', 'Saving...');
+  syncDebounceTimer = setTimeout(() => saveToDrive(), 1500);
+}
+
+async function forceSyncToDrive() {
+  if (!gdriveEnabled) { toast('Not signed in to Google'); return; }
+  updateSyncStatus('local', 'Pushing...');
+  await saveToDrive();
+  toast('Pushed to Drive');
+}
+
+async function forceSyncFromDrive() {
+  if (!gdriveEnabled) { toast('Not signed in to Google'); return; }
+  updateSyncStatus('local', 'Pulling...');
+  const ok = await loadFromDrive();
+  if (ok) { render(); toast('Pulled from Drive'); }
+  else toast('Pull failed');
+}
+
+
+// ═══════════════════════════════════════
+// DATA & STATE
+// ═══════════════════════════════════════
+const STATUSES = ["Open","In progress","Done","Blocked","Cancelled","Carry-over"];
+const ST = {Open:{bg:"#FEF3C7",fg:"#92400E"},"In progress":{bg:"#DBEAFE",fg:"#1E40AF"},Done:{bg:"#D1FAE5",fg:"#065F46"},Blocked:{bg:"#FEE2E2",fg:"#991B1B"},Cancelled:{bg:"#F3F4F6",fg:"#6B7280"},"Carry-over":{bg:"#EDE9FE",fg:"#5B21B6"}};
+const WS_COLORS = new Proxy({}, {get:(t,p)=>{
+  if(p in t) return t[p];
+  // Generate consistent color from project name hash
+  const palette=["#0EA5E9","#8B5CF6","#F59E0B","#EC4899","#EF4444","#6366F1","#14B8A6","#64748B","#D97706","#059669","#0284C7","#7C3AED"];
+  let hash=0;for(let i=0;i<String(p).length;i++)hash=String(p).charCodeAt(i)+((hash<<5)-hash);
+  return palette[Math.abs(hash)%palette.length];
+}});
+
+const SEED_ACTIONS = [];
+const SEED_MEETINGS = []
+
+const uid = () => Math.random().toString(36).slice(2, 10);
+const todayISO = () => new Date().toISOString().slice(0, 10);
+const fmtDate = (d) => { if (!d) return "\u2014"; return new Date(d+"T12:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}); };
+const isOverdue = (due, st) => { if (!due||st==="Done"||st==="Cancelled") return false; return new Date(due+"T23:59:59")<new Date(); };
+
+let state = {
+  actions: [], meetings: [], archived: [], subProjects: {}, milestones: [],
+  tab: "today", editId: null, dark: false, search: "", fStatus: "Active", fProj: "All", fOwner: "All", fPrio: false,
+  projCollapsed: {}, subCollapsed: {}, diary: {areas:[],entries:{},habits:{}}, toast: null, selected: new Set(), dragId: null, projOrder: [], dragProj: null
+};
+
+// ═══════════════════════════════════════
+// PERSISTENCE (localStorage)
+// ═══════════════════════════════════════
+const STORE_KEY = "at-standalone-v1";
+function saveState() {
+  const d = { actions: state.actions, meetings: state.meetings, archived: state.archived, subProjects: state.subProjects, milestones: state.milestones, diary: state.diary };
+  localStorage.setItem(STORE_KEY, JSON.stringify(d));
+  // Save UI prefs separately (not synced to Drive — device-local)
+  localStorage.setItem('at-prefs', JSON.stringify({projCollapsed:state.projCollapsed, subCollapsed:state.subCollapsed, projOrder:state.projOrder}));
+  debouncedDriveSync();
+}
+function loadPrefs() {
+  try { const p=JSON.parse(localStorage.getItem('at-prefs')||'{}'); state.projCollapsed=p.projCollapsed||{}; state.subCollapsed=p.subCollapsed||{}; state.projOrder=p.projOrder||[]; } catch(e) {}
+}
+function loadState() {
+  loadPrefs();
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      state.actions = (d.actions||[]).map(a => ({startDate:"",deps:[],isMilestone:false,gantt:false,priority:false,todayFocus:false,sortIdx:0,...a}));
+      state.meetings = d.meetings || [];
+      state.archived = d.archived || [];
+      state.subProjects = d.subProjects || {};
+      state.milestones = d.milestones || [];
+      state.diary = d.diary || {areas:[],entries:{},habits:{}};
+      return;
+    }
+  } catch(e) {}
+  // First run — seed data
+  // First run — no seed data (kept out of repo for privacy)
+  // Import your data via sidebar JSON Import button
+  state.actions = [];
+  state.meetings = [];
+  state.diary = {pin:"",entries:{},habits:{},unlocked:false,viewDate:null};
+  saveState();
+}
+
+// ═══════════════════════════════════════
+// EXPORT / IMPORT
+// ═══════════════════════════════════════
+function exportJSON() {
+  const d = JSON.stringify({actions:state.actions,meetings:state.meetings,archived:state.archived,subProjects:state.subProjects,milestones:state.milestones}, null, 2);
+  const blob = new Blob([d], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "action_tracker_" + todayISO() + ".json";
+  a.click();
+  toast("JSON exported");
+}
+function importJSON(e) {
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    try {
+      const d = JSON.parse(ev.target.result);
+      if (d.actions) state.actions = d.actions.map(a => ({startDate:"",deps:[],isMilestone:false,gantt:false,priority:false,todayFocus:false,sortIdx:0,...a}));
+      if (d.meetings) state.meetings = d.meetings;
+      if (d.archived) state.archived = d.archived;
+      if (d.subProjects) state.subProjects = d.subProjects;
+      if (d.milestones) state.milestones = d.milestones;
+      if (d.diary) state.diary = d.diary;
+      saveState(); render(); toast("Imported " + state.actions.length + " actions");
+    } catch(err) { toast("Import failed"); }
+  };
+  r.readAsText(f);
+}
+function importMD(md) {
+  const lines = md.split("\n"); let meeting="",cols=[],inT=false,pastS=false;const newActions=[];
+  for(const line of lines){const l=line.trim();
+    const mh=l.match(/^#{2,3}\s*Meeting\s*(\d+)\s*[\u2014\u2013-]\s*(?:(\d{1,2}\s+\w+\s+\d{4})\s*:\s*)?(.+?)$/i);
+    if(mh){meeting=`Meeting ${mh[1]}`;inT=false;pastS=false;continue;}
+    if(l.startsWith("|")&&l.includes("Action")&&l.includes("Owner")){inT=true;pastS=false;cols=l.split("|").map(s=>s.trim().toLowerCase()).filter(Boolean);continue;}
+    if(inT&&!pastS&&/^\|[\s\-|]+\|$/.test(l)){pastS=true;continue;}
+    if(inT&&pastS&&l.startsWith("|")){const c=l.split("|").map(s=>s.trim()).filter(Boolean);if(c.length>=3){
+      const get=(name)=>{const i=cols.findIndex(h=>h.includes(name));return i>=0&&i<c.length?c[i]:"";}
+      const due=get("due"),proj=get("project");let st=get("status")||c[c.length-1]||"Open";
+      st=st.trim();if(st.startsWith("Done"))st="Done";if(!STATUSES.includes(st))st="Open";
+      let pd="";const dm=due.match(/(\d{1,2})\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*(\d{4})?/i);
+      if(dm){const mo={jan:"01",feb:"02",mar:"03",apr:"04",may:"05",jun:"06",jul:"07",aug:"08",sep:"09",oct:"10",nov:"11",dec:"12"};pd=`${dm[3]||"2026"}-${mo[dm[2].toLowerCase()]}-${dm[1].padStart(2,"0")}`;}
+      newActions.push({id:uid(),num:c[0],action:get("action")||c[1],owner:get("owner")||c[2],due:pd,dueRaw:due,measurable:get("measurable")||get("outcome")||"",status:st,meeting,createdAt:todayISO(),notes:"",project:proj||"Imported",subproject:"",startDate:"",deps:[],isMilestone:false,gantt:false,priority:false,todayFocus:false,sortIdx:Date.now()});
+    }}
+    if(inT&&pastS&&!l.startsWith("|")&&l!==""){inT=false;pastS=false;}
+  }
+  return newActions;
+}
+
+// ═══════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════
+function toast(msg) {
+  const c = document.getElementById("toast-container");
+  c.innerHTML = `<div class="toast">${msg}</div>`;
+  setTimeout(() => c.innerHTML = "", 2400);
+}
+function patch(id, upd) {
+  state.actions = state.actions.map(a => a.id === id ? {...a, ...upd} : a);
+  saveState(); render();
+}
+function archiveAction(id) {
+  const a = state.actions.find(x => x.id === id);
+  if (!a) return;
+  state.archived.push({...a, archivedAt: todayISO()});
+  state.actions = state.actions.filter(x => x.id !== id);
+  saveState(); render(); toast("Archived");
+}
+function restoreAction(id) {
+  const a = state.archived.find(x => x.id === id);
+  if (!a) return;
+  const {archivedAt, ...clean} = a;
+  state.actions.push(clean);
+  state.archived = state.archived.filter(x => x.id !== id);
+  saveState(); render(); toast("Restored");
+}
+function addNote(id,text){if(!text||!text.trim())return;const a=state.actions.find(x=>x.id===id);if(!a)return;if(!Array.isArray(a.notesLog))a.notesLog=[];if(a.notes&&!a.notesLog.length)a.notesLog.push({t:a.notes,d:a.createdAt||todayISO()});a.notesLog.push({t:text.trim(),d:todayISO()});a.notes=text.trim();saveState();render();}
+function addAction(data) {
+  state.actions.push({id:uid(),createdAt:todayISO(),notes:"",project:"Untagged",subproject:"",startDate:"",deps:[],isMilestone:false,gantt:false,priority:false,todayFocus:false,sortIdx:Date.now(),...data});
+  saveState(); render(); toast("Added");
+}
+function quickAdd(){return `<div style="display:flex;gap:6px;margin-bottom:16px"><input class="input" id="qa" style="flex:1" placeholder="Quick add \u2014 type and press Enter..." onkeydown="if(event.key==='Enter'&&this.value.trim()){addAction({action:this.value.trim(),owner:'Me',num:'',status:'Open'});this.value='';}"><button class="btn btn-primary" style="padding:7px 12px" onclick="var i=document.getElementById('qa');if(i.value.trim()){addAction({action:i.value.trim(),owner:'Me',num:'',status:'Open'});i.value='';}">+</button></div>`;}
+function dueColor(d,st) {
+  if(!d||st==="Done"||st==="Cancelled") return "var(--text-light)";
+  const diff = (new Date(d+"T23:59:59") - new Date()) / 864e5;
+  if(diff < 0) return "var(--danger)";
+  if(diff < 2) return "#DC6B09";
+  if(diff < 7) return "#B45309";
+  return "var(--text-mid)";
+}
+function esc(s) { return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function statusBadge(st) { const s=ST[st]||{bg:"#F3F4F6",fg:"#6B7280"}; return `<span class="status-badge" style="background:${s.bg};color:${s.fg}">${st}</span>`; }
+function projTag(p,sub) { const c=WS_COLORS[p]||"#94A3B8"; return `<span class="proj-tag" style="background:${c}18;color:${c}">${esc(p)}${sub?` <span style="opacity:.6">/ ${esc(subLabel(sub))}</span>`:""}</span>`; }
+function actionBtns(a) {
+  return `<div class="action-btns">
+    <button class="toggle-btn ${a.priority?'on-prio':'off'}" onclick="event.stopPropagation();patch('${a.id}',{priority:${!a.priority}})">\u2605</button>
+    <button class="toggle-btn ${a.todayFocus?'on-today':'off'}" onclick="event.stopPropagation();patch('${a.id}',{todayFocus:${!a.todayFocus}})">\u25C9</button>
+    <select onchange="event.stopPropagation();patch('${a.id}',{status:this.value})" onclick="event.stopPropagation()">
+      ${STATUSES.map(s=>`<option ${s===a.status?'selected':''}>${s}</option>`).join("")}
+    </select>
+  </div>`;
+}
+
+// ═══════════════════════════════════════
+// COMPUTED
+// ═══════════════════════════════════════
+function getStats() {
+  const a = state.actions;
+  const done = a.filter(x=>x.status==="Done").length;
+  const open = a.filter(x=>x.status==="Open").length;
+  const prog = a.filter(x=>x.status==="In progress").length;
+  const overdue = a.filter(x=>isOverdue(x.due,x.status)).length;
+  const prio = a.filter(x=>x.priority&&x.status!=="Done"&&x.status!=="Cancelled").length;
+  const inbox = a.filter(x=>x.status!=="Done"&&x.status!=="Cancelled"&&(x.project==="Imported"||x.project==="Untagged"||!x.due||!x.measurable)).length;
+  const today = a.filter(x=>x.status!=="Done"&&x.status!=="Cancelled"&&(x.todayFocus||x.due===todayISO())).length;
+  const xp = done * 10;
+  const level = Math.floor(xp / 100) + 1;
+  return { total:a.length, done, open, prog, overdue, prio, inbox, today, xp, level, xpInLevel:xp%100 };
+}
+function getProjects() {
+  const all = [...new Set(state.actions.map(a=>a.project))].filter(Boolean);
+  const defOrd=[];  // Order from user preferences
+  return all.sort((a,b)=>{
+    const oa=state.projOrder.indexOf(a),ob=state.projOrder.indexOf(b);
+    if(oa>=0&&ob>=0) return oa-ob;
+    if(oa>=0) return -1; if(ob>=0) return 1;
+    return (defOrd.indexOf(a)<0?99:defOrd.indexOf(a))-(defOrd.indexOf(b)<0?99:defOrd.indexOf(b));
+  });
+}
+function getOwners() {
+  return [...new Set(state.actions.map(a=>a.owner))].filter(Boolean).sort();
+}
+function getSubs(p){return[...new Set([...(state.subProjects[p]||[]),...state.actions.filter(a=>a.project===p&&a.subproject).map(a=>a.subproject)])].sort();}
+function addSub(proj,name,parent){if(!name||!name.trim())return;const full=parent?(parent+" / "+name.trim()):name.trim();if(!state.subProjects[proj])state.subProjects[proj]=[];if(state.subProjects[proj].includes(full)){toast("Already exists");return;}state.subProjects[proj].push(full);saveState();render();toast("Created: "+full);}
+function deleteSub(proj,sub){if(!confirm("Remove '"+subLabel(sub)+"' and its children?"))return;state.subProjects[proj]=(state.subProjects[proj]||[]).filter(s=>s!==sub&&!s.startsWith(sub+" / "));state.actions=state.actions.map(a=>a.project===proj&&(a.subproject===sub||a.subproject?.startsWith(sub+" / "))?{...a,subproject:""}:a);saveState();render();toast("Removed "+subLabel(sub));}
+function subDepth(s){return s?s.split(" / ").length-1:0;}
+function subLabel(s){return s?s.split(" / ").pop():s;}
+function toggleSelect(id){if(state.selected.has(id))state.selected.delete(id);else state.selected.add(id);render();}
+function selectAllFiltered(checked){if(checked&&window._filteredIds){window._filteredIds.forEach(id=>state.selected.add(id));}else{state.selected.clear();}render();}
+function bulkPatch(upd){state.selected.forEach(id=>{state.actions=state.actions.map(a=>a.id===id?{...a,...upd}:a);});state.selected=new Set();saveState();render();toast("Updated");}
+function bulkArchive(){state.selected.forEach(id=>{const a=state.actions.find(x=>x.id===id);if(a){state.archived.push({...a,archivedAt:todayISO()});state.actions=state.actions.filter(x=>x.id!==id);}});state.selected=new Set();saveState();render();toast("Archived");}
+function handleReorder(fromId,toId){
+  if(!fromId||!toId||fromId===toId)return;
+  // Move all selected (or just the dragged one)
+  const ids = state.selected.size>0&&state.selected.has(fromId) ? [...state.selected] : [fromId];
+  const ti=state.actions.findIndex(a=>a.id===toId);
+  if(ti<0)return;
+  const moving=state.actions.filter(a=>ids.includes(a.id));
+  state.actions=state.actions.filter(a=>!ids.includes(a.id));
+  const newTi=state.actions.findIndex(a=>a.id===toId);
+  state.actions.splice(newTi>=0?newTi:state.actions.length,0,...moving);
+  state.actions.forEach((a,i)=>a.sortIdx=i);
+  state.selected=new Set();saveState();render();
+}
+function handleDropToProject(proj,sub){
+  // Move dragged (+ selected) actions to a project/sub-project
+  const ids = state.selected.size>0&&state.selected.has(state.dragId) ? [...state.selected] : (state.dragId?[state.dragId]:[]);
+  if(!ids.length)return;
+  ids.forEach(id=>{state.actions=state.actions.map(a=>a.id===id?{...a,project:proj,subproject:sub||""}:a);});
+  state.selected=new Set();state.dragId=null;saveState();render();toast("Moved "+ids.length+" to "+proj+(sub?" / "+subLabel(sub):""));
+}
+function promptSub(proj,parent){const n=prompt("Sub-project name"+(parent?" under "+subLabel(parent):"")+":");if(n)addSub(proj,n,parent||"");}
+function collapseAll(collapse){const projs=getProjects();projs.forEach(p=>{state.projCollapsed[p]=collapse;getSubs(p).forEach(s=>{state.subCollapsed[p+'//'+s]=collapse;});});saveState();render();}
+function collapseSubsOnly(collapse){const projs=getProjects();projs.forEach(p=>{getSubs(p).forEach(s=>{state.subCollapsed[p+'//'+s]=collapse;});});saveState();render();}
+function toggleSubCollapse(proj,sub){const key=proj+'//'+sub;state.subCollapsed[key]=!state.subCollapsed[key];saveState();render();}
+function reorderProj(targetP){
+  if(!state.dragProj||state.dragProj===targetP)return;
+  const order=[...getProjects()];
+  const fi=order.indexOf(state.dragProj),ti=order.indexOf(targetP);
+  if(fi<0||ti<0)return;
+  order.splice(fi,1);order.splice(ti,0,state.dragProj);
+  state.projOrder=order;state.dragProj=null;saveState();render();toast("Reordered");
+}
+function createProject(){const n=prompt("New project name:");if(!n||!n.trim())return;const name=n.trim();if(getProjects().includes(name)){toast("Already exists");return;}addAction({action:"(placeholder — delete after adding real actions)",owner:"Me",project:name,status:"Open"});toast("Project created: "+name);}
+function deleteProject(p){if(!confirm("Delete project '"+p+"' and archive all its actions?"))return;const ids=state.actions.filter(a=>a.project===p).map(a=>a.id);ids.forEach(id=>{const a=state.actions.find(x=>x.id===id);if(a)state.archived.push({...a,archivedAt:todayISO()});});state.actions=state.actions.filter(a=>a.project!==p);delete state.subProjects[p];saveState();render();toast("Archived "+ids.length+" actions from "+p);}
+function exportProjectCSV(){
+  let csv="Project,Sub-project,Open,Done,Total\\n";
+  getProjects().forEach(p=>{
+    const all=state.actions.filter(a=>a.project===p);
+    const open=all.filter(a=>a.status!=="Done"&&a.status!=="Cancelled").length;
+    const done=all.filter(a=>a.status==="Done").length;
+    csv+=`"${p}","",${open},${done},${all.length}\\n`;
+    getSubs(p).forEach(s=>{
+      const sa=all.filter(a=>a.subproject===s);
+      const so=sa.filter(a=>a.status!=="Done"&&a.status!=="Cancelled").length;
+      const sd=sa.filter(a=>a.status==="Done").length;
+      csv+=`"${p}","${s}",${so},${sd},${sa.length}\\n`;
+    });
+  });
+  const blob=new Blob([csv],{type:"text/csv"});
+  Object.assign(document.createElement("a"),{href:URL.createObjectURL(blob),download:"projects_"+todayISO()+".csv"}).click();
+  toast("CSV exported");
+}
+function openAddInProject(proj){
+  const subs=getSubs(proj);
+  const m=document.createElement("div");m.className="modal-overlay";m.onclick=e=>{if(e.target===m)m.remove();};
+  m.innerHTML=`<div class="modal">
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:12px">Add action to ${esc(proj)}</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <label style="font-size:10.5px;font-weight:600;color:#5A6578;grid-column:1/-1">Action <input class="input" id="pa-act" style="width:100%;margin-top:2px"></label>
+      <label style="font-size:10.5px;font-weight:600;color:#5A6578">Owner <input class="input" id="pa-own" style="width:100%;margin-top:2px"></label>
+      <label style="font-size:10.5px;font-weight:600;color:#5A6578">Due <input type="date" class="input" id="pa-due" style="width:100%;margin-top:2px"></label>
+      ${subs.length?`<label style="font-size:10.5px;font-weight:600;color:#5A6578">Sub-project <select class="select" id="pa-sub" style="width:100%;margin-top:2px"><option value="">(none)</option>${subs.map(s=>`<option value="${esc(s)}">${"\u00A0".repeat(subDepth(s)*2)+subLabel(s)}</option>`).join("")}</select></label>`:""}
+    </div>
+    <div style="display:flex;gap:6px;margin-top:14px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+      <button class="btn btn-primary" onclick="addAction({action:document.getElementById('pa-act').value,owner:document.getElementById('pa-own').value||'Me',due:document.getElementById('pa-due').value,project:'${proj}',subproject:document.getElementById('pa-sub')?.value||''});this.closest('.modal-overlay').remove()">Add</button>
+    </div></div>`;
+  document.body.appendChild(m);
+}
+// ═══════════════════════════════════════
+// SELF MAP — Personal Development Tracker
+// ═══════════════════════════════════════
+// Password-locked personal development diary with Repeat/Improve/Action/Score per area
+
+const SM_PILLARS = [
+  {name:"Self Discipline/Grit",color:"#EF4444",areas:["Effort","Consistency","Self respect (delayed gratification)"]},
+  {name:"Core Competencies",color:"#4A7BF7",areas:["Focus/Attention","Communication","Planning & Productivity","Structured problem solving","Emotional Stability/Stoicism","Learning how to learn"]},
+  {name:"Habits",color:"#10B981",areas:["Prayer","Weightlifting","Cardio","Intermittent fasting","Self Map"]},
+  {name:"Circle of influence",color:"#D946EF",areas:["Wife","Family","Friends"]},
+];
+const SM_ALL_AREAS = SM_PILLARS.flatMap(p=>p.areas);
+function smPillarOf(area){return SM_PILLARS.find(p=>p.areas.includes(area));}
+
+function smInit(){
+  if(!state.diary)state.diary={pin:"",entries:{},habits:{},unlocked:false,viewDate:null};
+  if(!state.diary.entries)state.diary.entries={};
+}
+
+function smCheckPin(){
+  smInit();
+  if(!state.diary.pin)return true; // no pin set
+  return state.diary.unlocked===true;
+}
+
+function smSetPin(){
+  const p=prompt("Set a PIN for your Self Map (4+ chars):");
+  if(!p||p.length<4){toast("PIN must be 4+ characters");return;}
+  state.diary.pin=btoa(p); // simple base64 encoding
+  state.diary.unlocked=true;
+  saveState();render();toast("PIN set");
+}
+
+function smUnlock(){
+  const p=prompt("Enter your Self Map PIN:");
+  if(!p)return;
+  if(btoa(p)===state.diary.pin){
+    state.diary.unlocked=true;
+    render();
+  } else {
+    toast("Wrong PIN");
+  }
+}
+
+function smLock(){
+  state.diary.unlocked=false;
+  render();
+}
+
+function smEntry(date){
+  smInit();
+  if(!state.diary.entries[date])state.diary.entries[date]={};
+  return state.diary.entries[date];
+}
+
+function smSaveField(date,area,field,val){
+  const e=smEntry(date);
+  if(!e[area])e[area]={repeat:"",improve:"",action:"",score:0};
+  e[area][field]=val;
+  saveState();
+}
+
+function smFilledDates(){
+  smInit();
+  return Object.keys(state.diary.entries).filter(d=>{
+    const e=state.diary.entries[d];
+    return Object.keys(e).some(k=>SM_ALL_AREAS.includes(k)&&(e[k].repeat||e[k].improve||e[k].action||e[k].score));
+  }).sort();
+}
+
+function smTimeline(){
+  // Generate year-by-year timeline from 2023 to now
+  const filled=new Set(smFilledDates());
+  const start=new Date('2018-03-01');
+  const end=new Date();
+  const months=[];
+  const d=new Date(start);
+  while(d<=end){
+    const ym=d.toISOString().slice(0,7);
+    const daysInMonth=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+    const days=[];
+    for(let i=1;i<=daysInMonth;i++){
+      const ds=ym+'-'+String(i).padStart(2,'0');
+      days.push({date:ds,filled:filled.has(ds)});
+    }
+    const filledCount=days.filter(x=>x.filled).length;
+    months.push({ym,label:d.toLocaleDateString('en-GB',{month:'short',year:'2-digit'}),days,filledCount});
+    d.setMonth(d.getMonth()+1);
+  }
+  return months;
+}
+
+function smAvgScores(date){
+  const e=state.diary.entries[date];
+  if(!e)return{};
+  const byPillar={};
+  SM_PILLARS.forEach(p=>{
+    const scores=p.areas.map(a=>e[a]?.score||0).filter(s=>s>0);
+    byPillar[p.name]=scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length*10)/10:0;
+  });
+  return byPillar;
+}
+
+function renderDiary(){
+  smInit();
+  const td=state.diary.viewDate||todayISO();
+
+  // PIN lock gate
+  if(state.diary.pin && !state.diary.unlocked){
+    return `<div class="fade-in" style="display:flex;align-items:center;justify-content:center;min-height:60vh;flex-direction:column;gap:16px">
+      <div style="font-size:36px">\uD83D\uDD12</div>
+      <h2 style="font-size:18px;font-weight:700">Self Map is locked</h2>
+      <p style="font-size:12px;color:var(--text-light)">Enter your PIN to access</p>
+      <button class="btn btn-primary" onclick="smUnlock()">Unlock</button>
+    </div>`;
+  }
+
+  const entry=smEntry(td);
+  const filled=smFilledDates();
+  const timeline=smTimeline();
+  const isToday=td===todayISO();
+
+  let h=`<div class="fade-in">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div>
+      <h1 style="margin-bottom:2px">Self Map</h1>
+      <p style="font-size:11px;color:var(--text-light)">${filled.length} entries since Sep 2023 &middot; ${isToday?'Today':'Viewing '+fmtDate(td)}</p>
+    </div>
+    <div style="display:flex;gap:4px;align-items:center">
+      <button class="btn btn-ghost" style="font-size:10px" onclick="state.diary.viewDate=null;render()">\u25C9 Today</button>
+      <input type="date" class="input" style="font-size:10px;padding:4px 6px" value="${td}" onchange="state.diary.viewDate=this.value;render()">
+      ${state.diary.pin?`<button class="btn btn-ghost" style="font-size:9px;padding:2px 6px" onclick="smLock()">\uD83D\uDD12</button>`:`<button class="btn btn-ghost" style="font-size:9px;padding:2px 6px" onclick="smSetPin()">\uD83D\uDD13 Set PIN</button>`}
+    </div>
+  </div>`;
+
+  // ── TIMELINE HEATMAP ──
+  h+=`<div class="card" style="padding:12px;margin-bottom:14px;overflow-x:auto">
+    <div style="font-size:11px;font-weight:700;margin-bottom:6px;display:flex;justify-content:space-between">
+      <span>Timeline — ${filled.length} days filled</span>
+      <span style="color:var(--text-light);font-weight:400">${timeline.length} months tracked</span>
+    </div>
+    <div style="display:flex;gap:1px;flex-wrap:wrap">`;
+  timeline.forEach(m=>{
+    h+=`<div style="margin-right:4px;margin-bottom:2px" title="${m.label}: ${m.filledCount} days">`;
+    m.days.forEach(d=>{
+      const isSel=d.date===td;
+      h+=`<div onclick="state.diary.viewDate='${d.date}';render()" style="width:4px;height:4px;border-radius:1px;display:inline-block;background:${d.filled?'var(--accent)':'var(--border)'};${isSel?'outline:1px solid var(--text)':''};cursor:pointer" title="${d.date}${d.filled?' ✓':''}"></div>`;
+    });
+    h+=`<div style="font-size:7px;color:var(--text-light);text-align:center;margin-top:1px">${m.label}</div></div>`;
+  });
+  h+=`</div></div>`;
+
+  // ── PILLAR SCORES (if entry has scores) ──
+  const pillarAvg=smAvgScores(td);
+  const hasScores=Object.values(pillarAvg).some(v=>v>0);
+  if(hasScores){
+    h+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">`;
+    SM_PILLARS.forEach(p=>{
+      const avg=pillarAvg[p.name]||0;
+      h+=`<div class="card" style="padding:10px;text-align:center;border-top:3px solid ${p.color}">
+        <div style="font-size:22px;font-weight:800;color:${p.color}">${avg||'—'}</div>
+        <div style="font-size:9px;color:var(--text-light);margin-top:2px">${p.name}</div>
+      </div>`;
+    });
+    h+=`</div>`;
+  }
+
+  // ── ENTRY FORM per pillar ──
+  SM_PILLARS.forEach(pillar=>{
+    h+=`<div class="card" style="padding:14px;margin-bottom:10px;border-left:4px solid ${pillar.color}">
+      <div style="font-size:14px;font-weight:700;color:${pillar.color};margin-bottom:10px">${pillar.name}</div>`;
+
+    pillar.areas.forEach(area=>{
+      const ae=entry[area]||{repeat:"",improve:"",action:"",score:0};
+      const areaId=area.replace(/[^a-zA-Z]/g,'');
+      h+=`<div style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:12.5px;font-weight:600">${esc(area)}</span>
+          <div style="display:flex;align-items:center;gap:4px">
+            <span style="font-size:9px;color:var(--text-light)">Score</span>
+            <div style="display:flex;gap:1px">`;
+      // Score dots 1-10
+      for(let s=1;s<=10;s++){
+        const on=ae.score>=s;
+        const col=s<=3?'#EF4444':s<=6?'#F59E0B':'#10B981';
+        h+=`<div onclick="smSaveField('${td}','${esc(area)}','score',${ae.score===s?0:s});render()" style="width:14px;height:14px;border-radius:3px;background:${on?col:'var(--border)'};cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:7px;color:${on?'#fff':'var(--text-light)'};font-weight:700;transition:all .1s">${s}</div>`;
+      }
+      h+=`</div></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px">
+          <div>
+            <div style="font-size:8.5px;font-weight:700;color:#10B981;text-transform:uppercase;margin-bottom:2px">\u2713 Repeat</div>
+            <textarea class="input" style="width:100%;min-height:36px;font-size:10.5px;line-height:1.4;resize:vertical;padding:4px 6px" placeholder="What went well..." onblur="smSaveField('${td}','${esc(area)}','repeat',this.value)">${esc(ae.repeat)}</textarea>
+          </div>
+          <div>
+            <div style="font-size:8.5px;font-weight:700;color:#F59E0B;text-transform:uppercase;margin-bottom:2px">\u26A0 Improve</div>
+            <textarea class="input" style="width:100%;min-height:36px;font-size:10.5px;line-height:1.4;resize:vertical;padding:4px 6px" placeholder="What needs work..." onblur="smSaveField('${td}','${esc(area)}','improve',this.value)">${esc(ae.improve)}</textarea>
+          </div>
+          <div>
+            <div style="font-size:8.5px;font-weight:700;color:#4A7BF7;text-transform:uppercase;margin-bottom:2px">\u25B6 Action</div>
+            <textarea class="input" style="width:100%;min-height:36px;font-size:10.5px;line-height:1.4;resize:vertical;padding:4px 6px" placeholder="Next step..." onblur="smSaveField('${td}','${esc(area)}','action',this.value)">${esc(ae.action)}</textarea>
+          </div>
+        </div>
+      </div>`;
+    });
+    h+=`</div>`;
+  });
+
+  // ── RECOMMENDATIONS ──
+  h+=`<div class="card" style="padding:14px;margin-bottom:10px;border-left:4px solid #8B5CF6">
+    <div style="font-size:14px;font-weight:700;color:#8B5CF6;margin-bottom:8px">\uD83C\uDFAF Recommendations</div>
+    <div style="font-size:11.5px;color:var(--text-mid);line-height:1.7">`;
+
+  // Dynamic recommendations based on data patterns
+  const totalEntries=filled.length;
+  const lastEntry=filled.length?filled[filled.length-1]:'never';
+  const daysSinceLast=filled.length?Math.round((new Date()-new Date(lastEntry))/864e5):'∞';
+
+  if(daysSinceLast>7){
+    h+=`<div style="padding:6px 10px;border-radius:6px;background:#FEF3C7;margin-bottom:6px"><b>Consistency gap:</b> ${daysSinceLast} days since your last entry. Your biggest challenge has been consistency — even 2 sentences per area beats a blank day. Start with just scoring, add notes tomorrow.</div>`;
+  }
+  h+=`<div style="padding:6px 10px;border-radius:6px;background:#F0F4FF;margin-bottom:6px"><b>Focus on 3, not 17:</b> Pick your top 3 areas for this week. Score only those daily. Add the others when the habit is locked in. Suggested: <b>Effort</b>, <b>Prayer</b>, <b>Planning</b>.</div>`;
+  h+=`<div style="padding:6px 10px;border-radius:6px;background:#F0FDF4;margin-bottom:6px"><b>Morning + Evening:</b> Score in the morning (intention), reflect in the evening (actual). 2 min each. The Self Map works when it's a ritual, not a chore.</div>`;
+  h+=`<div style="padding:6px 10px;border-radius:6px;background:#FDF4FF;margin-bottom:6px"><b>Anchor to prayer:</b> You already pray daily — attach the Self Map check-in to Fajr (morning score) and Isha (evening reflection). Habit stacking is your strongest lever.</div>`;
+  h+=`</div></div>`;
+
+  h+=`</div>`;
+  return h;
+}
+
+function renderGuide() {
+  return `<div class="fade-in"><h1 style="margin-bottom:16px">Guide</h1>
+
+  <!-- Visual workflow flow -->
+  <div class="card" style="padding:20px;margin-bottom:16px">
+    <div style="font-size:13px;font-weight:700;margin-bottom:14px">How the tracker works</div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:wrap">
+      ${[
+        {icon:"\u2709",name:"Capture",desc:"Meeting transcript, quick-add, manual entry",col:"#7C3AED"},
+        {icon:"\u25A1",name:"Inbox",desc:"Triage: assign project, date, outcome",col:"#C026D3"},
+        {icon:"\u25C9",name:"Today",desc:"Daily focus — what to work on now",col:"#4A7BF7"},
+        {icon:"\u2630",name:"Actions",desc:"Full list, filter, bulk edit, export",col:"#DC2626"},
+        {icon:"\u25A6",name:"Projects",desc:"Organize by workstream + sub-projects",col:"#059669"},
+        {icon:"\u2713",name:"Done",desc:"Complete \u2192 XP \u2192 level up",col:"#2DA44E"},
+      ].map((s,i)=>`
+        ${i>0?'<div style="color:var(--text-light);font-size:16px;margin:0 4px">\u2192</div>':''}
+        <div style="text-align:center;padding:10px 8px;min-width:90px;border-radius:10px;border:1px solid ${s.col}30;background:${s.col}08">
+          <div style="font-size:18px;margin-bottom:4px">${s.icon}</div>
+          <div style="font-size:11px;font-weight:700;color:${s.col}">${s.name}</div>
+          <div style="font-size:9.5px;color:var(--text-light);margin-top:2px;max-width:100px">${s.desc}</div>
+        </div>`).join("")}
+    </div>
+    <div style="display:flex;justify-content:center;margin-top:14px;gap:24px;font-size:10px;color:var(--text-light)">
+      <span>\u2B06 Google Drive syncs data across devices</span>
+      <span>\u2B06 GitHub Pages hosts the app</span>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div class="card" style="padding:18px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:28px;height:28px;border-radius:14px;background:#DBEAFE;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#1E40AF">1</div><div style="font-size:14px;font-weight:700">Quick reference</div></div><div style="font-size:12px;color:var(--text-mid);line-height:1.7"><span style="color:#D946EF">\u2605</span> Toggle high priority<br><span style="color:#4A7BF7">\u25C9</span> Toggle today focus<br><b>Click</b> any action to edit all fields<br><b>Shift+click</b> to multi-select in Projects<br><b>Drag</b> actions to reorder or move to projects<br><b>Archive</b> removes without permanent delete</div></div>
+    <div class="card" style="padding:18px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:28px;height:28px;border-radius:14px;background:#D1FAE5;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#065F46">2</div><div style="font-size:14px;font-weight:700">Cross-device sync</div></div><div style="font-size:12px;color:var(--text-mid);line-height:1.7">Sign in with Google to save to Drive.<br>Open <b>xahpos.github.io/Action-tracker</b> on any PC, sign in, same data.<br>Green dot = synced. Yellow = local only.<br><b>Pull</b> = force-reload from Drive.<br><b>Push</b> = force-save to Drive.</div></div>
+    <div class="card" style="padding:18px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:28px;height:28px;border-radius:14px;background:#EDE9FE;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#5B21B6">3</div><div style="font-size:14px;font-weight:700">Import meetings</div></div><div style="font-size:12px;color:var(--text-mid);line-height:1.7">Paste a meeting transcript in the <b>Import</b> tab.<br>Uses 7-column format:<br><span style="font-family:var(--mono);font-size:10px">| # | Action | Owner | Due | Outcome | Project | Status |</span><br>Actions land in the right projects automatically.</div></div>
+    <div class="card" style="padding:18px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:28px;height:28px;border-radius:14px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#92400E">4</div><div style="font-size:14px;font-weight:700">Updating the app</div></div><div style="font-size:12px;color:var(--text-mid);line-height:1.7">Go to <b>github.com/Xahpos/Action-tracker</b><br>Edit index.html \u2192 Ctrl+A \u2192 paste new code \u2192 Commit<br>Wait 1-2 min \u2192 site updates<br>Data in Google Drive is untouched.</div></div>
+  </div></div>`;
+}
+// ═══════════════════════════════════════
+const TABS = [
+  {g:"Focus"},
+  {id:"inbox",icon:"\u25A1",label:"Inbox",bg:"#C026D3"},
+  {id:"today",icon:"\u25C9",label:"Today",bg:"#4A7BF7"},
+  {g:"Manage"},
+  {id:"actions",icon:"\u2630",label:"Actions",bg:"#E5484D"},
+  {id:"projects",icon:"\u25A6",label:"Projects"},
+  {g:"Reflect"},
+  {id:"dashboard",icon:"\u25A3",label:"Dashboard"},
+  {id:"stats",icon:"\u25CE",label:"Stats"},
+  {id:"diary",icon:"\u270E",label:"Self Map"},
+  {g:"System"},
+  {id:"import",icon:"\u2193",label:"Import"},
+  {id:"guide",icon:"\u2139",label:"Guide"},
+];
+
+function renderNav() {
+  const s = getStats();
+  const nav = document.getElementById("nav");
+  nav.innerHTML = TABS.map(t => {
+    if(t.g) return `<div style="padding:0 12px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#4B5563;margin:12px 0 4px">${t.g}</div>`;
+    let badge = "";
+    if (t.id==="inbox" && s.inbox>0) badge = `<span class="badge" style="background:${t.bg||'#6B7280'}">${s.inbox}</span>`;
+    if (t.id==="today" && s.today>0) badge = `<span class="badge" style="background:${t.bg||'#6B7280'}">${s.today}</span>`;
+    if (t.id==="actions" && s.overdue>0) badge = `<span class="badge" style="background:${t.bg||'#6B7280'}">${s.overdue}</span>`;
+    return `<button class="${state.tab===t.id?'active':''}" onclick="state.tab='${t.id}';render()">
+      <span style="font-size:13px;opacity:.7;width:16px;text-align:center">${t.icon}</span>${t.label}${badge}</button>`;
+  }).join("");
+  document.getElementById("action-count").textContent = s.total + " actions";
+}
+
+function render() {
+  try {
+    renderNav();
+    const main = document.getElementById("main");
+    const s = getStats();
+
+    switch(state.tab) {
+      case "today": main.innerHTML = renderToday(s); break;
+      case "inbox": main.innerHTML = renderInbox(s); break;
+      case "dashboard": main.innerHTML = renderDashboard(s); break;
+      case "stats": main.innerHTML = renderStatsTab(s); break;
+      case "actions": main.innerHTML = renderActions(s); break;
+      case "projects": main.innerHTML = renderProjects(); break;
+      case "import": main.innerHTML = renderImport(); break;
+      case "calendar": main.innerHTML = renderCalendar(); break;
+      case "diary": main.innerHTML = renderDiary(); break;
+      case "guide": main.innerHTML = renderGuide(); break;
+      default: main.innerHTML = "";
+    }
+  } catch(err) {
+    const main = document.getElementById("main");
+    main.innerHTML = `<div style="padding:20px;font-family:monospace">
+      <h2 style="color:var(--danger);margin-bottom:10px">Render error in tab: ${state.tab}</h2>
+      <pre style="background:#1a1a2e;color:#e74c3c;padding:16px;border-radius:8px;overflow:auto;font-size:12px;line-height:1.6;white-space:pre-wrap">${esc(err.message)}\n\n${esc(err.stack||'')}</pre>
+      <p style="margin-top:12px;color:var(--text-mid);font-size:12px">Copy this error and send it back. State debug:</p>
+      <pre style="background:#1a1a2e;color:#4ADE80;padding:12px;border-radius:8px;font-size:11px;overflow:auto;max-height:200px;white-space:pre-wrap">tab: ${state.tab}
+actions: ${state.actions?.length ?? 'undefined'}
+selected type: ${typeof state.selected}
+selected is Set: ${state.selected instanceof Set}
+dragId: ${state.dragId}
+dark: ${state.dark}</pre>
+    </div>`;
+    console.error('RENDER ERROR:', err);
+  }
+}
+
+// ═══════════════════════════════════════
+// TODAY TAB
+// ═══════════════════════════════════════
+function renderToday(s) {
+  const td = todayISO();
+  const focused = state.actions.filter(a=>a.status!=="Done"&&a.status!=="Cancelled"&&a.todayFocus);
+  const dueToday = state.actions.filter(a=>a.status!=="Done"&&a.status!=="Cancelled"&&a.due===td&&!a.todayFocus);
+  const upcoming = state.actions.filter(a=>a.due&&a.status!=="Done"&&a.status!=="Cancelled"&&!a.todayFocus&&a.due!==td&&a.due<=new Date(Date.now()+7*864e5).toISOString().slice(0,10)).sort((a,b)=>a.due.localeCompare(b.due)).slice(0,10);
+  const dateStr = new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+
+  let h = quickAdd() + `<div class="fade-in"><h1>Today</h1><p style="font-size:13px;color:var(--text-light);margin:2px 0 16px">${dateStr}</p>`;
+
+  if (!focused.length && !dueToday.length) {
+    h += `<div style="text-align:center;padding:60px 20px;color:var(--text-light)"><div style="font-size:32px;margin-bottom:8px">\u2600</div><div style="font-size:15px;font-weight:600">Nothing for today</div><div style="font-size:12px;margin-top:4px">Mark actions with \u25C9 Today Focus</div></div>`;
+  }
+
+  if (focused.length) {
+    h += `<div style="margin-bottom:16px"><div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em">\u25C9 Focus (${focused.length})</div>`;
+    focused.forEach(a => {
+      h += `<div class="card card-hover" onclick="openEdit('${a.id}')" style="padding:10px 14px;margin-bottom:6px;cursor:pointer;display:flex;gap:8px;align-items:center;border-left:3px solid var(--accent)">
+        <div style="flex:1"><div style="display:flex;align-items:center;gap:6px">
+          <span style="font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--text-mid)">${esc(a.num)}</span>
+          <span style="font-size:13px;font-weight:500">${esc(a.action)}</span></div>
+          <div style="display:flex;gap:6px;margin-top:3px"><span style="font-size:11px;color:var(--text-mid)">${esc(a.owner)}</span>${projTag(a.project)}${a.due?`<span style="font-size:10.5px;color:var(--text-mid)">${fmtDate(a.due)}</span>`:""}</div>
+        </div>${actionBtns(a)}</div>`;
+    });
+    h += `</div>`;
+  }
+
+  if (dueToday.length) {
+    h += `<div style="margin-bottom:16px"><div style="font-size:12px;font-weight:700;color:var(--danger);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em">\u26A0 Due today (${dueToday.length})</div>`;
+    dueToday.forEach(a => {
+      h += `<div class="card card-hover" onclick="openEdit('${a.id}')" style="padding:10px 14px;margin-bottom:6px;cursor:pointer;display:flex;gap:8px;align-items:center;border-left:3px solid var(--danger)">
+        <div style="flex:1"><span style="font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--text-mid)">${esc(a.num)}</span> <span style="font-size:13px">${esc(a.action)}</span>
+          <div style="display:flex;gap:6px;margin-top:3px"><span style="font-size:11px;color:var(--text-mid)">${esc(a.owner)}</span>${projTag(a.project)}</div>
+        </div>${actionBtns(a)}</div>`;
+    });
+    h += `</div>`;
+  }
+
+  if (upcoming.length) {
+    h += `<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:12px"><div style="font-size:12px;font-weight:700;color:var(--text-light);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em">Coming up (7 days)</div>`;
+    upcoming.forEach(a => {
+      h += `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #F3F4F6;font-size:12px">
+        <span style="font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text-mid);width:32px">${esc(a.num)}</span>
+        <span style="flex:1">${esc(a.action)}</span>
+        <span style="color:${isOverdue(a.due,a.status)?'var(--danger)':'var(--text-mid)'};font-size:10.5px;font-weight:600">${fmtDate(a.due)}</span>
+        ${projTag(a.project)}${actionBtns(a)}</div>`;
+    });
+    h += `</div>`;
+  }
+
+  h += `</div>`;
+  return h;
+}
+
+// ═══════════════════════════════════════
+// INBOX TAB
+// ═══════════════════════════════════════
+function renderInbox(s) {
+  const inbox = state.actions.filter(a=>a.status!=="Done"&&a.status!=="Cancelled"&&(a.project==="Imported"||a.project==="Untagged"||!a.due||!a.measurable));
+  let h = quickAdd() + `<div class="fade-in"><h1>Inbox</h1><p style="font-size:13px;color:var(--text-light);margin:2px 0 16px">Actions needing annotation</p>`;
+  if (!inbox.length) {
+    h += `<div style="text-align:center;padding:60px 20px;color:var(--text-light)"><div style="font-size:32px;margin-bottom:8px">\u2705</div><div style="font-size:15px;font-weight:600">Inbox empty</div></div>`;
+  }
+  inbox.forEach((a,i) => {
+    const reasons = [];
+    if (a.project==="Imported"||a.project==="Untagged") reasons.push("no project");
+    if (!a.due) reasons.push("no due date");
+    if (!a.measurable) reasons.push("no outcome");
+    h += `<div class="card card-hover" onclick="openEdit('${a.id}')" style="padding:12px 16px;margin-bottom:6px;cursor:pointer;display:flex;gap:10px;align-items:flex-start;border-left:3px solid #D946EF;animation:fadeIn 0.2s ease-out both;animation-delay:${i*30}ms">
+      <div style="flex:1"><div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <span style="font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text-mid)">${esc(a.num)}</span>
+        <span style="font-size:13px;font-weight:600">${esc(a.action)}</span></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <span style="font-size:11.5px;color:var(--text-mid)">${esc(a.owner)}</span>${projTag(a.project)}</div>
+        <div style="display:flex;gap:4px;margin-top:4px">${reasons.map(r=>`<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:#FEF3C7;color:#92400E;font-weight:600">${r}</span>`).join("")}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0" onclick="event.stopPropagation()">
+        <select class="select" style="font-size:10px;width:130px" onchange="patch('${a.id}',{project:this.value})">
+          ${getProjects().map(p=>`<option ${p===a.project?'selected':''}>${esc(p)}</option>`).join("")}
+        </select>
+        <input type="date" class="input" style="font-size:10px;width:130px" value="${a.due||''}" onchange="patch('${a.id}',{due:this.value})">
+        ${actionBtns(a)}
+      </div></div>`;
+  });
+  h += `</div>`;
+  return h;
+}
+
+// ═══════════════════════════════════════
+// DASHBOARD TAB
+// ═══════════════════════════════════════
+function renderDashboard(s) {
+  let h = `<div class="fade-in">
+    <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:linear-gradient(135deg,#1B2332 0%,#2D3C55 100%);border-radius:10px;margin-bottom:16px;color:#F1F5F9">
+      <div style="text-align:center;min-width:48px"><div style="font-size:22px;font-weight:800;line-height:1">${s.level}</div><div style="font-size:9px;opacity:0.6;text-transform:uppercase;letter-spacing:0.08em">Level</div></div>
+      <div style="flex:1"><div style="display:flex;justify-content:space-between;font-size:10px;opacity:0.7;margin-bottom:3px"><span>${s.xpInLevel}/100 XP</span><span>${s.xp} total</span></div>
+        <div style="height:5px;background:rgba(255,255,255,0.1);border-radius:3px"><div class="progress-fill" style="height:5px;background:linear-gradient(90deg,#4A7BF7,#8B5CF6);border-radius:3px;width:${s.xpInLevel}%"></div></div>
+      </div>
+      <div style="text-align:center;min-width:48px"><div style="font-size:22px;font-weight:800;line-height:1">${s.done}</div><div style="font-size:9px;opacity:0.6;text-transform:uppercase;letter-spacing:0.08em">Done</div></div>
+      <div style="text-align:center;min-width:48px"><div style="font-size:22px;font-weight:800;line-height:1">${Math.round(s.done/Math.max(s.total,1)*100)}%</div><div style="font-size:9px;opacity:0.6;text-transform:uppercase;letter-spacing:0.08em">Complete</div></div>
+    </div>
+    <h1 style="margin-bottom:16px">Dashboard</h1>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:20px">`;
+  [["Total",s.total,"#4A7BF7"],["Open",s.open,"#F59E0B"],["In Prog",s.prog,"#3B82F6"],["Done",s.done,"#30A46C"],["Overdue",s.overdue,"#DC2626"],["Priority",s.prio,"#D946EF"]].forEach(([l,v,c])=>{
+    h+=`<div class="card" style="padding:14px;text-align:center"><div style="font-size:24px;font-weight:800;color:${c}">${v}</div><div style="font-size:10px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-top:2px">${l}</div></div>`;
+  });
+  h += `</div>`;
+
+  // Priority section
+  const prio = state.actions.filter(a=>a.priority&&a.status!=="Done"&&a.status!=="Cancelled");
+  if (prio.length) {
+    h += `<div class="card" style="border:1px solid #F0ABFC;padding:12px;margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:#86198F;margin-bottom:6px">\u2605 High Priority</div>`;
+    prio.forEach(a => {
+      h += `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:12px;border-bottom:1px solid #F5D0FE;flex-wrap:wrap">
+        <span style="font-family:var(--mono);font-size:10px;font-weight:600;width:32px">${esc(a.num)}</span>
+        <span style="flex:1;min-width:140px">${esc(a.action)}</span>
+        ${projTag(a.project)}<span style="font-size:10.5px;color:var(--text-mid)">${esc(a.owner)}</span>
+        ${actionBtns(a)}</div>`;
+    });
+    h += `</div>`;
+  }
+
+  // Overdue section
+  const od = state.actions.filter(a=>isOverdue(a.due,a.status)).slice(0,8);
+  if (od.length) {
+    h += `<div class="card" style="border:1px solid #FED7AA;padding:12px;margin-bottom:16px"><div style="font-size:12px;font-weight:700;color:#9A3412;margin-bottom:6px">\u26A0 Overdue</div>`;
+    od.forEach(a => {
+      h += `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:12px;border-bottom:1px solid #FED7AA;flex-wrap:wrap">
+        <span style="font-family:var(--mono);font-size:10px;font-weight:600;width:32px">${esc(a.num)}</span>
+        <span style="flex:1;min-width:140px">${esc(a.action)}</span>
+        ${projTag(a.project)}${actionBtns(a)}</div>`;
+    });
+    h += `</div>`;
+  }
+
+  // Owner pills
+  const owners = getOwners().slice(0,12);
+  h += `<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">By owner</div><div style="display:flex;gap:5px;flex-wrap:wrap">`;
+  owners.forEach(o => {
+    const cnt = state.actions.filter(a=>a.owner.includes(o)&&a.status!=="Done"&&a.status!=="Cancelled").length;
+    if(!cnt) return;
+    h += `<button class="btn btn-default" style="padding:4px 10px;font-size:11px" onclick="state.tab='actions';state.fOwner='${esc(o)}';render()">${esc(o)} <span style="opacity:.5">${cnt}</span></button>`;
+  });
+  h += `</div></div>`;
+
+  // Project cards
+  h += `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">`;
+  getProjects().forEach(p => {
+    const it = state.actions.filter(a=>a.project===p);
+    const op = it.filter(a=>a.status!=="Done"&&a.status!=="Cancelled").length;
+    const col = WS_COLORS[p]||"#94A3B8";
+    h += `<div class="card card-hover" onclick="state.tab='projects';render()" style="padding:12px 14px;border-left:3px solid ${col};cursor:pointer">
+      <div style="font-size:12.5px;font-weight:700;margin-bottom:2px">${esc(p)}</div>
+      <div style="font-size:11.5px;color:var(--text-mid)">${op} open / ${it.length}</div>
+      <div style="height:3px;background:#E8EBF0;border-radius:2px;margin-top:5px"><div style="height:3px;background:${col};border-radius:2px;width:${it.length?Math.round((it.length-op)/it.length*100):0}%"></div></div></div>`;
+  });
+  h += `</div></div>`;
+  return h;
+}
+
+// ═══════════════════════════════════════
+// STATS TAB
+// ═══════════════════════════════════════
+function renderStatsTab(s) {
+  const byProj = getProjects().map(p => {
+    const all = state.actions.filter(a=>a.project===p);
+    return {name:p.length>20?p.slice(0,18)+"..":p, open:all.filter(a=>a.status==="Open"||a.status==="In progress").length, done:all.filter(a=>a.status==="Done").length, total:all.length};
+  }).filter(p=>p.total>0);
+  const maxProj = Math.max(...byProj.map(p=>p.total), 1);
+
+  const byOwner = getOwners().slice(0,10).map(o => {
+    const all = state.actions.filter(a=>a.owner.includes(o));
+    return {name:o.length>12?o.slice(0,10)+"..":o, open:all.filter(a=>a.status!=="Done"&&a.status!=="Cancelled").length, done:all.filter(a=>a.status==="Done").length};
+  });
+  const maxOwner = Math.max(...byOwner.map(o=>o.open+o.done), 1);
+
+  let h = `<div class="fade-in"><h1 style="margin-bottom:16px">Stats</h1>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;text-align:center" class="card" style="padding:18px;margin-bottom:16px">`;
+  [["Captured",s.total,"var(--accent)"],["Completed",s.done,"#10B981"],["Overdue",s.overdue,"#F59E0B"],["Priority",s.prio,"#D946EF"],["Meetings",state.meetings.length,"#8B5CF6"]].forEach(([l,v,c])=>{
+    h+=`<div><div style="font-size:28px;font-weight:800;color:${c}">${v}</div><div style="font-size:10px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em">${l}</div></div>`;
+  });
+  h += `</div>`;
+
+  // By project bar chart (CSS)
+  h += `<div class="card" style="padding:18px;margin-bottom:14px"><div style="font-size:13px;font-weight:700;margin-bottom:12px">By project</div>`;
+  byProj.forEach(p => {
+    const col = WS_COLORS[p.name]||"#94A3B8";
+    h += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="font-size:10.5px;color:var(--text-mid);width:120px;text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span>
+      <div style="flex:1;height:16px;background:#F1F5F9;border-radius:3px;overflow:hidden;display:flex">
+        <div style="width:${p.done/maxProj*100}%;height:100%;background:#10B981;transition:width 0.5s"></div>
+        <div style="width:${p.open/maxProj*100}%;height:100%;background:${col};transition:width 0.5s"></div>
+      </div>
+      <span style="font-size:10px;color:var(--text-light);width:30px">${p.total}</span></div>`;
+  });
+  h += `<div style="display:flex;gap:12px;margin-top:8px;font-size:10px;color:var(--text-light)">
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:#10B981"></span> Done</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:#3B82F6"></span> Open</span></div></div>`;
+
+  // By owner bar chart (CSS)
+  h += `<div class="card" style="padding:18px;margin-bottom:14px"><div style="font-size:13px;font-weight:700;margin-bottom:12px">By owner</div>`;
+  byOwner.forEach(o => {
+    h += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="font-size:10.5px;color:var(--text-mid);width:80px;text-align:right;flex-shrink:0">${esc(o.name)}</span>
+      <div style="flex:1;height:14px;background:#F1F5F9;border-radius:3px;overflow:hidden;display:flex">
+        <div style="width:${o.done/maxOwner*100}%;height:100%;background:#10B981"></div>
+        <div style="width:${o.open/maxOwner*100}%;height:100%;background:#4A7BF7"></div>
+      </div>
+      <span style="font-size:10px;color:var(--text-light);width:24px">${o.open+o.done}</span></div>`;
+  });
+  h += `</div></div>`;
+
+  // Status pie (CSS conic-gradient)
+  const statusCounts=STATUSES.map(s=>({s,n:state.actions.filter(a=>a.status===s).length})).filter(x=>x.n>0);
+  const total=state.actions.length||1;
+  let angle=0;const slices=statusCounts.map(x=>{const deg=x.n/total*360;const r={s:x.s,n:x.n,start:angle,end:angle+deg,c:ST[x.s]?.b||'#E5E7EB'};angle+=deg;return r;});
+  const conic=slices.map(r=>`${r.c} ${r.start}deg ${r.end}deg`).join(',');
+  h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+    <div class="card" style="padding:18px"><div style="font-size:13px;font-weight:700;margin-bottom:12px">Status breakdown</div>
+      <div style="display:flex;align-items:center;gap:20px">
+        <div style="width:100px;height:100px;border-radius:50%;background:conic-gradient(${conic});flex-shrink:0"></div>
+        <div>${slices.map(r=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><div style="width:10px;height:10px;border-radius:2px;background:${r.c}"></div><span style="font-size:11px;color:var(--text-mid)">${r.s}: ${r.n}</span></div>`).join('')}</div>
+      </div></div>
+    <div class="card" style="padding:18px"><div style="font-size:13px;font-weight:700;margin-bottom:12px">Keyboard shortcuts</div>
+      <div style="font-size:11.5px;color:var(--text-mid);line-height:1.8">
+        <b>n</b> — New action<br><b>t</b> — Today view<br><b>i</b> — Inbox<br><b>a</b> — Actions<br><b>p</b> — Projects<br><b>/</b> — Search<br><b>d</b> — Dark mode
+      </div></div>
+  </div>`;
+
+  return h;
+}
+// ═══════════════════════════════════════
+function renderActions(s) {
+  let filtered = state.actions;
+  if (state.fStatus==="Active") filtered = filtered.filter(a=>a.status!=="Done"&&a.status!=="Cancelled");
+  else if (state.fStatus!=="All") filtered = filtered.filter(a=>a.status===state.fStatus);
+  if (state.fProj!=="All") filtered = filtered.filter(a=>a.project===state.fProj);
+  if (state.fOwner!=="All") filtered = filtered.filter(a=>a.owner.includes(state.fOwner));
+  if (state.fPrio) filtered = filtered.filter(a=>a.priority);
+  if (state.search) { const q=state.search.toLowerCase(); filtered=filtered.filter(a=>(a.action+a.num+a.owner).toLowerCase().includes(q)); }
+
+  let h = quickAdd() + `<div class="fade-in"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <h1>Actions <span style="font-size:13px;color:var(--text-light);font-weight:400">${filtered.length}/${state.actions.length}</span></h1>
+    <div style="display:flex;gap:5px"><button class="btn btn-primary" onclick="openAddModal()">+ Add</button><button class="btn btn-default" onclick="exportJSON()">JSON</button><button class="btn btn-default" onclick="exportMD()">MD</button></div></div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">
+      <input class="input" id="search-input" style="flex:1;min-width:120px" placeholder="Search... (press /)" value="${esc(state.search)}" oninput="state.search=this.value;render()">
+      <button class="btn ${state.fPrio?'btn-primary':'btn-default'}" onclick="state.fPrio=!state.fPrio;render()">\u2605 Priority</button>
+      <select class="select" onchange="state.fStatus=this.value;render()">
+        <option ${state.fStatus==="Active"?"selected":""}>Active</option><option ${state.fStatus==="All"?"selected":""}>All</option>
+        ${STATUSES.map(s=>`<option ${state.fStatus===s?"selected":""}>${s}</option>`).join("")}</select>
+      <select class="select" onchange="state.fProj=this.value;render()">
+        <option value="All" ${state.fProj==="All"?"selected":""}>All projects</option>
+        ${getProjects().map(p=>`<option ${state.fProj===p?"selected":""}>${esc(p)}</option>`).join("")}</select>
+      <select class="select" onchange="state.fOwner=this.value;render()">
+        <option value="All" ${state.fOwner==="All"?"selected":""}>All owners</option>
+        ${getOwners().map(o=>`<option ${state.fOwner===o?"selected":""}>${esc(o)}</option>`).join("")}</select>
+    </div>${bulkBar()}`;
+
+  // Store filtered IDs for select-all
+  const fids = filtered.map(a=>a.id);
+  if (!filtered.length) {
+    h += `<div style="text-align:center;padding:40px;color:var(--text-light)">No actions match filters</div>`;
+  } else {
+    h += `<div class="card" style="overflow:auto;border-radius:8px"><table><thead><tr><th style="width:28px"><input type="checkbox" onchange="selectAllFiltered(this.checked)"></th>${["Action","Owner","Due","Status","Project",""].map(c=>`<th>${c}</th>`).join("")}</tr></thead><tbody>`;
+    // Save filtered IDs globally for select-all
+    window._filteredIds = fids;
+    filtered.forEach(a => {
+      const od = isOverdue(a.due,a.status);
+      const sel = state.selected.has(a.id);
+      h += `<tr onclick="if(event.ctrlKey||event.metaKey||event.shiftKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="cursor:pointer;background:${sel?'#EFF6FF':od?'#FFFBF5':'transparent'}">
+        <td onclick="event.stopPropagation()"><input type="checkbox" ${sel?'checked':''} onchange="toggleSelect('${a.id}')"></td>
+        <td style="max-width:280px"><div style="font-weight:${a.priority?600:500}">${a.priority?'<span style="color:#D946EF;margin-right:4px">\u2605</span>':''}${esc(a.action)}</div></td>
+        <td><span style="font-weight:600;font-size:12px">${esc(a.owner)}</span></td>
+        <td>${a.due?`<span style="color:${dueColor(a.due,a.status)};font-weight:${isOverdue(a.due,a.status)?700:500}">${fmtDate(a.due)}</span>`:(a.dueRaw||"\u2014")}</td>
+        <td>${statusBadge(a.status)}</td><td>${projTag(a.project,a.subproject)}</td>
+        <td onclick="event.stopPropagation()">${actionBtns(a)}</td></tr>`;
+    });
+    h += `</tbody></table></div>`;
+  }
+
+  // Archive
+  if (state.archived.length) {
+    h += `<details style="margin-top:16px"><summary style="font-size:12px;color:var(--text-light);cursor:pointer;font-weight:600">Archive (${state.archived.length})</summary><div class="card" style="padding:12px;margin-top:6px">`;
+    state.archived.forEach(a => {
+      h += `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #F3F4F6;font-size:12px">
+        <span style="font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text-light);width:32px">${esc(a.num)}</span>
+        <span style="flex:1;color:var(--text-light);text-decoration:line-through">${esc(a.action)}</span>
+        ${projTag(a.project)}
+        <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;color:var(--accent)" onclick="restoreAction('${a.id}')">Restore</button>
+        <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;color:var(--danger)" onclick="state.archived=state.archived.filter(x=>x.id!=='${a.id}');saveState();render();toast('Deleted')">Delete</button></div>`;
+    });
+    h += `</div></details>`;
+  }
+
+  h += `</div>`;
+  return h;
+}
+
+// ═══════════════════════════════════════
+// PROJECTS TAB
+// ═══════════════════════════════════════
+function renderProjects() {
+  const projs = getProjects();
+  const anyExpanded = projs.some(p=>!state.projCollapsed[p]);
+  // Side panel + main content layout
+  let h = `<div class="fade-in" style="display:flex;gap:16px">
+  <!-- Project side panel -->
+  <div style="width:200px;flex-shrink:0;position:sticky;top:0;max-height:calc(100vh - 60px);overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <span style="font-size:13px;font-weight:700">Projects</span>
+      <div style="display:flex;gap:2px;flex-wrap:wrap">
+        <button class="btn btn-ghost" style="padding:2px 5px;font-size:8px" onclick="collapseAll(true)" title="Collapse all">\u25B2\u25B2</button>
+        <button class="btn btn-ghost" style="padding:2px 5px;font-size:8px" onclick="collapseSubsOnly(true)" title="Collapse subs">\u25B2</button>
+        <button class="btn btn-ghost" style="padding:2px 5px;font-size:8px" onclick="collapseSubsOnly(false)" title="Expand subs">\u25BC</button>
+        <button class="btn btn-ghost" style="padding:2px 5px;font-size:8px" onclick="collapseAll(false)" title="Expand all">\u25BC\u25BC</button>
+        <button class="btn btn-ghost" style="padding:2px 5px;font-size:8px" onclick="exportProjectCSV()">CSV</button>
+      </div>
+    </div>`;
+  projs.forEach(p => {
+    const items = state.actions.filter(a=>a.project===p);
+    const open = items.filter(a=>a.status!=="Done"&&a.status!=="Cancelled").length;
+    const done = items.filter(a=>a.status==="Done").length;
+    const col = WS_COLORS[p]||"#94A3B8";
+    const pct = items.length?Math.round(done/items.length*100):0;
+    h += `<div draggable="true"
+      ondragstart="state.dragProj='${esc(p)}';this.style.opacity='.4'"
+      ondragend="state.dragProj=null;this.style.opacity='1'"
+      ondragover="event.preventDefault();if(state.dragProj)this.style.background='${col}20'"
+      ondragleave="this.style.background='${col}08'"
+      ondrop="event.preventDefault();this.style.background='${col}08';reorderProj('${esc(p)}')"
+      onclick="document.getElementById('proj-${p.replace(/\s/g,'')}')?.scrollIntoView({behavior:'smooth',block:'start'})"
+      style="display:flex;align-items:center;gap:6px;padding:7px 10px;margin-bottom:3px;border-radius:6px;cursor:grab;background:${col}08;border-left:3px solid ${col};transition:all 0.1s">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;font-weight:600;color:${col};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p)}</div>
+        <div style="display:flex;align-items:center;gap:4px;margin-top:2px">
+          <span style="font-size:9px;color:var(--text-light)">${open} open</span>
+          <div style="flex:1;height:2px;background:var(--border);border-radius:1px"><div style="height:2px;background:${col};border-radius:1px;width:${pct}%"></div></div>
+        </div>
+      </div>
+      <button class="btn btn-ghost" style="padding:0;font-size:9px;color:var(--text-light);flex-shrink:0" onclick="event.stopPropagation();deleteProject('${esc(p)}')" title="Delete project">\u2715</button>
+    </div>`;
+  });
+  h += `<button class="btn btn-default" style="width:100%;padding:6px;font-size:10px;margin-top:6px" onclick="createProject()">+ New project</button>
+  </div>
+  <!-- Main content -->
+  <div style="flex:1;min-width:0">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h1>Projects</h1>
+    </div>`;
+
+  projs.forEach(proj => {
+    const items = state.actions.filter(a=>a.project===proj);
+    const open = items.filter(a=>a.status!=="Done"&&a.status!=="Cancelled");
+    const done = items.filter(a=>a.status==="Done");
+    const col = WS_COLORS[proj]||"#94A3B8";
+    const od = open.filter(a=>isOverdue(a.due,a.status));
+    const collapsed = state.projCollapsed[proj];
+    const subs = getSubs(proj);
+
+    h += `<div id="proj-${proj.replace(/\s/g,'')}" style="margin-bottom:16px">
+      <div onclick="state.projCollapsed[this.dataset.p]=!state.projCollapsed[this.dataset.p];render()" data-p="${esc(proj)}" ondragover="event.preventDefault();this.style.background='#EFF6FF'" ondragleave="this.style.background=''" ondrop="event.preventDefault();this.style.background='';handleDropToProject('${esc(proj)}','')" style="display:flex;align-items:center;gap:8px;padding:10px 0;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s">
+        <div style="width:10px;height:10px;border-radius:5px;background:${col};flex-shrink:0"></div>
+        <span style="font-size:15px;font-weight:700;flex:1">${esc(proj)}</span>
+        <span style="font-size:11px;color:var(--text-light)">${open.length} open</span>
+        ${od.length?`<span style="font-size:10px;color:var(--danger);font-weight:700">${od.length} overdue</span>`:""}
+        <div style="display:flex;gap:4px" onclick="event.stopPropagation()">
+          <button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-mid);font-weight:600;font-family:inherit" onclick="openAddInProject(this.dataset.p)" data-p="${esc(proj)}">+ action</button>
+          <button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-mid);font-family:inherit" onclick="promptSub(this.dataset.p)" data-p="${esc(proj)}">+ sub</button>
+        </div>
+        <span style="font-size:11px;color:var(--text-light);transform:rotate(${collapsed?'-90deg':'0'});transition:transform .15s">\u25BE</span>
+      </div>`;
+
+    if (!collapsed) {
+      h += `<div class="card" style="border-radius:0 0 8px 8px;overflow:hidden">`;
+      // Sub-projects with nesting - different colors per depth
+      const depthColors = ['#F0F4FF','#FFF7ED','#F0FDF4','#FDF4FF','#FFF1F2'];
+      const depthAccents = [col,'#D97706','#059669','#9333EA','#E11D48'];
+      const sorted = [...subs].sort();
+      sorted.forEach(sub => {
+        const depth = subDepth(sub);
+        const subItems = open.filter(a=>a.subproject===sub);
+        const dBg = depthColors[depth%depthColors.length];
+        const dCol = depthAccents[depth%depthAccents.length];
+        const subKey = proj+'//'+sub;
+        const subColl = state.subCollapsed[subKey];
+        h += `<div onclick="toggleSubCollapse('${esc(proj)}','${esc(sub)}')" ondragover="event.preventDefault();this.style.background='#EFF6FF'" ondragleave="this.style.background='${dBg}'" ondrop="event.preventDefault();this.style.background='${dBg}';handleDropToProject('${esc(proj)}','${esc(sub)}')" style="display:flex;align-items:center;gap:6px;padding:7px ${16+depth*20}px;background:${dBg};border-bottom:1px solid #E8EBF0;border-left:3px solid ${dCol};transition:background .1s;cursor:pointer">
+          ${depth>0?'<span style="color:var(--text-light);font-size:10px">\u2514</span>':''}
+          <span style="font-size:10px;color:${dCol};transform:rotate(${subColl?'-90deg':'0'});transition:transform .15s">\u25BE</span>
+          <span style="font-size:${depth>0?'11.5':'12.5'}px;font-weight:700;color:${dCol}">${subLabel(sub)}</span>
+          <span style="font-size:10px;color:var(--text-light)">${subItems.length||'<i style="opacity:.5">empty</i>'}</span>
+          <button onclick="event.stopPropagation();promptSub(this.dataset.p,this.dataset.s)" data-p="${esc(proj)}" data-s="${esc(sub)}" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:9px;color:${dCol};font-weight:600;font-family:inherit">+ sub</button>
+          <button onclick="event.stopPropagation();deleteSub('${esc(proj)}','${esc(sub)}')" style="background:none;border:none;cursor:pointer;font-size:9px;color:var(--text-light);font-family:inherit">\u2715</button>
+        </div>`;
+        if(!subColl) subItems.forEach(a => h += projRow(a, col, depth+1));
+      });
+      // Unassigned
+      const unassigned = open.filter(a=>!a.subproject);
+      if(unassigned.length && subs.length) h += `<div style="padding:6px 16px;background:#F9FAFB;border-bottom:1px solid #E8EBF0;font-size:11px;font-weight:700;color:var(--text-light)">Unassigned</div>`;
+      unassigned.forEach(a => h += projRow(a, col, 0));
+      // Done
+      if (done.length) {
+        h += `<details style="padding:6px 16px"><summary style="font-size:10.5px;color:var(--text-light);cursor:pointer">${done.length} completed</summary>`;
+        done.forEach(a => h += `<div style="font-size:10.5px;color:var(--text-light);padding:1px 0;text-decoration:line-through">${esc(a.action)}</div>`);
+        h += `</details>`;
+      }
+      h += `</div>`;
+    }
+    h += `</div>`;
+  });
+
+  h += `</div></div>`;
+  return h;
+}
+function projRow(a, col, depth) {
+  const sel = state.selected.has(a.id);
+  return `<div draggable="true" ondragstart="state.dragId='${a.id}';event.dataTransfer.effectAllowed='move'" ondragend="state.dragId=null" ondragover="event.preventDefault();this.style.background='#EFF6FF'" ondragleave="this.style.background='${sel?'#F0F4FF':''}'" ondrop="event.preventDefault();this.style.background='';handleReorder(state.dragId,'${a.id}')" onclick="if(event.shiftKey||event.ctrlKey||event.metaKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="display:flex;align-items:center;gap:5px;padding:6px 6px 6px ${16+depth*20}px;border-bottom:1px solid #F3F4F6;cursor:pointer;font-size:12px;transition:background .08s;background:${sel?'#F0F4FF':''}">
+    <span style="cursor:grab;color:var(--text-light);font-size:12px;flex-shrink:0" onclick="event.stopPropagation()">\u2847</span>
+    ${sel?'<span style="color:var(--accent);font-size:10px">\u2713</span>':''}
+    ${a.priority?'<span style="color:#D946EF;font-size:11px">\u2605</span>':''}
+    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:${sel?600:400}">${esc(a.action)}</span>
+    <span style="font-size:10.5px;color:var(--text-mid);max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.owner)}</span>
+    ${statusBadge(a.status)}${actionBtns(a)}</div>`;
+}
+
+// ═══════════════════════════════════════
+// IMPORT TAB
+// ═══════════════════════════════════════
+function renderImport() {
+  return `<div class="fade-in"><h1 style="margin-bottom:4px">Import</h1>
+    <p style="font-size:12px;color:var(--text-light);margin-bottom:12px">Paste meeting markdown here. For JSON data files, use the <b>JSON Import</b> button in the sidebar.</p>
+    <div class="card" style="padding:16px">
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <label class="btn btn-default" style="cursor:pointer">\uD83D\uDCCE Upload .md<input type="file" accept=".md,.txt" hidden onchange="handleMDUpload(event)"></label>
+        <button class="btn btn-primary" onclick="doMDImport()">Import markdown</button>
+      </div>
+      <textarea id="import-area" class="input" style="width:100%;min-height:250px;font-family:var(--mono);font-size:11.5px;line-height:1.6" placeholder="Paste meeting markdown here...&#10;&#10;### Meeting 18 — 25 Mar 2026: Title&#10;| # | Action | Owner | Due | Measurable Outcome | Project | Status |&#10;|---|--------|-------|-----|-------------------|---------|--------|&#10;| | Do something | Faysal | 1 Apr 2026 | Outcome defined | Project Name | Open |"></textarea>
+    </div></div>`;
+}
+function handleMDUpload(e) {
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader(); r.onload=ev=>document.getElementById("import-area").value=ev.target.result; r.readAsText(f);
+}
+function doMDImport() {
+  const md = document.getElementById("import-area").value;
+  if (!md.trim()) return;
+  const newActions = importMD(md);
+  if (!newActions.length) { toast("No actions found"); return; }
+  state.actions = [...state.actions, ...newActions];
+  state.meetings.push({name:newActions[0]?.meeting||"Import",date:todayISO(),count:newActions.length});
+  saveState(); state.tab = "actions"; render();
+  toast(newActions.length + " actions imported");
+}
+
+// ═══════════════════════════════════════
+// EDIT MODAL
+// ═══════════════════════════════════════
+function openEdit(id) {
+  const a = state.actions.find(x=>x.id===id);
+  if (!a) return;
+  const projs = getProjects();
+  const subs = getSubs(a.project);
+  const m = document.createElement("div");
+  m.className = "modal-overlay";
+  m.onclick = e => { if(e.target===m) m.remove(); };
+  m.innerHTML = `<div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 style="font-size:15px;font-weight:700">Edit action</h3>
+      <div style="display:flex;gap:5px">
+        <button class="btn btn-danger" style="font-size:11px;padding:5px 10px" onclick="archiveAction('${a.id}');this.closest('.modal-overlay').remove()">Archive</button>
+        <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="this.closest('.modal-overlay').remove()">\u2715</button>
+      </div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <label style="font-size:10.5px;font-weight:600;color:#5A6578;grid-column:1/-1">Action <input class="input" style="width:100%;margin-top:2px" value="${esc(a.action)}" onchange="patch('${a.id}',{action:this.value})"></label>
+      <label style="font-size:10.5px;font-weight:600;color:#5A6578">Owner <input class="input" style="width:100%;margin-top:2px" value="${esc(a.owner)}" onchange="patch('${a.id}',{owner:this.value})"></label>
+      <label style="font-size:10.5px;font-weight:600;color:#5A6578">Status <select class="select" style="width:100%;margin-top:2px" onchange="patch('${a.id}',{status:this.value})">${STATUSES.map(s=>`<option ${s===a.status?'selected':''}>${s}</option>`).join("")}</select></label>
+      <label style="font-size:10.5px;font-weight:600;color:#5A6578;grid-column:1/-1">Measurable outcome <input class="input" style="width:100%;margin-top:2px" value="${esc(a.measurable||'')}" onchange="patch('${a.id}',{measurable:this.value})"></label>
+      <label style="font-size:10.5px;font-weight:600;color:#5A6578">Project <select class="select" style="width:100%;margin-top:2px" onchange="patch('${a.id}',{project:this.value,subproject:''})">${projs.map(p=>`<option ${p===a.project?'selected':''}>${esc(p)}</option>`).join("")}</select></label>
+      <label style="font-size:10.5px;font-weight:600;color:#5A6578">Sub-project <select class="select" style="width:100%;margin-top:2px" onchange="patch('${a.id}',{subproject:this.value})"><option value="">(none)</option>${subs.map(s=>`<option value="${esc(s)}" ${s===a.subproject?'selected':''}>${"\u00A0".repeat(subDepth(s)*2)+subLabel(s)}</option>`).join("")}</select></label>
+      <div style="grid-column:1/-1"><div style="font-size:10.5px;font-weight:600;color:#5A6578;margin-bottom:4px">Notes</div>
+        ${(a.notesLog||[]).length?`<div style="max-height:120px;overflow:auto;margin-bottom:6px;border:1px solid var(--border);border-radius:6px;padding:6px">${(a.notesLog||[]).map(n=>`<div style="font-size:11px;padding:3px 0;border-bottom:1px solid var(--border);display:flex;gap:8px"><span style="color:var(--text-light);font-size:10px;white-space:nowrap">${fmtDate(n.d)}</span><span>${esc(n.t)}</span></div>`).join("")}</div>`:""}
+        <div style="display:flex;gap:4px"><input class="input" id="note-inp" style="flex:1" placeholder="Add a note..." onkeydown="if(event.key==='Enter'){addNote('${a.id}',this.value);this.closest('.modal-overlay').remove();openEdit('${a.id}');}"><button class="btn btn-primary" style="padding:5px 10px;font-size:11px" onclick="addNote('${a.id}',document.getElementById('note-inp').value);this.closest('.modal-overlay').remove();openEdit('${a.id}');">Add</button></div></div>
+      <div style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:10px;margin-top:4px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:${a.priority?'#D946EF':'var(--text-mid)'};cursor:pointer">
+            <input type="checkbox" ${a.priority?'checked':''} onchange="patch('${a.id}',{priority:this.checked})"> \u2605 Priority</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:${a.todayFocus?'var(--accent)':'var(--text-mid)'};cursor:pointer">
+            <input type="checkbox" ${a.todayFocus?'checked':''} onchange="patch('${a.id}',{todayFocus:this.checked})"> \u25C9 Today</label>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <label style="font-size:10.5px;font-weight:600;color:#5A6578">Start date <input type="date" class="input" style="width:100%;margin-top:2px" value="${a.startDate||''}" onchange="patch('${a.id}',{startDate:this.value})"></label>
+          <label style="font-size:10.5px;font-weight:600;color:#5A6578">Due date <input type="date" class="input" style="width:100%;margin-top:2px" value="${a.due||''}" onchange="patch('${a.id}',{due:this.value})"></label>
+        </div>
+      </div>
+    </div></div>`;
+  document.body.appendChild(m);
+}
+
+function openAddModal() {
+  const projs = getProjects();
+  const m = document.createElement("div");
+  m.className = "modal-overlay";
+  m.onclick = e => { if(e.target===m) m.remove(); };
+  m.innerHTML = `<div class="modal">
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:12px">Add Action</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <label style="font-size:10.5px;font-weight:600;color:#5A6578"># <input class="input" id="add-num" style="width:100%;margin-top:2px"></label>
+      <label style="font-size:10.5px;font-weight:600;color:#5A6578">Owner <input class="input" id="add-owner" style="width:100%;margin-top:2px"></label>
+      <label style="font-size:10.5px;font-weight:600;color:#5A6578;grid-column:1/-1">Action <input class="input" id="add-action" style="width:100%;margin-top:2px"></label>
+      <label style="font-size:10.5px;font-weight:600;color:#5A6578">Due <input type="date" class="input" id="add-due" style="width:100%;margin-top:2px"></label>
+      <label style="font-size:10.5px;font-weight:600;color:#5A6578">Project <select class="select" id="add-proj" style="width:100%;margin-top:2px">${projs.map(p=>`<option>${esc(p)}</option>`).join("")}</select></label>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:14px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+      <button class="btn btn-primary" onclick="addAction({num:document.getElementById('add-num').value,action:document.getElementById('add-action').value,owner:document.getElementById('add-owner').value,due:document.getElementById('add-due').value,project:document.getElementById('add-proj').value,status:'Open'});this.closest('.modal-overlay').remove()">Add</button>
+    </div></div>`;
+  document.body.appendChild(m);
+}
+
+// ═══════════════════════════════════════
+// CALENDAR TAB
+// ═══════════════════════════════════════
+state.calMonth = new Date().getMonth();
+state.calYear = new Date().getFullYear();
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+function renderCalendar() {
+  const m=state.calMonth, y=state.calYear;
+  const first=new Date(y,m,1), last=new Date(y,m+1,0);
+  let startDay=(first.getDay()+6)%7; // Monday=0
+  const daysInMonth=last.getDate();
+  const todayStr=todayISO();
+  // Get actions with due dates this month
+  const monthActions={};
+  state.actions.forEach(a=>{if(a.due&&a.due.startsWith(`${y}-${String(m+1).padStart(2,'0')}`)){const d=parseInt(a.due.slice(8));if(!monthActions[d])monthActions[d]=[];monthActions[d].push(a);}});
+
+  let h=`<div class="fade-in"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <h1>Calendar</h1>
+    <div style="display:flex;gap:5px;align-items:center">
+      <button class="btn btn-default" style="padding:5px 10px" onclick="state.calMonth===0?(state.calMonth=11,state.calYear--):state.calMonth--;render()">\u25C0</button>
+      <span style="font-size:14px;font-weight:700;min-width:150px;text-align:center">${MONTHS[m]} ${y}</span>
+      <button class="btn btn-default" style="padding:5px 10px" onclick="state.calMonth===11?(state.calMonth=0,state.calYear++):state.calMonth++;render()">\u25B6</button>
+    </div></div>`;
+  h+=`<div class="card" style="overflow:hidden"><div style="display:grid;grid-template-columns:repeat(7,1fr)">`;
+  DAYS.forEach(d=>h+=`<div style="padding:8px;font-size:10px;font-weight:700;text-align:center;color:var(--text-light);text-transform:uppercase;background:#F9FAFB;border-bottom:1px solid var(--border)">${d}</div>`);
+  for(let i=0;i<startDay;i++)h+=`<div style="padding:8px;border-bottom:1px solid #F3F4F6;min-height:80px;background:#FAFAFA"></div>`;
+  for(let d=1;d<=daysInMonth;d++){
+    const dateStr=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday=dateStr===todayStr;
+    const acts=monthActions[d]||[];
+    h+=`<div style="padding:6px;border-bottom:1px solid #F3F4F6;border-right:1px solid #F3F4F6;min-height:80px;${isToday?'background:#EFF6FF':''}">
+      <div style="font-size:11px;font-weight:${isToday?700:500};color:${isToday?'var(--accent)':'var(--text)'};margin-bottom:4px">${d}</div>`;
+    acts.slice(0,3).forEach(a=>{
+      const c=WS_COLORS[a.project]||"#94A3B8";
+      h+=`<div onclick="openEdit('${a.id}')" style="font-size:9.5px;padding:2px 4px;margin-bottom:2px;border-radius:3px;background:${c}14;color:${c};cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;border-left:2px solid ${c}">${esc(a.action).slice(0,25)}</div>`;
+    });
+    if(acts.length>3)h+=`<div style="font-size:9px;color:var(--text-light)">+${acts.length-3} more</div>`;
+    h+=`</div>`;
+  }
+  const totalCells=startDay+daysInMonth;
+  for(let i=totalCells;i%7!==0;i++)h+=`<div style="padding:8px;border-bottom:1px solid #F3F4F6;min-height:80px;background:#FAFAFA"></div>`;
+  h+=`</div></div></div>`;
+  return h;
+}
+
+// ═══════════════════════════════════════
+// BULK ACTIONS
+// ═══════════════════════════════════════
+function bulkBar() {
+  const n=state.selected.size;
+  if(!n) return '';
+  return `<div style="display:flex;gap:5px;align-items:center;padding:8px 12px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;margin-bottom:10px;flex-wrap:wrap">
+    <span style="font-size:12px;font-weight:600;color:#1E40AF">${n} selected</span>
+    <select class="select" style="font-size:11px;padding:4px 6px" onchange="if(this.value){bulkPatch({status:this.value});this.value='';}">
+      <option value="">Set status...</option>${STATUSES.map(s=>`<option>${s}</option>`).join('')}</select>
+    <select class="select" style="font-size:11px;padding:4px 6px" onchange="if(this.value){bulkPatch({project:this.value});this.value='';}">
+      <option value="">Move to project...</option>${getProjects().map(p=>`<option>${esc(p)}</option>`).join('')}</select>
+    <button class="btn btn-danger" style="font-size:11px;padding:4px 8px" onclick="bulkArchive()">Archive</button>
+    <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px" onclick="state.selected.clear();render()">Clear</button>
+  </div>`;
+}
+
+// ═══════════════════════════════════════
+// DARK MODE
+// ═══════════════════════════════════════
+state.dark = localStorage.getItem('at-dark')==='1';
+function toggleDark() {
+  state.dark=!state.dark;
+  localStorage.setItem('at-dark',state.dark?'1':'0');
+  applyTheme();
+}
+function applyTheme() {
+  const r=document.documentElement.style;
+  if(state.dark){
+    r.setProperty('--bg','#0F1117');r.setProperty('--card','#1A1D27');r.setProperty('--border','#2D3040');
+    r.setProperty('--text','#E5E7EB');r.setProperty('--text-mid','#9CA3AF');r.setProperty('--text-light','#6B7280');
+    document.querySelector('.sidebar').style.background='linear-gradient(180deg,#0A0C12,#111420)';
+  } else {
+    r.setProperty('--bg','#F5F6F8');r.setProperty('--card','#FFFFFF');r.setProperty('--border','#E8EBF0');
+    r.setProperty('--text','#1A2332');r.setProperty('--text-mid','#5A6578');r.setProperty('--text-light','#8896A6');
+    document.querySelector('.sidebar').style.background='linear-gradient(180deg,#1B2332,#1E293B)';
+  }
+}
+
+// ═══════════════════════════════════════
+// KEYBOARD SHORTCUTS
+// ═══════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT')return;
+  if(e.key==='n'){e.preventDefault();openAddModal();}
+  if(e.key==='t'){e.preventDefault();state.tab='today';render();}
+  if(e.key==='i'){e.preventDefault();state.tab='inbox';render();}
+  if(e.key==='a'){e.preventDefault();state.tab='actions';render();}
+  if(e.key==='p'){e.preventDefault();state.tab='projects';render();}
+  if(e.key==='/'){e.preventDefault();state.tab='actions';render();setTimeout(()=>{const s=document.getElementById('search-input');if(s)s.focus();},100);}
+  if(e.key==='d'){e.preventDefault();toggleDark();}
+});
+
+// ═══════════════════════════════════════
+// EXPORT MARKDOWN
+// ═══════════════════════════════════════
+function exportMD() {
+  const projs=getProjects();
+  let md=`# Action Tracker — Status Report\n**Date:** ${new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}\n\n`;
+  const s=getStats();
+  md+=`**Summary:** ${s.total} total, ${s.done} done (${s.pct}%), ${s.overdue} overdue, ${s.prio} priority\n\n`;
+  projs.forEach(p=>{
+    const items=state.actions.filter(a=>a.project===p);
+    const open=items.filter(a=>a.status!=="Done"&&a.status!=="Cancelled");
+    if(!open.length)return;
+    md+=`## ${p}\n\n| Action | Owner | Due | Status |\n|--------|-------|-----|--------|\n`;
+    open.forEach(a=>md+=`| ${a.action} | ${a.owner} | ${a.due?fmtDate(a.due):'TBD'} | ${a.status} |\n`);
+    md+='\n';
+  });
+  const blob=new Blob([md],{type:'text/markdown'});
+  Object.assign(document.createElement('a'),{href:URL.createObjectURL(blob),download:'tracker_report_'+todayISO()+'.md'}).click();
+  toast('Report exported');
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+// Global error catcher
+window.onerror = function(msg, url, line, col, err) {
+  const main = document.getElementById("main");
+  if(main) main.innerHTML = `<div style="padding:20px;font-family:monospace">
+    <h2 style="color:#E5484D">Uncaught Error</h2>
+    <pre style="background:#1a1a2e;color:#e74c3c;padding:16px;border-radius:8px;font-size:12px;white-space:pre-wrap">${msg}\nLine: ${line}, Col: ${col}\n${err?.stack||''}</pre>
+  </div>`;
+};
+// Init happens in skipAuth() or handleGoogleSignIn()
+
+</script>
+
+<!-- Google Identity Services library -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+</body>
+</html>
+
+<!--
+═══════════════════════════════════════════════════════════════
+SETUP GUIDE — One-time Google Cloud configuration (5 minutes)
+═══════════════════════════════════════════════════════════════
+
+STEP 1: Create a Google Cloud Project
+  1. Go to https://console.cloud.google.com/
+  2. Click "Select a project" → "New Project"
+  3. Name: "Action Tracker" → Create
+  4. Select the new project
+
+STEP 2: Enable Google Drive API
+  1. Go to APIs & Services → Library
+  2. Search "Google Drive API"
+  3. Click it → Enable
+
+STEP 3: Create OAuth Credentials
+  1. Go to APIs & Services → Credentials
+  2. Click "+ Create Credentials" → "OAuth client ID"
+  3. If prompted, configure consent screen:
+     - User type: External → Create
+     - App name: "Action Tracker"
+     - User support email: your email
+     - Developer contact: your email
+     - Save and Continue through all steps
+     - Add yourself as a test user
+  4. Back to Credentials → "+ Create Credentials" → "OAuth client ID"
+  5. Application type: "Web application"
+  6. Name: "Action Tracker"
+  7. Authorized JavaScript origins: add these:
+     - http://localhost
+     - http://localhost:3456
+     - https://yourdomain.com (if hosting)
+     - file://  (for local HTML file — may not work, use localhost instead)
+  8. Create → Copy the Client ID
+
+STEP 4: Create API Key
+  1. Go to APIs & Services → Credentials
+  2. Click "+ Create Credentials" → "API Key"
+  3. Copy the key
+  4. Click "Restrict Key" → restrict to "Google Drive API" only
+
+STEP 5: Paste into this file
+  1. Open this HTML file in a text editor
+  2. Find these lines near the top of the <script>:
+     const GDRIVE_CLIENT_ID = '459978244160-e3fr4idsonk1bfupul2c7ts4rlk69f1r.apps.googleusercontent.com';
+     const GDRIVE_API_KEY = 'YOUR_API_KEY_HERE';
+  3. Replace with your actual values
+  4. Save the file
+
+STEP 6: Test
+  1. Open the HTML file in Chrome/Edge
+  2. Click "Sign in with Google"
+  3. Authorize the app
+  4. Done — data syncs to Google Drive automatically
+
+NOTE: The file:// origin may not work for OAuth. If so, use the
+server.js from the previous package and open via http://localhost:3456.
+Or host the HTML on any web server (GitHub Pages, Netlify, etc.)
+and add that URL to the authorized origins.
+
+═══════════════════════════════════════════════════════════════
+-->
