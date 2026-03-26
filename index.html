@@ -482,7 +482,8 @@ async function forceSyncFromDrive() {
 // DATA & STATE
 // ═══════════════════════════════════════
 const STATUSES = ["Open","In progress","Done","Blocked","Cancelled","Carry-over"];
-const ST = {Open:{bg:"#FEF3C7",fg:"#92400E"},"In progress":{bg:"#DBEAFE",fg:"#1E40AF"},Done:{bg:"#D1FAE5",fg:"#065F46"},Blocked:{bg:"#FEE2E2",fg:"#991B1B"},Cancelled:{bg:"#F3F4F6",fg:"#6B7280"},"Carry-over":{bg:"#EDE9FE",fg:"#5B21B6"}};
+function stColors(){const d=document.body.classList.contains('dark');return{Open:{bg:d?'rgba(200,170,60,.15)':'rgba(200,170,60,.12)',fg:d?'#D4A04A':'#92400E'},"In progress":{bg:d?'rgba(90,120,200,.15)':'rgba(90,120,200,.1)',fg:d?'#7B9AE0':'#1E40AF'},Done:{bg:d?'rgba(48,209,88,.12)':'rgba(48,209,88,.1)',fg:d?'#30D158':'#065F46'},Blocked:{bg:d?'rgba(255,69,58,.12)':'rgba(255,69,58,.08)',fg:d?'#FF6B6B':'#991B1B'},Cancelled:{bg:d?'rgba(255,255,255,.05)':'rgba(0,0,0,.04)',fg:d?'#6A6580':'#6B7280'},"Carry-over":{bg:d?'rgba(130,100,200,.15)':'rgba(130,100,200,.1)',fg:d?'#A090D0':'#5B21B6'}};}
+const ST = stColors();
 const WS_COLORS = new Proxy({}, {get:(t,p)=>{
   if(p in t) return t[p];
   // Generate consistent color from project name hash
@@ -634,7 +635,7 @@ function dueColor(d,st) {
   return "var(--text-mid)";
 }
 function esc(s) { return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
-function statusBadge(st) { const s=ST[st]||{bg:"#F3F4F6",fg:"#6B7280"}; return `<span class="status-badge" style="background:${s.bg};color:${s.fg}">${st}</span>`; }
+function statusBadge(st) { const sc=stColors(); const s=sc[st]||{bg:"rgba(0,0,0,.04)",fg:"var(--text-mid)"}; return `<span class="status-badge" style="background:${s.bg};color:${s.fg}">${st}</span>`; }
 function projTag(p,sub) { const c=WS_COLORS[p]||"#94A3B8"; return `<span class="proj-tag" style="background:${c}18;color:${c}">${esc(p)}${sub?` <span style="opacity:.6">/ ${esc(subLabel(sub))}</span>`:""}</span>`; }
 function actionBtns(a) {
   return `<div class="action-btns">
@@ -996,7 +997,7 @@ function smQuickScore(){
         <div style="display:flex;gap:2px">`;
       for(let s=1;s<=10;s++){
         const on=ae.score>=s;
-        const col=s<=3?'#EF4444':s<=6?'#F59E0B':'#10B981';
+        const col=s<=3?'#CF6F6F':s<=6?'#D4A04A':'#5A9E7E';
         body+=`<div class="sm-score-dot${on?' active':''}" style="background:${on?col:'var(--border)'};color:${on?'#fff':'var(--text-light)'};width:18px;height:18px;font-size:7px" onclick="smSaveField('${td}','${esc(area)}','score',${ae.score===s?0:s});this.closest('.modal-overlay').remove();smQuickScore()">${s}</div>`;
       }
       body+=`</div></div>`;
@@ -1135,14 +1136,14 @@ function renderDiary(){
             <div style="display:flex;gap:2px">`;
         for(let s=1;s<=10;s++){
           const on=ae.score>=s;
-          const dotCol=s<=3?'#EF4444':s<=6?'#F59E0B':'#10B981';
+          const dotCol=s<=3?'#CF6F6F':s<=6?'#D4A04A':'#5A9E7E';
           h+=`<div class="sm-score-dot${on?' active':''}" style="background:${on?dotCol:'var(--border)'};color:${on?'#fff':'var(--text-light)'}" onclick="smSaveField('${td}','${esc(area)}','score',${ae.score===s?0:s});render()">${s}</div>`;
         }
         h+=`</div></div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
-            <div class="sm-field"><label style="color:#10B981">\u2713 Repeat</label><textarea placeholder="What went well..." onblur="smSaveField('${td}','${esc(area)}','repeat',this.value)">${esc(ae.repeat)}</textarea></div>
-            <div class="sm-field"><label style="color:#F59E0B"> Improve</label><textarea placeholder="What needs work..." onblur="smSaveField('${td}','${esc(area)}','improve',this.value)">${esc(ae.improve)}</textarea></div>
-            <div class="sm-field"><label style="color:#4A7BF7">\u25B6 Action</label><textarea placeholder="Next step..." onblur="smSaveField('${td}','${esc(area)}','action',this.value)">${esc(ae.action)}</textarea></div>
+            <div class="sm-field"><label style="color:#5A9E7E">\u2713 Repeat</label><textarea placeholder="What went well..." onblur="smSaveField('${td}','${esc(area)}','repeat',this.value)">${esc(ae.repeat)}</textarea></div>
+            <div class="sm-field"><label style="color:#D4A04A"> Improve</label><textarea placeholder="What needs work..." onblur="smSaveField('${td}','${esc(area)}','improve',this.value)">${esc(ae.improve)}</textarea></div>
+            <div class="sm-field"><label style="color:#5B8DEF">\u25B6 Action</label><textarea placeholder="Next step..." onblur="smSaveField('${td}','${esc(area)}','action',this.value)">${esc(ae.action)}</textarea></div>
           </div>
         </div>`;
       });
@@ -1171,8 +1172,8 @@ function renderDiary(){
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;color:var(--text-mid);line-height:1.6">`;
   if(daysSinceLast>3) h+=`<div style="padding:8px;border-radius:8px;background:var(--card);border:1px solid var(--border)"><b style="color:var(--danger)">${daysSinceLast}d gap</b> \u2014 Never miss two days in a row.</div>`;
   h+=`<div style="padding:8px;border-radius:8px;background:var(--card);border:1px solid var(--border)"><b style="color:var(--accent)">Quick Score:</b> Tap  above \u2014 just scores in 30s.</div>`;
-  h+=`<div style="padding:8px;border-radius:8px;background:var(--card);border:1px solid var(--border)"><b style="color:#10B981">Anchor:</b> After Isha prayer. 2 minutes.</div>`;
-  h+=`<div style="padding:8px;border-radius:8px;background:var(--card);border:1px solid var(--border)"><b style="color:#8B5CF6">Record:</b> 34-day streak (Jan 2019).</div>`;
+  h+=`<div style="padding:8px;border-radius:8px;background:var(--card);border:1px solid var(--border)"><b style="color:#5A9E7E">Anchor:</b> After Isha prayer. 2 minutes.</div>`;
+  h+=`<div style="padding:8px;border-radius:8px;background:var(--card);border:1px solid var(--border)"><b style="color:#8B72C4">Record:</b> 34-day streak (Jan 2019).</div>`;
   h+=`</div></div>`;
 
   h+=`</div>`;
@@ -1553,8 +1554,8 @@ function weeklyReview(){
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:16px">
       <div class="card" style="padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--accent)">${completed}</div><div style="font-size:8px;color:var(--text-light)">Completed</div></div>
       <div class="card" style="padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--danger)">${stale.length}</div><div style="font-size:8px;color:var(--text-light)">Overdue</div></div>
-      <div class="card" style="padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:#10B981">${filled.length}/7</div><div style="font-size:8px;color:var(--text-light)">SM Days</div></div>
-      <div class="card" style="padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:#8B5CF6">${s.total}</div><div style="font-size:8px;color:var(--text-light)">Total</div></div>
+      <div class="card" style="padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:#5A9E7E">${filled.length}/7</div><div style="font-size:8px;color:var(--text-light)">SM Days</div></div>
+      <div class="card" style="padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:#8B72C4">${s.total}</div><div style="font-size:8px;color:var(--text-light)">Total</div></div>
     </div>
 
     <div style="font-size:13px;font-weight:700;margin-bottom:8px">2. Stale Actions — Close or Reschedule</div>
@@ -1663,7 +1664,7 @@ function renderKanban(){
   const projs=getProjects();
   const selProj=state.kanbanProj||projs[0]||'All';
   const statuses=['Open','In progress','Blocked','Done'];
-  const colColors={Open:'#F59E0B','In progress':'#6366F1',Blocked:'#EF4444',Done:'#22C55E'};
+  const colColors={Open:'#D4A04A','In progress':'#5B8DEF',Blocked:'#CF6F6F',Done:'#30D158'};
   const items=selProj==='All'?state.actions:state.actions.filter(a=>a.project===selProj);
 
   let h=`<div class="fade-in">
@@ -1737,10 +1738,10 @@ function renderGuide() {
   </div>
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-    <div class="card" style="padding:18px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:28px;height:28px;border-radius:14px;background:#DBEAFE;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#1E40AF">1</div><div style="font-size:14px;font-weight:700">Quick reference</div></div><div style="font-size:12px;color:var(--text-mid);line-height:1.7"><span style="color:#D946EF">\u2605</span> Toggle high priority<br><span style="color:#4A7BF7">\u25C9</span> Toggle today focus<br><b>Click</b> any action to edit all fields<br><b>Shift+click</b> to multi-select in Projects<br><b>Drag</b> actions to reorder or move to projects<br><b>Archive</b> removes without permanent delete</div></div>
-    <div class="card" style="padding:18px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:28px;height:28px;border-radius:14px;background:#D1FAE5;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#065F46">2</div><div style="font-size:14px;font-weight:700">Cross-device sync</div></div><div style="font-size:12px;color:var(--text-mid);line-height:1.7">Sign in with Google to save to Drive.<br>Open <b>xahpos.github.io/Action-tracker</b> on any PC, sign in, same data.<br>Green dot = synced. Yellow = local only.<br><b>Pull</b> = force-reload from Drive.<br><b>Push</b> = force-save to Drive.</div></div>
+    <div class="card" style="padding:18px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:28px;height:28px;border-radius:14px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--accent)">1</div><div style="font-size:14px;font-weight:700">Quick reference</div></div><div style="font-size:12px;color:var(--text-mid);line-height:1.7"><span style="color:#8B72C4">\u2605</span> Toggle high priority<br><span style="color:var(--accent)">\u25C9</span> Toggle today focus<br><b>Click</b> any action to edit all fields<br><b>Shift+click</b> to multi-select in Projects<br><b>Drag</b> actions to reorder or move to projects<br><b>Archive</b> removes without permanent delete</div></div>
+    <div class="card" style="padding:18px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:28px;height:28px;border-radius:14px;background:rgba(48,209,88,.1);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--success)">2</div><div style="font-size:14px;font-weight:700">Cross-device sync</div></div><div style="font-size:12px;color:var(--text-mid);line-height:1.7">Sign in with Google to save to Drive.<br>Open <b>xahpos.github.io/Action-tracker</b> on any PC, sign in, same data.<br>Green dot = synced. Yellow = local only.<br><b>Pull</b> = force-reload from Drive.<br><b>Push</b> = force-save to Drive.</div></div>
     <div class="card" style="padding:18px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:28px;height:28px;border-radius:14px;background:#EDE9FE;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#5B21B6">3</div><div style="font-size:14px;font-weight:700">Import meetings</div></div><div style="font-size:12px;color:var(--text-mid);line-height:1.7">Paste a meeting transcript in the <b>Import</b> tab.<br>Uses 7-column format:<br><span style="font-family:var(--mono);font-size:10px">| # | Action | Owner | Due | Outcome | Project | Status |</span><br>Actions land in the right projects automatically.</div></div>
-    <div class="card" style="padding:18px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:28px;height:28px;border-radius:14px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#92400E">4</div><div style="font-size:14px;font-weight:700">Updating the app</div></div><div style="font-size:12px;color:var(--text-mid);line-height:1.7">Go to <b>github.com/Xahpos/Action-tracker</b><br>Edit index.html \u2192 Ctrl+A \u2192 paste new code \u2192 Commit<br>Wait 1-2 min \u2192 site updates<br>Data in Google Drive is untouched.</div></div>
+    <div class="card" style="padding:18px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:28px;height:28px;border-radius:14px;background:rgba(200,170,60,.1);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#D4A04A">4</div><div style="font-size:14px;font-weight:700">Updating the app</div></div><div style="font-size:12px;color:var(--text-mid);line-height:1.7">Go to <b>github.com/Xahpos/Action-tracker</b><br>Edit index.html \u2192 Ctrl+A \u2192 paste new code \u2192 Commit<br>Wait 1-2 min \u2192 site updates<br>Data in Google Drive is untouched.</div></div>
   </div></div>`;
 }
 // ═══════════════════════════════════════
@@ -1869,7 +1870,7 @@ function renderToday(s) {
   if (upcoming.length) {
     h += `<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:12px"><div style="font-size:11px;font-weight:500;color:var(--text-light);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">Upcoming</div>`;
     upcoming.forEach(a => {
-      h += `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #F3F4F6;font-size:12px">
+      h += `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">
         <span style="font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text-mid);width:32px">${esc(a.num)}</span>
         <span style="flex:1">${esc(a.action)}</span>
         <span style="color:${isOverdue(a.due,a.status)?'var(--danger)':'var(--text-mid)'};font-size:10.5px;font-weight:600">${fmtDate(a.due)}</span>
@@ -2046,7 +2047,7 @@ function renderStatsTab(s) {
   // Status pie (CSS conic-gradient)
   const statusCounts=STATUSES.map(s=>({s,n:state.actions.filter(a=>a.status===s).length})).filter(x=>x.n>0);
   const total=state.actions.length||1;
-  let angle=0;const slices=statusCounts.map(x=>{const deg=x.n/total*360;const r={s:x.s,n:x.n,start:angle,end:angle+deg,c:ST[x.s]?.b||'#E5E7EB'};angle+=deg;return r;});
+  let angle=0;const slices=statusCounts.map(x=>{const deg=x.n/total*360;const r={s:x.s,n:x.n,start:angle,end:angle+deg,c:stColors()[x.s]?.bg||'rgba(0,0,0,.04)'};angle+=deg;return r;});
   const conic=slices.map(r=>`${r.c} ${r.start}deg ${r.end}deg`).join(',');
   h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
     <div class="card" style="padding:18px"><div style="font-size:13px;font-weight:700;margin-bottom:12px">Status breakdown</div>
@@ -2100,7 +2101,7 @@ function renderActions(s) {
     filtered.forEach(a => {
       const od = isOverdue(a.due,a.status);
       const sel = state.selected.has(a.id);
-      h += `<tr onclick="if(event.ctrlKey||event.metaKey||event.shiftKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="cursor:pointer;background:${sel?'#EFF6FF':od?'#FFFBF5':'transparent'}">
+      h += `<tr onclick="if(event.ctrlKey||event.metaKey||event.shiftKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="cursor:pointer;background:${sel?'var(--accent-soft)':od?'rgba(255,69,58,.03)':'transparent'}">
         <td onclick="event.stopPropagation()"><input type="checkbox" ${sel?'checked':''} onchange="toggleSelect('${a.id}')"></td>
         <td style="max-width:280px"><div style="font-weight:${a.priority?600:500}">${a.priority?'<span style="color:#D946EF;margin-right:4px">\u2605</span>':''}${esc(a.action)}</div></td>
         <td><span style="font-weight:600;font-size:12px">${esc(a.owner)}</span></td>
@@ -2115,7 +2116,7 @@ function renderActions(s) {
   if (state.archived.length) {
     h += `<details style="margin-top:16px"><summary style="font-size:12px;color:var(--text-light);cursor:pointer;font-weight:600">Archive (${state.archived.length})</summary><div class="card" style="padding:12px;margin-top:6px">`;
     state.archived.forEach(a => {
-      h += `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #F3F4F6;font-size:12px">
+      h += `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">
         <span style="font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text-light);width:32px">${esc(a.num)}</span>
         <span style="flex:1;color:var(--text-light);text-decoration:line-through">${esc(a.action)}</span>
         ${projTag(a.project)}
@@ -2252,7 +2253,7 @@ function renderProjects() {
 }
 function projRow(a, col, depth) {
   const sel = state.selected.has(a.id);
-  return `<div draggable="true" ondragstart="state.dragId='${a.id}';event.dataTransfer.effectAllowed='move'" ondragend="state.dragId=null" ondragover="event.preventDefault();this.style.background=state.dark?'rgba(90,100,180,.1)':'rgba(90,100,180,.06)'" ondragleave="this.style.background='${sel?'#F0F4FF':''}'" ondrop="event.preventDefault();this.style.background='';handleReorder(state.dragId,'${a.id}')" onclick="if(event.shiftKey||event.ctrlKey||event.metaKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="display:flex;align-items:center;gap:5px;padding:6px 6px 6px ${16+depth*20}px;border-bottom:1px solid #F3F4F6;cursor:pointer;font-size:12px;transition:background .08s;background:${sel?'#F0F4FF':''}">
+  return `<div draggable="true" ondragstart="state.dragId='${a.id}';event.dataTransfer.effectAllowed='move'" ondragend="state.dragId=null" ondragover="event.preventDefault();this.style.background=state.dark?'rgba(90,100,180,.1)':'rgba(90,100,180,.06)'" ondragleave="this.style.background='${sel?'var(--accent-soft)':''}'" ondrop="event.preventDefault();this.style.background='';handleReorder(state.dragId,'${a.id}')" onclick="if(event.shiftKey||event.ctrlKey||event.metaKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="display:flex;align-items:center;gap:5px;padding:6px 6px 6px ${16+depth*20}px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12px;transition:background .08s;background:${sel?'var(--accent-soft)':''}">
     <span style="cursor:grab;color:var(--text-light);font-size:12px;flex-shrink:0" onclick="event.stopPropagation()">\u2847</span>
     ${sel?'<span style="color:var(--accent);font-size:10px">\u2713</span>':''}
     ${a.priority?'<span style="color:#D946EF;font-size:11px">\u2605</span>':''}
@@ -2382,12 +2383,12 @@ function renderCalendar() {
     </div></div>`;
   h+=`<div class="card" style="overflow:hidden"><div style="display:grid;grid-template-columns:repeat(7,1fr)">`;
   DAYS.forEach(d=>h+=`<div style="padding:8px;font-size:10px;font-weight:700;text-align:center;color:var(--text-light);text-transform:uppercase;background:#F9FAFB;border-bottom:1px solid var(--border)">${d}</div>`);
-  for(let i=0;i<startDay;i++)h+=`<div style="padding:8px;border-bottom:1px solid #F3F4F6;min-height:80px;background:#FAFAFA"></div>`;
+  for(let i=0;i<startDay;i++)h+=`<div style="padding:8px;border-bottom:1px solid var(--border);min-height:80px;background:rgba(0,0,0,.01)"></div>`;
   for(let d=1;d<=daysInMonth;d++){
     const dateStr=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const isToday=dateStr===todayStr;
     const acts=monthActions[d]||[];
-    h+=`<div style="padding:6px;border-bottom:1px solid #F3F4F6;border-right:1px solid #F3F4F6;min-height:80px;${isToday?'background:#EFF6FF':''}">
+    h+=`<div style="padding:6px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);min-height:80px;${isToday?'background:var(--accent-soft)':''}">
       <div style="font-size:11px;font-weight:${isToday?700:500};color:${isToday?'var(--accent)':'var(--text)'};margin-bottom:4px">${d}</div>`;
     acts.slice(0,3).forEach(a=>{
       const c=WS_COLORS[a.project]||"#94A3B8";
@@ -2397,7 +2398,7 @@ function renderCalendar() {
     h+=`</div>`;
   }
   const totalCells=startDay+daysInMonth;
-  for(let i=totalCells;i%7!==0;i++)h+=`<div style="padding:8px;border-bottom:1px solid #F3F4F6;min-height:80px;background:#FAFAFA"></div>`;
+  for(let i=totalCells;i%7!==0;i++)h+=`<div style="padding:8px;border-bottom:1px solid var(--border);min-height:80px;background:rgba(0,0,0,.01)"></div>`;
   h+=`</div></div></div>`;
   return h;
 }
@@ -2408,7 +2409,7 @@ function renderCalendar() {
 function bulkBar() {
   const n=state.selected.size;
   if(!n) return '';
-  return `<div style="display:flex;gap:5px;align-items:center;padding:8px 12px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;margin-bottom:10px;flex-wrap:wrap">
+  return `<div style="display:flex;gap:5px;align-items:center;padding:8px 12px;background:var(--accent-soft);border:1px solid var(--border-vis);border-radius:8px;margin-bottom:10px;flex-wrap:wrap">
     <span style="font-size:12px;font-weight:600;color:#1E40AF">${n} selected</span>
     <select class="select" style="font-size:11px;padding:4px 6px" onchange="if(this.value){bulkPatch({status:this.value});this.value='';}">
       <option value="">Set status...</option>${STATUSES.map(s=>`<option>${s}</option>`).join('')}</select>
