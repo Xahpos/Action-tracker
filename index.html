@@ -280,6 +280,7 @@ body.dark .radar-svg { filter: drop-shadow(0 2px 8px rgba(0,0,0,.3)); }
   <div class="logo">
     <h2>Action Tracker</h2>
     <p id="action-count">149 actions</p>
+    <p style="font-size:8px;color:#4A7BF7;opacity:.6;margin-top:1px;font-family:var(--mono)">v4.2 • 26-Mar-2026</p>
   </div>
   <nav id="nav"></nav>
   <div style="padding:6px 12px;border-top:1px solid rgba(255,255,255,.06)">
@@ -307,6 +308,8 @@ body.dark .radar-svg { filter: drop-shadow(0 2px 8px rgba(0,0,0,.3)); }
 // ═══════════════════════════════════════
 // *** REPLACE THESE WITH YOUR OWN VALUES ***
 // See setup guide at the bottom of this file
+const APP_VERSION = 'v4.2-26MAR2026';
+console.log('%c Action Tracker ' + APP_VERSION, 'background:#4A7BF7;color:#fff;padding:4px 8px;border-radius:4px;font-weight:bold');
 const GDRIVE_CLIENT_ID = '459978244160-e3fr4idsonk1bfupul2c7ts4rlk69f1r.apps.googleusercontent.com';
 const GDRIVE_API_KEY = 'YOUR_API_KEY_HERE';
 const GDRIVE_FILE_NAME = 'action_tracker_data.json';
@@ -2529,7 +2532,9 @@ STEP 4: Create API Key
 STEP 5: Paste into this file
   1. Open this HTML file in a text editor
   2. Find these lines near the top of the <script>:
-     const GDRIVE_CLIENT_ID = '459978244160-e3fr4idsonk1bfupul2c7ts4rlk69f1r.apps.googleusercontent.com';
+     const APP_VERSION = 'v4.2-26MAR2026';
+console.log('%c Action Tracker ' + APP_VERSION, 'background:#4A7BF7;color:#fff;padding:4px 8px;border-radius:4px;font-weight:bold');
+const GDRIVE_CLIENT_ID = '459978244160-e3fr4idsonk1bfupul2c7ts4rlk69f1r.apps.googleusercontent.com';
      const GDRIVE_API_KEY = 'YOUR_API_KEY_HERE';
   3. Replace with your actual values
   4. Save the file
