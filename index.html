@@ -176,14 +176,14 @@ tr:hover{background:var(--accent-soft)!important}
 .gauth-skip{background:none;border:none;color:var(--text-light);font-size:12px;cursor:pointer;font-family:var(--font);margin-top:8px}
 
 /* ═ DARK ═ */
-body.dark{--bg:#000;--card:rgba(28,28,30,.72);--card-solid:#1C1C1E;--border:rgba(255,255,255,.04);--border-vis:rgba(255,255,255,.08);--text:#F5F5F7;--text-mid:#86868B;--text-light:#48484A;--sidebar-bg:#000;--accent-soft:rgba(0,113,227,.1)}
+body.dark{--bg:#15151E;--card:rgba(30,30,42,.75);--card-solid:#1C1C28;--border:rgba(255,255,255,.06);--border-vis:rgba(255,255,255,.1);--text:#E8E6F0;--text-mid:#8A88A0;--text-light:#505060;--sidebar-bg:#0F0F18;--accent-soft:rgba(100,120,220,.08)}
 body.dark .sidebar{border-right:1px solid rgba(255,255,255,.03);background:linear-gradient(180deg,#050508 0%,#000 100%)}
-body.dark .input,body.dark .select{background:rgba(44,44,46,.6);color:#F5F5F7}
-body.dark th{border-color:rgba(255,255,255,.04)}
-body.dark .gauth-overlay{background:#000}
-body.dark .gauth-btn{background:#1C1C1E;color:#F5F5F7;border-color:rgba(255,255,255,.08)}
-body.dark .toast{background:rgba(255,255,255,.92);color:#1D1D1F}
-body.dark .btn-default{background:rgba(255,255,255,.05);color:var(--text-mid)}
+body.dark .input,body.dark .select{background:rgba(35,35,50,.6);color:#E8E6F0;border-color:rgba(255,255,255,.08)}
+body.dark th{border-color:var(--border);background:rgba(255,255,255,.02)}
+body.dark .gauth-overlay{background:#15151E}
+body.dark .gauth-btn{background:#1C1C28;color:#E8E6F0;border-color:rgba(255,255,255,.08)}
+body.dark .toast{background:rgba(220,218,240,.92);color:#1A1825}
+body.dark .btn-default{background:rgba(255,255,255,.06);color:var(--text-mid);border:1px solid rgba(255,255,255,.06)}
 
 /* ═ SELF MAP ═ */
 .sm-hero{background:#1D1D1F;border-radius:18px;padding:24px;color:rgba(255,255,255,.9);margin-bottom:16px}
@@ -2195,7 +2195,7 @@ function renderProjects() {
     const subs = getSubs(proj);
 
     h += `<div id="proj-${proj.replace(/\s/g,'')}" style="margin-bottom:16px">
-      <div onclick="state.projCollapsed[this.dataset.p]=!state.projCollapsed[this.dataset.p];render()" data-p="${esc(proj)}" ondragover="event.preventDefault();this.style.background='#EFF6FF'" ondragleave="this.style.background=''" ondrop="event.preventDefault();this.style.background='';handleDropToProject('${esc(proj)}','')" style="display:flex;align-items:center;gap:8px;padding:10px 0;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s">
+      <div onclick="state.projCollapsed[this.dataset.p]=!state.projCollapsed[this.dataset.p];render()" data-p="${esc(proj)}" ondragover="event.preventDefault();this.style.background=state.dark?'rgba(90,100,180,.1)':'rgba(90,100,180,.06)'" ondragleave="this.style.background=''" ondrop="event.preventDefault();this.style.background='';handleDropToProject('${esc(proj)}','')" style="display:flex;align-items:center;gap:8px;padding:10px 0;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s">
         <div style="width:10px;height:10px;border-radius:5px;background:${col};flex-shrink:0"></div>
         <span style="font-size:15px;font-weight:700;flex:1">${esc(proj)}</span>
         <span style="font-size:11px;color:var(--text-light)">${open.length} open</span>
@@ -2210,8 +2210,8 @@ function renderProjects() {
     if (!collapsed) {
       h += `<div class="card" style="border-radius:0 0 8px 8px;overflow:hidden">`;
       // Sub-projects with nesting - different colors per depth
-      const depthColors = ['#F0F4FF','#FFF7ED','#F0FDF4','#FDF4FF','#FFF1F2'];
-      const depthAccents = [col,'#D97706','#059669','#9333EA','#E11D48'];
+      const dk=state.dark; const depthColors = dk?['rgba(60,60,100,.15)','rgba(80,65,40,.15)','rgba(40,80,60,.15)','rgba(70,50,80,.15)','rgba(80,50,55,.15)']:['rgba(90,100,180,.06)','rgba(180,140,60,.06)','rgba(60,150,100,.06)','rgba(130,70,160,.06)','rgba(180,60,80,.06)'];
+      const depthAccents = [col,'#B8934A','#5A9E7E','#8B72C4','#C57B98'];
       const sorted = [...subs].sort();
       sorted.forEach(sub => {
         const depth = subDepth(sub);
@@ -2220,7 +2220,7 @@ function renderProjects() {
         const dCol = depthAccents[depth%depthAccents.length];
         const subKey = proj+'//'+sub;
         const subColl = state.subCollapsed[subKey];
-        h += `<div onclick="toggleSubCollapse('${esc(proj)}','${esc(sub)}')" ondragover="event.preventDefault();this.style.background='#EFF6FF'" ondragleave="this.style.background='${dBg}'" ondrop="event.preventDefault();this.style.background='${dBg}';handleDropToProject('${esc(proj)}','${esc(sub)}')" style="display:flex;align-items:center;gap:6px;padding:7px ${16+depth*20}px;background:${dBg};border-bottom:1px solid #E8EBF0;border-left:3px solid ${dCol};transition:background .1s;cursor:pointer">
+        h += `<div onclick="toggleSubCollapse('${esc(proj)}','${esc(sub)}')" ondragover="event.preventDefault();this.style.background=state.dark?'rgba(90,100,180,.1)':'rgba(90,100,180,.06)'" ondragleave="this.style.background='${dBg}'" ondrop="event.preventDefault();this.style.background='${dBg}';handleDropToProject('${esc(proj)}','${esc(sub)}')" style="display:flex;align-items:center;gap:6px;padding:7px ${16+depth*20}px;background:${dBg};border-bottom:1px solid var(--border);border-left:2px solid ${dCol};transition:background .1s;cursor:pointer">
           ${depth>0?'<span style="color:var(--text-light);font-size:10px">\u2514</span>':''}
           <span style="font-size:10px;color:${dCol};transform:rotate(${subColl?'-90deg':'0'});transition:transform .15s">\u25BE</span>
           <span style="font-size:${depth>0?'11.5':'12.5'}px;font-weight:700;color:${dCol}">${subLabel(sub)}</span>
@@ -2232,7 +2232,7 @@ function renderProjects() {
       });
       // Unassigned
       const unassigned = open.filter(a=>!a.subproject);
-      if(unassigned.length && subs.length) h += `<div style="padding:6px 16px;background:#F9FAFB;border-bottom:1px solid #E8EBF0;font-size:11px;font-weight:700;color:var(--text-light)">Unassigned</div>`;
+      if(unassigned.length && subs.length) h += `<div style="padding:6px 16px;background:var(--accent-soft);border-bottom:1px solid var(--border);font-size:11px;font-weight:700;color:var(--text-light)">Unassigned</div>`;
       unassigned.forEach(a => h += projRow(a, col, 0));
       // Done
       if (done.length) {
@@ -2250,7 +2250,7 @@ function renderProjects() {
 }
 function projRow(a, col, depth) {
   const sel = state.selected.has(a.id);
-  return `<div draggable="true" ondragstart="state.dragId='${a.id}';event.dataTransfer.effectAllowed='move'" ondragend="state.dragId=null" ondragover="event.preventDefault();this.style.background='#EFF6FF'" ondragleave="this.style.background='${sel?'#F0F4FF':''}'" ondrop="event.preventDefault();this.style.background='';handleReorder(state.dragId,'${a.id}')" onclick="if(event.shiftKey||event.ctrlKey||event.metaKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="display:flex;align-items:center;gap:5px;padding:6px 6px 6px ${16+depth*20}px;border-bottom:1px solid #F3F4F6;cursor:pointer;font-size:12px;transition:background .08s;background:${sel?'#F0F4FF':''}">
+  return `<div draggable="true" ondragstart="state.dragId='${a.id}';event.dataTransfer.effectAllowed='move'" ondragend="state.dragId=null" ondragover="event.preventDefault();this.style.background=state.dark?'rgba(90,100,180,.1)':'rgba(90,100,180,.06)'" ondragleave="this.style.background='${sel?'#F0F4FF':''}'" ondrop="event.preventDefault();this.style.background='';handleReorder(state.dragId,'${a.id}')" onclick="if(event.shiftKey||event.ctrlKey||event.metaKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="display:flex;align-items:center;gap:5px;padding:6px 6px 6px ${16+depth*20}px;border-bottom:1px solid #F3F4F6;cursor:pointer;font-size:12px;transition:background .08s;background:${sel?'#F0F4FF':''}">
     <span style="cursor:grab;color:var(--text-light);font-size:12px;flex-shrink:0" onclick="event.stopPropagation()">\u2847</span>
     ${sel?'<span style="color:var(--accent);font-size:10px">\u2713</span>':''}
     ${a.priority?'<span style="color:#D946EF;font-size:11px">\u2605</span>':''}
