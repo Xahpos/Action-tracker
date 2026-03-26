@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Action Tracker</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4A7BF7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 
@@ -16,6 +20,7 @@
 }
 * { margin: 0; padding: 0; box-sizing: border-box; transition: color 0.15s, background-color 0.15s, border-color 0.15s; }
 body { font-family: 'DM Sans', system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+@keyframes scaleIn { from{opacity:0;transform:scale(.95)} to{opacity:1;transform:scale(1)} }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes progressFill { from { width: 0%; } }
 .fade-in { animation: fadeIn 0.3s ease-out both; }
@@ -26,24 +31,27 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent) !importa
 ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
 
 /* Sidebar */
-.sidebar { width: 200px; background: linear-gradient(180deg, #111827 0%, #1a2234 100%); display: flex; flex-direction: column; flex-shrink: 0; }
-.sidebar .logo { padding: 20px 16px 8px; color: #F1F5F9; }
-.sidebar .logo h2 { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; }
+.sidebar { width: 200px; background: linear-gradient(180deg, rgba(15,17,23,.97) 0%, rgba(26,35,50,.95) 100%); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-right: 1px solid rgba(255,255,255,.06); display: flex; flex-direction: column; flex-shrink: 0; }
+.sidebar .logo { padding: 20px 16px 12px; color: #F1F5F9; border-bottom: 1px solid rgba(255,255,255,.04); margin-bottom: 4px; }
+.sidebar .logo h2 { font-size: 16px; font-weight: 800; letter-spacing: -0.02em; background: linear-gradient(135deg, #F1F5F9 0%, #94A3B8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 .sidebar .logo p { font-size: 10.5px; color: #64748B; margin-top: 2px; }
 .sidebar nav { flex: 1; padding: 8px 6px; }
-.sidebar nav button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border-radius: 6px; border: none; cursor: pointer; font-size: 12.5px; font-weight: 600; font-family: inherit; background: transparent; color: #8896A6; margin-bottom: 1px; text-align: left; transition: all 0.12s; position: relative; }
-.sidebar nav button:hover { background: rgba(255,255,255,0.05); }
-.sidebar nav button.active { background: var(--side-active); color: #F1F5F9; }
-.sidebar nav button .badge { margin-left: auto; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 8px; color: #fff; }
+.sidebar nav button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 12px; border-radius: 8px; border: none; cursor: pointer; font-size: 12.5px; font-weight: 600; font-family: inherit; background: transparent; color: #8896A6; margin-bottom: 2px; text-align: left; transition: all 0.15s cubic-bezier(.4,0,.2,1); position: relative; overflow: hidden; }
+.sidebar nav button::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(74,123,247,.12), rgba(139,92,246,.08)); opacity: 0; transition: opacity .15s; border-radius: 8px; }
+.sidebar nav button:hover::before { opacity: 1; }
+.sidebar nav button:hover { background: transparent; }
+.sidebar nav button.active { background: linear-gradient(135deg, rgba(74,123,247,.18), rgba(139,92,246,.12)); color: #F1F5F9; box-shadow: 0 0 20px rgba(74,123,247,.1); }
+.sidebar nav button.active::after { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 3px; height: 16px; background: var(--accent); border-radius: 0 3px 3px 0; }
+.sidebar nav button .badge { margin-left: auto; font-size: 8px; font-weight: 700; padding: 1px 6px; border-radius: 10px; color: #fff; background: linear-gradient(135deg, var(--accent), #8B5CF6); box-shadow: 0 2px 6px rgba(74,123,247,.3); }
 
 /* Main */
 main { flex: 1; padding: 20px 24px; overflow: auto; }
 h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
 
 /* Cards */
-.card { background: var(--card); border-radius: 10px; border: 1px solid var(--border); transition: border-color 0.12s; }
+.card { background: var(--card); border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.02); transition: all 0.2s cubic-bezier(.4,0,.2,1); }
 .card-hover { transition: all 0.15s ease; }
-.card-hover:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+.card-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,.08), 0 2px 8px rgba(0,0,0,.04); border-color: rgba(74,123,247,.15); }
 
 /* Inputs */
 .input, .select { padding: 7px 10px; border-radius: 6px; border: 1px solid var(--border); font-size: 12.5px; font-family: inherit; background: #fff; color: var(--text); outline: none; }
@@ -53,8 +61,8 @@ textarea.input { resize: vertical; }
 /* Buttons */
 .btn { padding: 7px 14px; border-radius: 6px; border: none; cursor: pointer; font-size: 12.5px; font-weight: 600; font-family: inherit; transition: all 0.12s; }
 .btn:active { transform: scale(0.97); }
-.btn-primary { background: var(--accent); color: #fff; }
-.btn-primary:hover { background: #3B6DE0; }
+.btn-primary { background: linear-gradient(135deg, #4A7BF7, #6366F1); color: #fff; box-shadow: 0 2px 8px rgba(74,123,247,.3), inset 0 1px 0 rgba(255,255,255,.1); }
+.btn-primary:hover { background: linear-gradient(135deg, #3B6DE0, #5558E6); box-shadow: 0 4px 16px rgba(74,123,247,.4); transform: translateY(-1px); }
 .btn-danger { background: var(--danger); color: #fff; }
 .btn-success { background: var(--success); color: #fff; }
 .btn-default { background: #E8EBF0; color: var(--text); }
@@ -78,14 +86,14 @@ textarea.input { resize: vertical; }
 
 /* Table */
 table { width: 100%; border-collapse: separate; border-spacing: 0; }
-th { padding: 8px 10px; font-size: 9.5px; font-weight: 700; text-transform: uppercase; color: var(--text-light); background: #F8F9FB; border-bottom: 2px solid var(--border); text-align: left; }
+th { padding: 8px 10px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-light); background: linear-gradient(180deg, #F8F9FB, #F3F4F6); border-bottom: 2px solid var(--border); text-align: left; }
 td { padding: 8px 10px; font-size: 12.5px; border-bottom: 1px solid #F3F4F6; vertical-align: top; }
 tr { cursor: pointer; transition: background 0.1s; }
 tr:hover { background: #F8FAFF; }
 
 /* Modal */
-.modal-overlay { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; background: rgba(15,23,42,0.45); }
-.modal { background: var(--card); border-radius: 12px; padding: 22px; width: 92%; max-width: 540px; max-height: 85vh; overflow: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+.modal-overlay { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; background: rgba(15,17,23,.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.modal { background: var(--card); border-radius: 16px; padding: 22px; width: 92%; max-width: 540px; max-height: 85vh; overflow: auto; box-shadow: 0 24px 80px rgba(0,0,0,.2), 0 0 0 1px rgba(255,255,255,.05); animation: scaleIn .2s cubic-bezier(.4,0,.2,1); }
 
 /* Toast */
 .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1B2332; color: #F1F5F9; padding: 10px 24px; border-radius: 8px; font-size: 13px; font-weight: 600; z-index: 9999; animation: fadeIn 0.2s ease-out; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
@@ -117,7 +125,7 @@ tr:hover { background: #F8FAFF; }
 
 body.dark { --bg:#0F1117; --card:#1A1D27; --border:#2A2D3A; --accent:#6C8AFF; --danger:#F76E6E; --success:#4ADE80;
   --text:#E5E7EB; --text-mid:#9CA3AF; --text-light:#6B7280; }
-body.dark .sidebar { background:linear-gradient(180deg,#0A0C14,#111320); }
+body.dark .sidebar { background: linear-gradient(180deg, rgba(10,12,20,.97), rgba(17,19,32,.95)); backdrop-filter: blur(20px); }
 body.dark .sidebar nav button.active { background:rgba(108,138,255,.15); color:#93A5F8; }
 body.dark .modal { background:#1A1D27; border:1px solid #2A2D3A; }
 body.dark .input, body.dark .select { background:#1A1D27; color:#E5E7EB; border-color:#2A2D3A; }
@@ -150,6 +158,108 @@ body.dark .toast { background:#E5E7EB; color:#111827; }
 .sm-lock-card { background:linear-gradient(145deg,#1B2332,#2D3C55); border-radius:20px; padding:40px; text-align:center; color:#F1F5F9; max-width:360px; box-shadow:0 20px 60px rgba(0,0,0,.2); }
 body.dark .sm-hero { background:linear-gradient(135deg,#0F1117 0%,#1A1D27 50%,#111420 100%); }
 body.dark .sm-lock-card { background:linear-gradient(145deg,#0F1117,#1A1D27); }
+
+/* AI Coach */
+.coach-chat { display:flex;flex-direction:column;gap:10px;margin-bottom:12px; }
+.coach-msg { padding:12px 16px;border-radius:12px;font-size:12.5px;line-height:1.7;max-width:90%;animation:smSlideUp .2s ease-out; }
+.coach-msg.ai { background:linear-gradient(135deg,#EFF6FF,#F5F3FF);border:1px solid #DBEAFE;align-self:flex-start;border-radius:4px 12px 12px 12px; }
+.coach-msg.user { background:var(--accent);color:#fff;align-self:flex-end;border-radius:12px 4px 12px 12px; }
+body.dark .coach-msg.ai { background:linear-gradient(135deg,#1a1d27,#1f1a2e);border-color:#2A2D3A; }
+.coach-quick { display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px; }
+.coach-quick button { padding:8px 14px;border-radius:20px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:11px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .15s; }
+.coach-quick button:hover { border-color:var(--accent);color:var(--accent);background:rgba(74,123,247,.04); }
+.coach-typing { display:flex;gap:4px;padding:12px 16px; }
+.coach-typing span { width:6px;height:6px;border-radius:3px;background:var(--accent);animation:smPulse 1.2s ease-in-out infinite; }
+.coach-typing span:nth-child(2) { animation-delay:.2s; }
+.coach-typing span:nth-child(3) { animation-delay:.4s; }
+
+/* Mobile Responsive */
+
+
+
+/* Enhanced UI */
+.glass { background: rgba(255,255,255,.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+body.dark .glass { background: rgba(26,29,39,.7); }
+.card { box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+.card-hover:hover { box-shadow: 0 8px 24px rgba(0,0,0,.08); transform: translateY(-2px); }
+.btn { letter-spacing: -.01em; }
+.btn-primary { box-shadow: 0 2px 8px rgba(74,123,247,.25); }
+.btn-primary:hover { box-shadow: 0 4px 16px rgba(74,123,247,.35); }
+@keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+.shimmer { background: linear-gradient(90deg,transparent 30%,rgba(255,255,255,.08) 50%,transparent 70%); background-size: 200% 100%; animation: shimmer 2s infinite; }
+
+/* Radar chart */
+.radar-svg { filter: drop-shadow(0 2px 8px rgba(0,0,0,.08)); }
+body.dark .radar-svg { filter: drop-shadow(0 2px 8px rgba(0,0,0,.3)); }
+
+@media (max-width: 768px) {
+  body { flex-direction: column; height: auto; overflow: auto; }
+  .sidebar { width: 100%; height: auto; flex-direction: row; flex-wrap: wrap; padding: 8px; gap: 0; }
+  .sidebar .logo { padding: 8px 12px 4px; }
+  .sidebar .logo p { display: none; }
+  .sidebar nav { display: flex; flex-wrap: wrap; gap: 2px; padding: 4px; flex: 1; }
+  .sidebar nav button { padding: 6px 8px; font-size: 11px; gap: 4px; margin: 0; }
+  .sidebar nav div[style*="uppercase"] { display: none; }
+  .sync-bar { padding: 4px 8px; }
+  main { padding: 12px; }
+  h1 { font-size: 18px; }
+  .modal { width: 95%; padding: 16px; }
+  .sm-area > div:last-child { grid-template-columns: 1fr !important; }
+  .sm-score-dot { width: 24px; height: 24px; font-size: 9px; }
+}
+@media (max-width: 480px) {
+  .sidebar nav button span:first-child { display: none; }
+}
+
+
+/* ═══ LAUNCH SCREEN ═══ */
+.launch-screen {
+  position: fixed; inset: 0; z-index: 8000;
+  background: linear-gradient(135deg, #0F1117 0%, #1B2332 50%, #1E293B 100%);
+  display: flex; align-items: center; justify-content: center; flex-direction: column;
+  color: #F1F5F9; gap: 12px;
+  animation: fadeIn .3s ease-out;
+  cursor: pointer;
+}
+.launch-screen .streak-ring {
+  width: 120px; height: 120px; border-radius: 60px;
+  border: 4px solid rgba(255,255,255,.08);
+  display: flex; align-items: center; justify-content: center; flex-direction: column;
+  position: relative;
+}
+.launch-screen .streak-ring svg { position: absolute; inset: -4px; }
+
+; }
+.kanban-card {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  margin-bottom: 6px;
+  cursor: grab;
+  transition: all .15s;
+  font-size: 12px;
+}
+.kanban-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); transform: translateY(-1px); }
+.kanban-card:active { cursor: grabbing; box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+
+/* ═══ LAUNCH SCREEN ═══ */
+.launch-screen {
+  position: fixed; inset: 0; z-index: 8000;
+  background: linear-gradient(135deg, #0F1117 0%, #1B2332 50%, #1E293B 100%);
+  display: flex; align-items: center; justify-content: center; flex-direction: column;
+  color: #F1F5F9; gap: 12px;
+  animation: fadeIn .3s ease-out;
+  cursor: pointer;
+}
+.launch-screen .streak-ring {
+  width: 120px; height: 120px; border-radius: 60px;
+  border: 4px solid rgba(255,255,255,.08);
+  display: flex; align-items: center; justify-content: center; flex-direction: column;
+  position: relative;
+}
+.launch-screen .streak-ring svg { position: absolute; inset: -4px; }
+
 </style>
 </head>
 <body>
@@ -245,6 +355,7 @@ function skipAuth() {
   state.dark = localStorage.getItem('at-dark')==='true';
   if(state.dark) document.body.classList.add('dark');
   loadState(); applyTheme(); render();
+  setTimeout(showLaunch, 500);
 }
 
 function updateSyncStatus(type, label) {
@@ -754,11 +865,144 @@ function smAvgScores(date){
   return byPillar;
 }
 
+// ── SELF MAP CHARTS ──
+function smRadarChart(pillarAvg, size){
+  const cx=size/2, cy=size/2, r=size/2-20;
+  const pillars=SM_PILLARS;
+  const n=pillars.length;
+  const angleStep=2*Math.PI/n;
+  // Grid
+  let svg=`<svg width="${size}" height="${size}" class="radar-svg" viewBox="0 0 ${size} ${size}">`;
+  // Background rings
+  for(let ring=2;ring<=10;ring+=2){
+    const rr=r*ring/10;
+    let pts='';
+    for(let i=0;i<n;i++){const a=angleStep*i-Math.PI/2;pts+=`${cx+rr*Math.cos(a)},${cy+rr*Math.sin(a)} `;}
+    svg+=`<polygon points="${pts}" fill="none" stroke="var(--border)" stroke-width="0.5" opacity="0.6"/>`;
+  }
+  // Axis lines + labels
+  for(let i=0;i<n;i++){
+    const a=angleStep*i-Math.PI/2;
+    const x2=cx+r*Math.cos(a), y2=cy+r*Math.sin(a);
+    svg+=`<line x1="${cx}" y1="${cy}" x2="${x2}" y2="${y2}" stroke="var(--border)" stroke-width="0.5"/>`;
+    const lx=cx+(r+14)*Math.cos(a), ly=cy+(r+14)*Math.sin(a);
+    const short=pillars[i].name.length>12?pillars[i].name.slice(0,10)+'..':pillars[i].name;
+    svg+=`<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="middle" font-size="7" font-weight="600" fill="var(--text-mid)">${short}</text>`;
+  }
+  // Data polygon
+  let pts='';
+  for(let i=0;i<n;i++){
+    const val=pillarAvg[pillars[i].name]||0;
+    const a=angleStep*i-Math.PI/2;
+    const rr=r*val/10;
+    pts+=`${cx+rr*Math.cos(a)},${cy+rr*Math.sin(a)} `;
+  }
+  svg+=`<polygon points="${pts}" fill="var(--accent)" fill-opacity="0.15" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>`;
+  // Data dots
+  for(let i=0;i<n;i++){
+    const val=pillarAvg[pillars[i].name]||0;
+    const a=angleStep*i-Math.PI/2;
+    const rr=r*val/10;
+    const dx=cx+rr*Math.cos(a), dy=cy+rr*Math.sin(a);
+    if(val>0) svg+=`<circle cx="${dx}" cy="${dy}" r="3" fill="${pillars[i].color}" stroke="#fff" stroke-width="1.5"/>`;
+  }
+  svg+=`</svg>`;
+  return svg;
+}
+
+function smScoreChart(areaName, days){
+  const n=days||60;
+  const filled=smFilledDates();
+  const data=[];
+  filled.forEach(d=>{
+    const e=state.diary.entries[d];
+    if(e&&e[areaName]&&e[areaName].score>0){
+      data.push({date:d,score:e[areaName].score});
+    }
+  });
+  if(data.length<2) return '';
+  const w=200,ht=40;
+  const xScale=w/(data.length-1);
+  let path='M';
+  let dots='';
+  data.forEach((d,i)=>{
+    const x=i*xScale;
+    const y=ht-(d.score/10)*ht;
+    path+=(i===0?'':' L')+`${x},${y}`;
+    dots+=`<circle cx="${x}" cy="${y}" r="2.5" fill="var(--accent)" stroke="#fff" stroke-width="1"><title>${d.date}: ${d.score}/10</title></circle>`;
+  });
+  // Area fill
+  const areaPath=path+` L${(data.length-1)*xScale},${ht} L0,${ht} Z`;
+  return `<svg width="${w}" height="${ht+4}" viewBox="-2 -2 ${w+4} ${ht+8}" style="display:block">
+    <path d="${areaPath}" fill="var(--accent)" fill-opacity="0.08"/>
+    <path d="${path}" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    ${dots}
+    <text x="0" y="${ht+8}" font-size="7" fill="var(--text-light)">${data[0].date.slice(2)}</text>
+    <text x="${w}" y="${ht+8}" font-size="7" fill="var(--text-light)" text-anchor="end">${data[data.length-1].date.slice(2)}</text>
+  </svg>`;
+}
+
+function smPillarTrendChart(pillarName, days){
+  const pillar=SM_PILLARS.find(p=>p.name===pillarName);
+  if(!pillar) return '';
+  const filled=smFilledDates();
+  const data=[];
+  filled.forEach(d=>{
+    const e=state.diary.entries[d];
+    if(!e)return;
+    const scores=pillar.areas.map(a=>e[a]?.score||0).filter(s=>s>0);
+    if(scores.length) data.push({date:d,avg:Math.round(scores.reduce((a,b)=>a+b,0)/scores.length*10)/10});
+  });
+  if(data.length<2) return '';
+  const w=140,ht=32;
+  const xScale=w/(data.length-1);
+  let path='M';
+  data.forEach((d,i)=>{
+    const x=i*xScale;
+    const y=ht-(d.avg/10)*ht;
+    path+=(i===0?'':' L')+`${x},${y}`;
+  });
+  return `<svg width="${w}" height="${ht}" viewBox="-1 -1 ${w+2} ${ht+2}">
+    <path d="${path}" fill="none" stroke="${pillar.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>
+  </svg>`;
+}
+
+// ── QUICK SCORE MODE ──
+function smQuickScore(){
+  const td=state.diary.viewDate||todayISO();
+  const entry=smEntry(td);
+  const m=document.createElement("div");m.className="modal-overlay";m.onclick=e=>{if(e.target===m)m.remove();};
+  let body=`<div class="modal" style="max-width:500px;max-height:85vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div><h3 style="font-size:16px;font-weight:800">Quick Score</h3><p style="font-size:10px;color:var(--text-light)">Tap scores in 30 seconds. Notes optional.</p></div>
+      <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">\u2715</button>
+    </div>`;
+  SM_PILLARS.forEach(pillar=>{
+    body+=`<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:${pillar.color};margin-bottom:6px">${pillar.name}</div>`;
+    pillar.areas.forEach(area=>{
+      const ae=entry[area]||{score:0};
+      body+=`<div style="display:flex;align-items:center;gap:6px;padding:3px 0">
+        <span style="font-size:11px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(area)}</span>
+        <div style="display:flex;gap:2px">`;
+      for(let s=1;s<=10;s++){
+        const on=ae.score>=s;
+        const col=s<=3?'#EF4444':s<=6?'#F59E0B':'#10B981';
+        body+=`<div class="sm-score-dot${on?' active':''}" style="background:${on?col:'var(--border)'};color:${on?'#fff':'var(--text-light)'};width:18px;height:18px;font-size:7px" onclick="smSaveField('${td}','${esc(area)}','score',${ae.score===s?0:s});this.closest('.modal-overlay').remove();smQuickScore()">${s}</div>`;
+      }
+      body+=`</div></div>`;
+    });
+    body+=`</div>`;
+  });
+  body+=`<button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="this.closest('.modal-overlay').remove();render();toast('Scores saved!')">Done</button></div>`;
+  m.innerHTML=body;
+  document.body.appendChild(m);
+}
+
 function renderDiary(){
   smInit();
   const td=state.diary.viewDate||todayISO();
 
-  // ── PIN LOCK SCREEN ──
+  // ── PIN LOCK ──
   if(state.diary.pin && !state.diary.unlocked){
     return `<div class="sm-lock fade-in">
       <div class="sm-lock-card">
@@ -782,17 +1026,18 @@ function renderDiary(){
 
   let h=`<div class="fade-in">`;
 
-  // ── HERO HEADER ──
+  // ── HERO ──
   h+=`<div class="sm-hero">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
       <div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
           <span style="font-size:20px;font-weight:800;letter-spacing:-.02em">Self Map</span>
-          ${state.diary.pin?`<button style="background:rgba(255,255,255,.08);border:none;border-radius:4px;color:rgba(255,255,255,.5);font-size:9px;padding:2px 6px;cursor:pointer;font-family:inherit" onclick="smLock()">\uD83D\uDD12 Lock</button>`:`<button style="background:rgba(255,255,255,.08);border:none;border-radius:4px;color:rgba(255,255,255,.5);font-size:9px;padding:2px 6px;cursor:pointer;font-family:inherit" onclick="smSetPin()">\uD83D\uDD13 Set PIN</button>`}
+          ${state.diary.pin?`<button style="background:rgba(255,255,255,.08);border:none;border-radius:4px;color:rgba(255,255,255,.5);font-size:9px;padding:2px 6px;cursor:pointer;font-family:inherit" onclick="smLock()">\uD83D\uDD12</button>`:`<button style="background:rgba(255,255,255,.08);border:none;border-radius:4px;color:rgba(255,255,255,.5);font-size:9px;padding:2px 6px;cursor:pointer;font-family:inherit" onclick="smSetPin()">\uD83D\uDD13 Set PIN</button>`}
         </div>
         <div style="font-size:11px;opacity:.5">${new Date(td+'T12:00:00').toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</div>
       </div>
       <div style="display:flex;gap:4px;align-items:center">
+        <button class="btn" style="background:rgba(255,255,255,.12);color:#F1F5F9;padding:6px 12px;font-size:10px;border:1px solid rgba(255,255,255,.1)" onclick="smQuickScore()">\u26A1 Quick Score</button>
         <button class="btn" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);padding:4px 10px;font-size:10px;border:1px solid rgba(255,255,255,.1)" onclick="state.diary.viewDate=null;render()">\u25C9 Today</button>
         <input type="date" class="input" style="font-size:10px;padding:4px 6px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#F1F5F9" value="${td}" onchange="state.diary.viewDate=this.value;render()">
       </div>
@@ -804,7 +1049,6 @@ function renderDiary(){
         <div style="font-size:8px;opacity:.4;text-transform:uppercase;letter-spacing:.06em;margin-top:2px">filled</div>
       </div>
       <div style="flex:1;display:flex;gap:3px;align-items:end;height:28px">`;
-  // Mini pillar bars
   SM_PILLARS.forEach(p=>{
     const avg=pillarAvg[p.name]||0;
     h+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
@@ -822,10 +1066,23 @@ function renderDiary(){
     </div>
   </div>`;
 
-  // ── TIMELINE HEATMAP ──
-  h+=`<div class="card" style="padding:10px 12px;margin-bottom:14px;overflow-x:auto">
+  // ── RADAR + TIMELINE ROW ──
+  h+=`<div style="display:grid;grid-template-columns:${hasScores?'auto ':''} 1fr;gap:12px;margin-bottom:14px">`;
+  
+  // Radar chart (only if scores exist for today)
+  if(hasScores){
+    h+=`<div class="card" style="padding:12px;display:flex;align-items:center;justify-content:center">
+      ${smRadarChart(pillarAvg, 180)}
+    </div>`;
+  }
+
+  // Timeline heatmap
+  h+=`<div class="card" style="padding:10px 12px;overflow-x:auto">
+    <div style="font-size:10px;font-weight:600;color:var(--text-light);margin-bottom:6px;display:flex;justify-content:space-between">
+      <span>\u25A0 ${filled.length} days filled since 2018</span>
+      <span style="opacity:.6">${Math.round((new Date()-new Date('2018-03-10'))/864e5)} total days</span>
+    </div>
     <div style="display:flex;gap:1px;flex-wrap:nowrap">`;
-  // Show last 12 months for cleaner view
   const recent=timeline.slice(-14);
   recent.forEach(m=>{
     h+=`<div style="margin-right:3px">`;
@@ -835,35 +1092,37 @@ function renderDiary(){
     });
     h+=`<div style="font-size:7px;color:var(--text-light);text-align:center;margin-top:2px">${m.label}</div></div>`;
   });
-  h+=`</div>
-    <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:9px;color:var(--text-light)">
-      <span>\u25A0 = entry filled</span>
-      <span>${filled.length} of ~${Math.round((new Date()-new Date('2018-03-10'))/864e5)} days</span>
-    </div>
-  </div>`;
+  h+=`</div></div></div>`;
 
-  // ── PILLAR SECTIONS ──
+  // ── PILLAR SECTIONS WITH TREND CHARTS ──
   SM_PILLARS.forEach((pillar,pi)=>{
     const pavg=pillarAvg[pillar.name]||0;
     const pcKey='sm-p-'+pi;
     const pCollapsed=state.diary[pcKey];
+    const trend=smPillarTrendChart(pillar.name);
 
-    h+=`<div class="sm-pillar" style="animation-delay:${pi*60}ms;animation:smSlideUp .3s ease-out both">
-      <div class="sm-pillar-head" onclick="state.diary['${pcKey}']=!state.diary['${pcKey}'];saveState();render()" style="background:linear-gradient(135deg,${pillar.color}12,${pillar.color}06)">
-        <div style="width:4px;height:24px;border-radius:2px;background:${pillar.color};flex-shrink:0"></div>
-        <span style="font-size:14px;font-weight:700;flex:1">${pillar.name}</span>
-        ${pavg?`<span style="font-size:12px;font-weight:800;color:${pillar.color}">${pavg}</span>`:''}
+    h+=`<div class="sm-pillar" style="animation:smSlideUp .3s ease-out both;animation-delay:${pi*50}ms">
+      <div class="sm-pillar-head" onclick="state.diary['${pcKey}']=!state.diary['${pcKey}'];saveState();render()" style="background:linear-gradient(135deg,${pillar.color}10,${pillar.color}04)">
+        <div style="width:4px;height:28px;border-radius:2px;background:${pillar.color};flex-shrink:0"></div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700">${pillar.name}</div>
+          ${trend?`<div style="margin-top:3px">${trend}</div>`:''}
+        </div>
+        ${pavg?`<div style="text-align:center;min-width:36px"><div style="font-size:18px;font-weight:800;color:${pillar.color};line-height:1">${pavg}</div><div style="font-size:7px;color:var(--text-light)">avg</div></div>`:''}
         <span style="font-size:10px;color:var(--text-light);transform:rotate(${pCollapsed?'-90deg':'0'});transition:transform .15s">\u25BE</span>
       </div>`;
 
     if(!pCollapsed){
       pillar.areas.forEach((area,ai)=>{
         const ae=entry[area]||{repeat:"",improve:"",action:"",score:0};
-        h+=`<div class="sm-area" style="animation-delay:${ai*40}ms">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <span style="font-size:13px;font-weight:600">${esc(area)}</span>
+        const areaChart=smScoreChart(area);
+        h+=`<div class="sm-area" style="animation-delay:${ai*30}ms">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:12.5px;font-weight:600">${esc(area)}</span>
+              ${areaChart?`<div style="opacity:.7">${areaChart}</div>`:''}
+            </div>
             <div style="display:flex;gap:2px">`;
-        // Score dots 1-10
         for(let s=1;s<=10;s++){
           const on=ae.score>=s;
           const dotCol=s<=3?'#EF4444':s<=6?'#F59E0B':'#10B981';
@@ -881,18 +1140,562 @@ function renderDiary(){
     h+=`</div>`;
   });
 
-  // ── INSIGHTS CARD ──
+  // ── INSIGHTS ──
+    // Contribution graph + photo
+  h+='<div class="card" style="padding:12px;margin-bottom:12px;overflow-x:auto"><div style="font-size:11px;font-weight:700;color:var(--text-mid);margin-bottom:6px">365-Day Activity</div>'+smContributionGraph()+'</div>';
+  
+  // Photo
+  const photo=diaryPhoto(td);
+  h+=`<div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+    ${photo?'<img src="'+photo+'" style="width:60px;height:60px;border-radius:8px;object-fit:cover;border:2px solid var(--border)">':'<div style="width:60px;height:60px;border-radius:8px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:20px;opacity:.3">cam</div>'}
+    <div><button class="btn btn-default" style="font-size:10px;padding:4px 10px" onclick="capturePhoto('${td}')">Add photo</button>
+    <div style="font-size:9px;color:var(--text-light);margin-top:2px">Daily snapshot</div></div>
+  </div>`;
+
+  // Report + digest buttons
+  h+='<div style="display:flex;gap:6px;margin-bottom:12px"><button class="btn btn-default" style="font-size:10px;padding:6px 12px" onclick="generateMonthlyReport()">Monthly Report</button><button class="btn btn-default" style="font-size:10px;padding:6px 12px" onclick="emailDigest()">Email Digest</button></div>';
+
   const daysSinceLast=filled.length?Math.round((new Date()-new Date(filled[filled.length-1]))/864e5):999;
-  h+=`<div class="card" style="padding:16px;margin-bottom:12px;border:1px solid #8B5CF620;background:linear-gradient(135deg,#8B5CF606,transparent)">
-    <div style="font-size:13px;font-weight:700;color:#8B5CF6;margin-bottom:10px;display:flex;align-items:center;gap:6px">\uD83C\uDFAF Insights</div>
+  h+=`<div class="card" style="padding:14px;margin-bottom:12px;border:1px solid #8B5CF620;background:linear-gradient(135deg,#8B5CF606,transparent)">
+    <div style="font-size:13px;font-weight:700;color:#8B5CF6;margin-bottom:10px">\uD83C\uDFAF Insights</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;color:var(--text-mid);line-height:1.6">`;
-  if(daysSinceLast>3) h+=`<div style="padding:8px;border-radius:8px;background:var(--card);border:1px solid var(--border)"><b style="color:var(--danger)">${daysSinceLast}d gap</b> — Remember the 2-day rule: never miss two days in a row.</div>`;
-  h+=`<div style="padding:8px;border-radius:8px;background:var(--card);border:1px solid var(--border)"><b style="color:var(--accent)">Score-first:</b> Tap scores in 30s. Add notes only when meaningful.</div>`;
-  h+=`<div style="padding:8px;border-radius:8px;background:var(--card);border:1px solid var(--border)"><b style="color:#10B981">Anchor habit:</b> Do this right after Isha prayer. 2 minutes.</div>`;
-  h+=`<div style="padding:8px;border-radius:8px;background:var(--card);border:1px solid var(--border)"><b style="color:#8B5CF6">Best streak:</b> 34 days (Jan 2019). You've done this before.</div>`;
+  if(daysSinceLast>3) h+=`<div style="padding:8px;border-radius:8px;background:var(--card);border:1px solid var(--border)"><b style="color:var(--danger)">${daysSinceLast}d gap</b> \u2014 Never miss two days in a row.</div>`;
+  h+=`<div style="padding:8px;border-radius:8px;background:var(--card);border:1px solid var(--border)"><b style="color:var(--accent)">Quick Score:</b> Tap \u26A1 above \u2014 just scores in 30s.</div>`;
+  h+=`<div style="padding:8px;border-radius:8px;background:var(--card);border:1px solid var(--border)"><b style="color:#10B981">Anchor:</b> After Isha prayer. 2 minutes.</div>`;
+  h+=`<div style="padding:8px;border-radius:8px;background:var(--card);border:1px solid var(--border)"><b style="color:#8B5CF6">Record:</b> 34-day streak (Jan 2019).</div>`;
   h+=`</div></div>`;
 
   h+=`</div>`;
+  return h;
+}
+
+
+// ═══════════════════════════════════════
+// FEATURE 1: POMODORO TIMER
+// ═══════════════════════════════════════
+
+// AI COACH
+if(!state.coachHistory) state.coachHistory=[];
+let coachLoading=false;
+
+function coachContext(){
+  const s=getStats();const filled=smFilledDates();
+  let ctx="ACTIONS: "+s.total+" total, "+s.done+" done, "+s.overdue+" overdue, "+s.prio+" priority\n";
+  ctx+="Projects: "+getProjects().join(", ")+"\n";
+  const od=state.actions.filter(a=>isOverdue(a.due,a.status)).slice(0,5);
+  if(od.length){ctx+="Overdue: ";od.forEach(a=>ctx+=a.action.slice(0,40)+" ("+a.owner+"); ");ctx+="\n";}
+  ctx+="SELF MAP: "+filled.length+" entries, latest: "+(filled[filled.length-1]||"none")+"\n";
+  const latest=filled[filled.length-1];
+  if(latest){const e=state.diary.entries[latest];SM_ALL_AREAS.forEach(a=>{const ae=e[a];if(ae&&ae.score)ctx+=a+": "+ae.score+"/10 ";});}
+  return ctx;
+}
+
+async function coachAsk(userMsg){
+  if(coachLoading)return;
+  coachLoading=true;
+  if(userMsg)state.coachHistory.push({role:"user",content:userMsg});
+  render();
+  try{
+    const resp=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,
+        system:"You are a productivity coach. User data:\n"+coachContext()+"\nBe direct, concise, reference actual data.",
+        messages:state.coachHistory.map(m=>({role:m.role,content:m.content}))})});
+    const data=await resp.json();
+    const txt=data.content?.filter(b=>b.type==="text").map(b=>b.text).join("\n")||"No response.";
+    state.coachHistory.push({role:"assistant",content:txt});
+  }catch(e){state.coachHistory.push({role:"assistant",content:"Error: "+e.message});}
+  coachLoading=false;render();
+}
+
+function renderCoach(){
+  let h=`<div class="fade-in">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <div><h1 style="margin-bottom:2px">AI Coach</h1><p style="font-size:11px;color:var(--text-light)">Claude analyzes your data</p></div>
+    <button class="btn btn-ghost" style="font-size:10px" onclick="state.coachHistory=[];render()">Clear</button>
+  </div>
+  <div class="coach-quick">
+    <button onclick="coachAsk('What should I focus on today?')">Today\'s focus</button>
+    <button onclick="coachAsk('Analyze my Self Map patterns and trends')">Self Map analysis</button>
+    <button onclick="coachAsk('Review my overdue actions')">Overdue review</button>
+    <button onclick="coachAsk('What are my recurring patterns and how to break them?')">Pattern breaker</button>
+    <button onclick="coachAsk('Give me a brutally honest review')">Honest review</button>
+  </div>
+  <div class="coach-chat">`;
+  if(!state.coachHistory.length){
+    h+=`<div class="coach-msg ai">I have access to your actions (${getStats().total}) and Self Map (${smFilledDates().length} entries). Ask me anything.</div>`;
+  }
+  state.coachHistory.forEach(m=>{
+    const cls=m.role==="user"?"user":"ai";
+    let text=esc(m.content).replace(/\n/g,"<br>");
+    h+=`<div class="coach-msg ${cls}">${text}</div>`;
+  });
+  if(coachLoading)h+=`<div class="coach-msg ai"><div class="coach-typing"><span></span><span></span><span></span></div></div>`;
+  h+=`</div>
+  <div style="position:sticky;bottom:0;background:var(--bg);padding:8px 0;display:flex;gap:6px">
+    <input class="input" id="coach-input" style="flex:1;padding:10px 14px;font-size:13px;border-radius:20px" placeholder="Ask about your productivity..." onkeydown="if(event.key==='Enter'&&this.value.trim()){coachAsk(this.value.trim());this.value='';}">
+    <button class="btn btn-primary" style="border-radius:20px;padding:10px 18px" onclick="var i=document.getElementById('coach-input');if(i.value.trim()){coachAsk(i.value.trim());i.value='';}">Send</button>
+  </div></div>`;
+  return h;
+}
+
+let pomodoroState={running:false,seconds:25*60,mode:'work',actionId:null,interval:null,sessions:0};
+function pomodoroStart(actionId){
+  if(pomodoroState.interval)clearInterval(pomodoroState.interval);
+  pomodoroState={running:true,seconds:25*60,mode:'work',actionId:actionId||null,interval:null,sessions:pomodoroState.sessions};
+  pomodoroState.interval=setInterval(()=>{
+    pomodoroState.seconds--;
+    updatePomodoroDisplay();
+    if(pomodoroState.seconds<=0){
+      clearInterval(pomodoroState.interval);pomodoroState.running=false;
+      if(pomodoroState.mode==='work'){
+        pomodoroState.sessions++;
+        if(pomodoroState.actionId){const a=state.actions.find(x=>x.id===pomodoroState.actionId);if(a){if(!a.pomodoroCount)a.pomodoroCount=0;a.pomodoroCount++;saveState();}}
+        try{new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQ==').play();}catch(e){}
+        toast('Pomodoro done! Take a break.');
+        pomodoroState.mode='break';pomodoroState.seconds=5*60;
+      } else {pomodoroState.mode='work';pomodoroState.seconds=25*60;toast('Break over!');}
+      render();
+    }
+  },1000);
+  render();
+}
+function pomodoroStop(){clearInterval(pomodoroState.interval);pomodoroState.running=false;pomodoroState.seconds=25*60;pomodoroState.mode='work';render();}
+function updatePomodoroDisplay(){const el=document.getElementById('pomo-display');if(el){const m=Math.floor(pomodoroState.seconds/60);const s=pomodoroState.seconds%60;el.textContent=`${m}:${s<10?'0':''}${s}`;}}
+function pomodoroWidget(){
+  const m=Math.floor(pomodoroState.seconds/60);const s=pomodoroState.seconds%60;
+  const pct=pomodoroState.mode==='work'?(1-pomodoroState.seconds/(25*60))*100:(1-pomodoroState.seconds/(5*60))*100;
+  const col=pomodoroState.mode==='work'?'var(--danger)':'var(--success)';
+  return `<div class="card" style="padding:12px;margin-bottom:12px;border-left:4px solid ${col}">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="font-size:24px;font-weight:800;font-family:var(--mono);min-width:60px" id="pomo-display">${m}:${s<10?'0':''}${s}</div>
+      <div style="flex:1">
+        <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div style="height:100%;background:${col};width:${pct}%;transition:width 1s"></div></div>
+        <div style="font-size:9px;color:var(--text-light);margin-top:2px">${pomodoroState.mode==='work'?'Focus session':'Break'} ${pomodoroState.sessions>0?'• '+pomodoroState.sessions+' completed':''}</div>
+      </div>
+      ${pomodoroState.running?
+        `<button class="btn btn-ghost" style="font-size:11px" onclick="pomodoroStop()">Stop</button>`:
+        `<button class="btn btn-primary" style="font-size:11px;padding:6px 14px" onclick="pomodoroStart()">Start 25m</button>`}
+    </div></div>`;
+}
+
+// ═══════════════════════════════════════
+// FEATURE 2: VOICE INPUT
+// ═══════════════════════════════════════
+function startVoiceInput(targetId){
+  if(!('webkitSpeechRecognition' in window)&&!('SpeechRecognition' in window)){toast('Speech not supported in this browser');return;}
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const recog=new SR();
+  recog.continuous=false;recog.interimResults=false;recog.lang='en-GB';
+  const btn=document.getElementById('voice-btn-'+targetId);
+  if(btn){btn.style.color='var(--danger)';btn.textContent='\uD83D\uDD34';}
+  recog.onresult=e=>{
+    const text=e.results[0][0].transcript;
+    const el=document.getElementById(targetId);
+    if(el){el.value=(el.value?el.value+' ':'')+text;el.dispatchEvent(new Event('blur'));}
+    if(btn){btn.style.color='';btn.textContent='\uD83C\uDF99';}
+    toast('Transcribed!');
+  };
+  recog.onerror=e=>{if(btn){btn.style.color='';btn.textContent='\uD83C\uDF99';}toast('Voice error: '+e.error);};
+  recog.onend=()=>{if(btn){btn.style.color='';btn.textContent='\uD83C\uDF99';}};
+  recog.start();
+}
+
+// ═══════════════════════════════════════
+// FEATURE 3: PRAYER TIMES
+// ═══════════════════════════════════════
+let prayerTimesCache={};
+async function fetchPrayerTimes(){
+  const td=todayISO();
+  if(prayerTimesCache[td])return prayerTimesCache[td];
+  try{
+    const resp=await fetch(`https://api.aladhan.com/v1/timingsByCity/${td}?city=Antwerp&country=Belgium&method=2`);
+    const data=await resp.json();
+    if(data.data&&data.data.timings){
+      prayerTimesCache[td]=data.data.timings;
+      return data.data.timings;
+    }
+  }catch(e){console.error('Prayer times fetch failed:',e);}
+  return null;
+}
+function prayerWidget(timings){
+  if(!timings)return '';
+  const prayers=[{n:'Fajr',t:timings.Fajr},{n:'Dhuhr',t:timings.Dhuhr},{n:'Asr',t:timings.Asr},{n:'Maghrib',t:timings.Maghrib},{n:'Isha',t:timings.Isha}];
+  const now=new Date();const nowMin=now.getHours()*60+now.getMinutes();
+  let next=null;
+  prayers.forEach(p=>{const[h,m]=p.t.split(':').map(Number);const pm=h*60+m;if(!next&&pm>nowMin)next=p.n;});
+  return `<div class="card" style="padding:10px 14px;margin-bottom:12px;border-left:4px solid #059669">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;gap:10px;align-items:center">
+        <span style="font-size:14px">\uD83D\uDD4C</span>
+        ${prayers.map(p=>`<div style="text-align:center${next===p.n?';font-weight:700;color:var(--accent)':''}">
+          <div style="font-size:8px;text-transform:uppercase;color:${next===p.n?'var(--accent)':'var(--text-light)'};letter-spacing:.04em">${p.n}</div>
+          <div style="font-size:12px;font-weight:600;font-family:var(--mono)">${p.t}</div>
+        </div>`).join('')}
+      </div>
+      <span style="font-size:8px;color:var(--text-light)">Antwerp</span>
+    </div></div>`;
+}
+
+// ═══════════════════════════════════════
+// FEATURE 4: CONTRIBUTION GRAPH
+// ═══════════════════════════════════════
+function smContributionGraph(){
+  const filled=smFilledDates();
+  const filledSet=new Set(filled);
+  // Score intensity per day
+  const intensity={};
+  filled.forEach(d=>{
+    const e=state.diary.entries[d];if(!e)return;
+    let cnt=0;
+    SM_ALL_AREAS.forEach(a=>{if(e[a]&&(e[a].score||e[a].repeat||e[a].improve||e[a].action))cnt++;});
+    intensity[d]=cnt;
+  });
+  const maxI=Math.max(...Object.values(intensity),1);
+  // Last 365 days, week columns
+  const end=new Date();const start=new Date(end);start.setDate(start.getDate()-364);
+  // Align to Sunday
+  start.setDate(start.getDate()-start.getDay());
+  let svg=`<svg width="700" height="100" viewBox="0 0 700 100" style="display:block;width:100%">`;
+  const cellSize=9,gap=2;
+  let week=0;
+  const d=new Date(start);
+  const monthLabels=[];let lastMonth=-1;
+  while(d<=end){
+    const dow=d.getDay();
+    const ds=d.toISOString().slice(0,10);
+    const val=intensity[ds]||0;
+    const lvl=val===0?0:Math.ceil((val/maxI)*4);
+    const colors=['var(--border)','#9BE9A8','#40C463','#30A14E','#216E39'];
+    const x=week*(cellSize+gap)+30;
+    const y=dow*(cellSize+gap)+14;
+    svg+=`<rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" rx="2" fill="${colors[lvl]}" opacity="${filledSet.has(ds)?1:0.6}"><title>${ds}: ${val} areas filled</title></rect>`;
+    if(d.getMonth()!==lastMonth){monthLabels.push({x,label:d.toLocaleDateString('en',{month:'short'})});lastMonth=d.getMonth();}
+    if(dow===6)week++;
+    d.setDate(d.getDate()+1);
+  }
+  monthLabels.forEach(m=>{svg+=`<text x="${m.x}" y="10" font-size="8" fill="var(--text-light)">${m.label}</text>`;});
+  ['Sun','','Tue','','Thu','','Sat'].forEach((d,i)=>{if(d)svg+=`<text x="0" y="${i*(cellSize+gap)+14+7}" font-size="7" fill="var(--text-light)">${d}</text>`;});
+  svg+=`</svg>`;
+  return svg;
+}
+
+// ═══════════════════════════════════════
+// FEATURE 5: PHOTO DIARY
+// ═══════════════════════════════════════
+function diaryPhoto(date){
+  const entry=smEntry(date);
+  return entry._photo||null;
+}
+function capturePhoto(date){
+  const input=document.createElement('input');
+  input.type='file';input.accept='image/*';input.capture='environment';
+  input.onchange=e=>{
+    const file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      // Resize to thumbnail
+      const img=new Image();
+      img.onload=()=>{
+        const canvas=document.createElement('canvas');
+        const maxW=120;const scale=maxW/img.width;
+        canvas.width=maxW;canvas.height=img.height*scale;
+        canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+        const thumb=canvas.toDataURL('image/jpeg',0.6);
+        const entry=smEntry(date);
+        entry._photo=thumb;
+        saveState();render();toast('Photo saved');
+      };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+  input.click();
+}
+
+// ═══════════════════════════════════════
+// FEATURE 6: MONTHLY REPORT
+// ═══════════════════════════════════════
+function generateMonthlyReport(){
+  const now=new Date();
+  const month=now.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  const ym=now.toISOString().slice(0,7);
+  const s=getStats();
+  const filled=smFilledDates().filter(d=>d.startsWith(ym));
+
+  let md=`# Self Map & Action Report — ${month}\n\n`;
+  md+=`## Action Tracker\n- **${s.total}** total actions, **${s.done}** completed (${Math.round(s.done/Math.max(s.total,1)*100)}%)\n- **${s.overdue}** overdue, **${s.prio}** priority\n\n`;
+
+  // Project breakdown
+  md+=`## Projects\n`;
+  getProjects().forEach(p=>{
+    const items=state.actions.filter(a=>a.project===p);
+    const open=items.filter(a=>a.status!=='Done'&&a.status!=='Cancelled').length;
+    md+=`- **${p}**: ${open} open / ${items.length} total\n`;
+  });
+
+  // Self Map
+  md+=`\n## Self Map\n- **${filled.length}** entries this month\n\n`;
+  if(filled.length){
+    md+=`### Pillar Averages (${month})\n`;
+    SM_PILLARS.forEach(pillar=>{
+      const scores=[];
+      filled.forEach(d=>{
+        const e=state.diary.entries[d];if(!e)return;
+        pillar.areas.forEach(a=>{if(e[a]?.score)scores.push(e[a].score);});
+      });
+      const avg=scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length*10)/10:0;
+      md+=`- **${pillar.name}**: ${avg}/10\n`;
+    });
+  }
+
+  // Download as .md
+  const blob=new Blob([md],{type:'text/markdown'});
+  Object.assign(document.createElement('a'),{href:URL.createObjectURL(blob),download:`selfmap_report_${ym}.md`}).click();
+  toast('Report downloaded');
+  return md;
+}
+
+// ═══════════════════════════════════════
+// FEATURE 7: EMAIL DIGEST
+// ═══════════════════════════════════════
+function generateDigestContent(){
+  const s=getStats();
+  const td=todayISO();
+  const filled=smFilledDates();
+  const thisWeek=filled.filter(d=>{const diff=(new Date(td)-new Date(d))/864e5;return diff>=0&&diff<7;});
+
+  let body=`Weekly Productivity Digest\n\n`;
+  body+=`ACTIONS: ${s.total} total, ${s.done} done, ${s.overdue} overdue\n`;
+
+  const overdue=state.actions.filter(a=>isOverdue(a.due,a.status)).slice(0,5);
+  if(overdue.length){
+    body+=`\nOVERDUE:\n`;
+    overdue.forEach(a=>body+=`- ${a.action} (${a.owner}, due ${fmtDate(a.due)})\n`);
+  }
+
+  body+=`\nSELF MAP: ${thisWeek.length}/7 days filled this week\n`;
+
+  if(thisWeek.length){
+    body+=`Pillar scores this week:\n`;
+    SM_PILLARS.forEach(p=>{
+      const scores=[];
+      thisWeek.forEach(d=>{const e=state.diary.entries[d];if(!e)return;p.areas.forEach(a=>{if(e[a]?.score)scores.push(e[a].score);});});
+      const avg=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):'-';
+      body+=`- ${p.name}: ${avg}/10\n`;
+    });
+  }
+
+  body+=`\nGenerated ${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}`;
+  return body;
+}
+function emailDigest(){
+  const body=generateDigestContent();
+  const subject='Weekly Productivity Digest — '+new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+  const mailto=`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.open(mailto);
+  toast('Opening email client');
+}
+
+// ═══════════════════════════════════════
+// MORNING LAUNCH SCREEN
+// ═══════════════════════════════════════
+let launchShown=localStorage.getItem('at-launch-date')===todayISO();
+function showLaunch(){
+  if(launchShown)return;
+  const s=getStats();
+  const filled=smFilledDates();
+  // Calculate current streak
+  let streak=0;const d=new Date();
+  for(let i=0;i<365;i++){const ds=d.toISOString().slice(0,10);if(filled.includes(ds))streak++;else if(i>0)break;d.setDate(d.getDate()-1);}
+  const todayFocus=state.actions.filter(a=>a.todayFocus&&a.status!=='Done'&&a.status!=='Cancelled').slice(0,3);
+  const pct=streak>0?Math.min(streak/34*100,100):0; // 34 was best streak
+
+  const el=document.createElement('div');el.className='launch-screen';
+  el.onclick=()=>{el.style.opacity='0';setTimeout(()=>el.remove(),300);launchShown=true;localStorage.setItem('at-launch-date',todayISO());};
+  el.innerHTML=`
+    <div class="streak-ring">
+      <svg viewBox="0 0 128 128"><circle cx="64" cy="64" r="60" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="4"/>
+      <circle cx="64" cy="64" r="60" fill="none" stroke="url(#sg)" stroke-width="4" stroke-linecap="round" stroke-dasharray="${pct*3.77} 377" transform="rotate(-90 64 64)" style="transition:stroke-dasharray 1s ease-out"/>
+      <defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#4A7BF7"/><stop offset="100%" stop-color="#8B5CF6"/></linearGradient></defs></svg>
+      <div style="font-size:32px;font-weight:800;line-height:1">${streak}</div>
+      <div style="font-size:9px;opacity:.5;text-transform:uppercase;letter-spacing:.08em">day streak</div>
+    </div>
+    <div style="font-size:14px;font-weight:600;opacity:.8;margin-top:4px">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div>
+    <div style="display:flex;gap:16px;margin-top:8px;font-size:11px;opacity:.5">
+      <span>${s.overdue} overdue</span><span>${s.prio} priority</span><span>${filled.length} SM entries</span>
+    </div>
+    ${todayFocus.length?`<div style="margin-top:12px;text-align:center"><div style="font-size:9px;opacity:.4;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Today's focus</div>${todayFocus.map(a=>`<div style="font-size:11px;padding:4px 12px;background:rgba(255,255,255,.06);border-radius:6px;margin-bottom:3px">${a.action.slice(0,50)}</div>`).join('')}</div>`:''}
+    <div style="font-size:10px;opacity:.3;margin-top:16px">tap anywhere to continue</div>`;
+  el.style.transition='opacity .3s';
+  document.body.appendChild(el);
+}
+
+// ═══════════════════════════════════════
+// WEEKLY REVIEW WIZARD
+// ═══════════════════════════════════════
+function weeklyReview(){
+  const s=getStats();
+  const thisWeek=state.actions.filter(a=>{const diff=(new Date()-new Date(a.createdAt||'2020-01-01'))/864e5;return diff>=0&&diff<7;});
+  const completed=state.actions.filter(a=>a.status==='Done').length;
+  const stale=state.actions.filter(a=>a.status==='Open'&&a.due&&isOverdue(a.due,a.status));
+  const filled=smFilledDates().filter(d=>{const diff=(new Date(todayISO())-new Date(d))/864e5;return diff>=0&&diff<7;});
+
+  const m=document.createElement('div');m.className='modal-overlay';
+  m.innerHTML=`<div class="modal" style="max-width:560px;max-height:85vh;overflow:auto">
+    <div style="background:linear-gradient(135deg,#1B2332,#2D3C55);margin:-22px -22px 16px;padding:20px 22px;border-radius:16px 16px 0 0;color:#F1F5F9">
+      <h2 style="font-size:18px;font-weight:800;margin-bottom:4px">Weekly Review</h2>
+      <p style="font-size:11px;opacity:.6">${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</p>
+    </div>
+
+    <div style="font-size:13px;font-weight:700;margin-bottom:8px">1. This Week's Numbers</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:16px">
+      <div class="card" style="padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--accent)">${completed}</div><div style="font-size:8px;color:var(--text-light)">Completed</div></div>
+      <div class="card" style="padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--danger)">${stale.length}</div><div style="font-size:8px;color:var(--text-light)">Overdue</div></div>
+      <div class="card" style="padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:#10B981">${filled.length}/7</div><div style="font-size:8px;color:var(--text-light)">SM Days</div></div>
+      <div class="card" style="padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:#8B5CF6">${s.total}</div><div style="font-size:8px;color:var(--text-light)">Total</div></div>
+    </div>
+
+    <div style="font-size:13px;font-weight:700;margin-bottom:8px">2. Stale Actions — Close or Reschedule</div>
+    <div style="max-height:200px;overflow:auto;margin-bottom:16px">
+      ${stale.length?stale.slice(0,8).map(a=>`<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--border);font-size:11px">
+        <span style="flex:1">${esc(a.action).slice(0,50)}</span>
+        <button class="btn btn-ghost" style="font-size:9px;padding:2px 6px;color:var(--success)" onclick="patch('${a.id}',{status:'Done'});this.closest('.modal-overlay').remove();weeklyReview()">Done</button>
+        <button class="btn btn-ghost" style="font-size:9px;padding:2px 6px;color:var(--danger)" onclick="archiveAction('${a.id}');this.closest('.modal-overlay').remove();weeklyReview()">Archive</button>
+      </div>`).join(''):'<div style="font-size:11px;color:var(--text-light);padding:8px">No overdue actions!</div>'}
+    </div>
+
+    <div style="font-size:13px;font-weight:700;margin-bottom:8px">3. Next Week's Focus</div>
+    <p style="font-size:11px;color:var(--text-mid);margin-bottom:8px">Pick 3 actions to prioritize:</p>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:16px">
+      ${state.actions.filter(a=>a.status!=='Done'&&a.status!=='Cancelled'&&!a.priority).slice(0,12).map(a=>
+        `<button class="btn btn-default" style="font-size:10px;padding:4px 8px" onclick="patch('${a.id}',{priority:true,todayFocus:true});toast('Prioritized')">${esc(a.action).slice(0,30)}</button>`
+      ).join('')}
+    </div>
+
+    <div style="display:flex;gap:6px;justify-content:flex-end;border-top:1px solid var(--border);padding-top:12px">
+      <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Close</button>
+      <button class="btn btn-primary" onclick="generateMonthlyReport();this.closest('.modal-overlay').remove()">Generate Report</button>
+    </div>
+  </div>`;
+  m.onclick=e=>{if(e.target===m)m.remove();};
+  document.body.appendChild(m);
+}
+
+// ═══════════════════════════════════════
+// RECURRING ACTIONS
+// ═══════════════════════════════════════
+function checkRecurring(){
+  const td=todayISO();
+  state.actions.forEach(a=>{
+    if(!a.recur||a.status!=='Done')return;
+    // Check if we need to spawn a new instance
+    const lastDone=a.doneDate||a.due||td;
+    const diff=Math.round((new Date(td)-new Date(lastDone))/864e5);
+    let spawn=false;
+    if(a.recur==='daily'&&diff>=1)spawn=true;
+    if(a.recur==='weekly'&&diff>=7)spawn=true;
+    if(a.recur==='monthly'&&diff>=30)spawn=true;
+    if(spawn&&!state.actions.find(x=>x.recurParent===a.id&&x.status!=='Done')){
+      const newDue=a.recur==='daily'?td:a.recur==='weekly'?new Date(Date.now()+7*864e5).toISOString().slice(0,10):new Date(Date.now()+30*864e5).toISOString().slice(0,10);
+      state.actions.push({...a,id:uid(),status:'Open',due:newDue,createdAt:td,recurParent:a.id,todayFocus:a.todayFocus});
+      saveState();
+    }
+  });
+}
+
+// ═══════════════════════════════════════
+// SELF MAP SEARCH
+// ═══════════════════════════════════════
+function smSearch(query){
+  if(!query||!query.trim())return[];
+  const q=query.toLowerCase().trim();
+  const results=[];
+  const filled=smFilledDates();
+  filled.forEach(d=>{
+    const e=state.diary.entries[d];if(!e)return;
+    SM_ALL_AREAS.forEach(area=>{
+      const ae=e[area];if(!ae)return;
+      const texts=[ae.repeat,ae.improve,ae.action].filter(Boolean).join(' ');
+      if(texts.toLowerCase().includes(q)){
+        results.push({date:d,area,score:ae.score,match:texts.slice(Math.max(0,texts.toLowerCase().indexOf(q)-30),texts.toLowerCase().indexOf(q)+q.length+60)});
+      }
+    });
+  });
+  return results.sort((a,b)=>b.date.localeCompare(a.date));
+}
+function renderSmSearch(){
+  const q=state.smSearchQuery||'';
+  const results=q?smSearch(q):[];
+  let h=`<div style="margin-bottom:12px">
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <input class="input" style="flex:1;font-size:12px" value="${esc(q)}" placeholder="Search Self Map entries (anger, phone, prayer, wife...)" oninput="state.smSearchQuery=this.value" onkeydown="if(event.key==='Enter')render()">
+      <button class="btn btn-primary" style="font-size:11px" onclick="render()">Search</button>
+    </div>`;
+  if(q&&results.length){
+    h+=`<div style="font-size:10px;color:var(--text-light);margin-bottom:6px">${results.length} matches for "${esc(q)}"</div>`;
+    results.slice(0,20).forEach(r=>{
+      const highlighted=esc(r.match).replace(new RegExp(esc(q),'gi'),m=>'<b style="color:var(--accent)">'+m+'</b>');
+      h+=`<div class="card card-hover" onclick="state.diary.viewDate='${r.date}';state.tab='diary';render()" style="padding:8px 12px;margin-bottom:4px;cursor:pointer;font-size:11px">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:2px">
+          <span style="font-family:var(--mono);font-size:9px;color:var(--text-light)">${r.date}</span>
+          <span style="font-weight:600">${esc(r.area)}</span>
+          ${r.score?`<span style="font-size:9px;padding:1px 5px;border-radius:8px;background:var(--accent);color:#fff">${r.score}/10</span>`:''}
+        </div>
+        <div style="color:var(--text-mid);font-size:10.5px">...${highlighted}...</div>
+      </div>`;
+    });
+    if(results.length>20) h+=`<div style="font-size:10px;color:var(--text-light);text-align:center;padding:4px">+ ${results.length-20} more</div>`;
+  } else if(q){
+    h+=`<div style="font-size:11px;color:var(--text-light);padding:12px;text-align:center">No matches found</div>`;
+  } else {
+    h+=`<div style="font-size:11px;color:var(--text-light);padding:12px;text-align:center">Try: anger, phone, prayer, focus, wife, planning, consistency</div>`;
+  }
+  h+=`</div>`;
+  return h;
+}
+
+// ═══════════════════════════════════════
+// KANBAN VIEW
+// ═══════════════════════════════════════
+function renderKanban(){
+  const statuses=['Open','In progress','Blocked','Done'];
+  const cols={};
+  statuses.forEach(s=>{cols[s]=state.actions.filter(a=>a.status===s).slice(0,30);});
+
+  let h=`<div class="fade-in">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h1>Kanban</h1>
+      <div style="display:flex;gap:4px">
+        <button class="btn btn-default" style="font-size:10px" onclick="state.tab='actions';render()">Table view</button>
+        <button class="btn btn-default" style="font-size:10px" onclick="weeklyReview()">Weekly Review</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px">`;
+
+  const colColors={Open:'#F59E0B','In progress':'#4A7BF7',Blocked:'#EF4444',Done:'#10B981'};
+  statuses.forEach(st=>{
+    const items=cols[st];
+    h+=`<div class="kanban-col">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid ${colColors[st]}">
+        <span style="font-size:13px;font-weight:700">${st}</span>
+        <span style="font-size:10px;color:var(--text-light);background:var(--border);padding:1px 6px;border-radius:8px">${items.length}</span>
+      </div>
+      <div style="min-height:200px" ondragover="event.preventDefault();this.style.background='rgba(74,123,247,.04)'" ondragleave="this.style.background=''" ondrop="event.preventDefault();this.style.background='';if(state.dragId){patch(state.dragId,{status:'${st}'});state.dragId=null;}">`;
+    items.forEach(a=>{
+      const col=WS_COLORS[a.project]||'#94A3B8';
+      h+=`<div class="kanban-card" draggable="true" ondragstart="state.dragId='${a.id}'" onclick="openEdit('${a.id}')">
+        <div style="font-size:12px;font-weight:500;margin-bottom:4px">${esc(a.action).slice(0,60)}</div>
+        <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:9px;padding:1px 5px;border-radius:3px;background:${col}14;color:${col}">${esc(a.project).slice(0,20)}</span>
+          <span style="font-size:9px;color:var(--text-light)">${esc(a.owner)}</span>
+          ${a.due?`<span style="font-size:9px;color:${dueColor(a.due,a.status)}">${fmtDate(a.due)}</span>`:''}
+          ${a.priority?'<span style="color:#D946EF;font-size:9px">\u2605</span>':''}
+        </div>
+      </div>`;
+    });
+    h+=`</div></div>`;
+  });
+  h+=`</div></div>`;
   return h;
 }
 
@@ -938,11 +1741,14 @@ const TABS = [
   {id:"today",icon:"\u25C9",label:"Today",bg:"#4A7BF7"},
   {g:"Manage"},
   {id:"actions",icon:"\u2630",label:"Actions",bg:"#E5484D"},
+  {id:"kanban",icon:"\u25A5",label:"Kanban"},
   {id:"projects",icon:"\u25A6",label:"Projects"},
   {g:"Reflect"},
   {id:"dashboard",icon:"\u25A3",label:"Dashboard"},
   {id:"stats",icon:"\u25CE",label:"Stats"},
   {id:"diary",icon:"\u270E",label:"Self Map"},
+  {g:"AI"},
+  {id:"coach",icon:"\u2728",label:"AI Coach"},
   {g:"System"},
   {id:"import",icon:"\u2193",label:"Import"},
   {id:"guide",icon:"\u2139",label:"Guide"},
@@ -975,10 +1781,12 @@ function render() {
       case "dashboard": main.innerHTML = renderDashboard(s); break;
       case "stats": main.innerHTML = renderStatsTab(s); break;
       case "actions": main.innerHTML = renderActions(s); break;
+      case "kanban": main.innerHTML = renderKanban(); break;
       case "projects": main.innerHTML = renderProjects(); break;
       case "import": main.innerHTML = renderImport(); break;
       case "calendar": main.innerHTML = renderCalendar(); break;
       case "diary": main.innerHTML = renderDiary(); break;
+      case "coach": main.innerHTML = renderCoach(); break;
       case "guide": main.innerHTML = renderGuide(); break;
       default: main.innerHTML = "";
     }
@@ -1009,7 +1817,9 @@ function renderToday(s) {
   const upcoming = state.actions.filter(a=>a.due&&a.status!=="Done"&&a.status!=="Cancelled"&&!a.todayFocus&&a.due!==td&&a.due<=new Date(Date.now()+7*864e5).toISOString().slice(0,10)).sort((a,b)=>a.due.localeCompare(b.due)).slice(0,10);
   const dateStr = new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
 
-  let h = quickAdd() + `<div class="fade-in"><h1>Today</h1><p style="font-size:13px;color:var(--text-light);margin:2px 0 16px">${dateStr}</p>`;
+  let h = pomodoroWidget() + quickAdd() + `<div class="fade-in"><h1>Today</h1><p style="font-size:13px;color:var(--text-light);margin:2px 0 16px">${dateStr}</p>`;
+  fetchPrayerTimes().then(t=>{const el=document.getElementById("prayer-slot");if(el&&t)el.innerHTML=prayerWidget(t);});
+  h += `<div id="prayer-slot"></div>`;
 
   if (!focused.length && !dueToday.length) {
     h += `<div style="text-align:center;padding:60px 20px;color:var(--text-light)"><div style="font-size:32px;margin-bottom:8px">\u2600</div><div style="font-size:15px;font-weight:600">Nothing for today</div><div style="font-size:12px;margin-top:4px">Mark actions with \u25C9 Today Focus</div></div>`;
@@ -1102,7 +1912,10 @@ function renderDashboard(s) {
       <div style="text-align:center;min-width:48px"><div style="font-size:22px;font-weight:800;line-height:1">${s.done}</div><div style="font-size:9px;opacity:0.6;text-transform:uppercase;letter-spacing:0.08em">Done</div></div>
       <div style="text-align:center;min-width:48px"><div style="font-size:22px;font-weight:800;line-height:1">${Math.round(s.done/Math.max(s.total,1)*100)}%</div><div style="font-size:9px;opacity:0.6;text-transform:uppercase;letter-spacing:0.08em">Complete</div></div>
     </div>
-    <h1 style="margin-bottom:16px">Dashboard</h1>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h1>Dashboard</h1>
+      <button class="btn btn-primary" style="font-size:11px" onclick="weeklyReview()">Weekly Review</button>
+    </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:20px">`;
   [["Total",s.total,"#4A7BF7"],["Open",s.open,"#F59E0B"],["In Prog",s.prog,"#3B82F6"],["Done",s.done,"#30A46C"],["Overdue",s.overdue,"#DC2626"],["Priority",s.prio,"#D946EF"]].forEach(([l,v,c])=>{
     h+=`<div class="card" style="padding:14px;text-align:center"><div style="font-size:24px;font-weight:800;color:${c}">${v}</div><div style="font-size:10px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-top:2px">${l}</div></div>`;
@@ -1497,6 +2310,7 @@ function openEdit(id) {
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
           <label style="font-size:10.5px;font-weight:600;color:#5A6578">Start date <input type="date" class="input" style="width:100%;margin-top:2px" value="${a.startDate||''}" onchange="patch('${a.id}',{startDate:this.value})"></label>
+          <label style="font-size:10.5px;font-weight:600;color:#5A6578">Recur <select class="select" style="width:100%;margin-top:2px" onchange="patch('${a.id}',{recur:this.value})"><option value="">None</option><option ${a.recur==='daily'?'selected':''} value="daily">Daily</option><option ${a.recur==='weekly'?'selected':''} value="weekly">Weekly</option><option ${a.recur==='monthly'?'selected':''} value="monthly">Monthly</option></select></label>
           <label style="font-size:10.5px;font-weight:600;color:#5A6578">Due date <input type="date" class="input" style="width:100%;margin-top:2px" value="${a.due||''}" onchange="patch('${a.id}',{due:this.value})"></label>
         </div>
       </div>
@@ -1602,11 +2416,11 @@ function applyTheme() {
   if(state.dark){
     r.setProperty('--bg','#0F1117');r.setProperty('--card','#1A1D27');r.setProperty('--border','#2D3040');
     r.setProperty('--text','#E5E7EB');r.setProperty('--text-mid','#9CA3AF');r.setProperty('--text-light','#6B7280');
-    document.querySelector('.sidebar').style.background='linear-gradient(180deg,#0A0C12,#111420)';
+    // sidebar bg handled by CSS
   } else {
     r.setProperty('--bg','#F5F6F8');r.setProperty('--card','#FFFFFF');r.setProperty('--border','#E8EBF0');
     r.setProperty('--text','#1A2332');r.setProperty('--text-mid','#5A6578');r.setProperty('--text-light','#8896A6');
-    document.querySelector('.sidebar').style.background='linear-gradient(180deg,#1B2332,#1E293B)';
+    // sidebar bg handled by CSS
   }
 }
 
@@ -1657,12 +2471,16 @@ window.onerror = function(msg, url, line, col, err) {
   </div>`;
 };
 // Init happens in skipAuth() or handleGoogleSignIn()
+// After render, check recurring actions and show launch screen
+const _origRender = typeof render === 'function' ? null : null;
+setTimeout(()=>{try{checkRecurring();}catch(e){}},2000);
 
 </script>
 
 <!-- Google Identity Services library -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
+<script>if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(e=>console.log("SW:",e));</script>
 </body>
 </html>
 
