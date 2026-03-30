@@ -1108,6 +1108,14 @@ function renderDiary(){
   const filledAreas=SM_ALL_AREAS.filter(a=>entry[a]&&(entry[a].repeat||entry[a].improve||entry[a].action||entry[a].score)).length;
   const todayPct=totalAreas?Math.round(filledAreas/totalAreas*100):0;
 
+  // Hideable sections
+  const hideMap={'sm-contrib':localStorage.getItem('sm-hide-contrib')==='1','sm-photo':localStorage.getItem('sm-hide-photo')==='1','sm-7habits':localStorage.getItem('sm-hide-7habits')==='1','sm-insights':localStorage.getItem('sm-hide-insights')==='1'};
+  function smSectionToggle(key,label){
+    if(hideMap[key]) return '<div style="margin-bottom:6px"><button style="background:none;border:none;cursor:pointer;font-size:9px;color:var(--text-light);font-family:var(--font);opacity:.4" onclick="localStorage.removeItem(\'sm-hide-'+key+'\');render()">'+label+'</button></div>';
+    return '';
+  }
+  function smHideBtn(key){return '<button style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:8px;color:var(--text-light);font-family:var(--font);opacity:.3" onclick="localStorage.setItem(\'sm-hide-'+key+'\',\'1\');render()">hide</button>';}
+
   let h=`<div class="fade-in">`;
 
   // ── HERO ──
@@ -1245,14 +1253,6 @@ function renderDiary(){
   // Report + digest buttons
   h+='<div style="display:flex;gap:6px;margin-bottom:12px"><button class="btn btn-default" style="font-size:10px;padding:6px 12px" onclick="generateMonthlyReport()">Monthly Report</button><button class="btn btn-default" style="font-size:10px;padding:6px 12px" onclick="emailDigest()">Email Digest</button></div>';
 
-  // Hideable sections
-  const hideMap={'sm-contrib':localStorage.getItem('sm-hide-contrib')==='1','sm-photo':localStorage.getItem('sm-hide-photo')==='1','sm-7habits':localStorage.getItem('sm-hide-7habits')==='1','sm-insights':localStorage.getItem('sm-hide-insights')==='1'};
-  function smSectionToggle(key,label){
-    if(hideMap[key]) return '<div style="margin-bottom:6px"><button style="background:none;border:none;cursor:pointer;font-size:9px;color:var(--text-light);font-family:var(--font);opacity:.4" onclick="localStorage.removeItem(\'sm-hide-'+key+'\');render()">'+label+'</button></div>';
-    return '';
-  }
-  function smHideBtn(key){return '<button style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:8px;color:var(--text-light);font-family:var(--font);opacity:.3" onclick="localStorage.setItem(\'sm-hide-'+key+'\',\'1\');render()">hide</button>';}
-  
   // 7 Habits lens
   const habits7map=[
     {habit:'1. Be Proactive',areas:['Effort','Consistency','Self respect (delayed gratification)'],principle:'Focus on what you can control'},
