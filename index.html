@@ -2842,7 +2842,7 @@ function renderActions(s) {
     filtered.forEach(a => {
       const od = isOverdue(a.due,a.status);
       const sel = state.selected.has(a.id);
-      h += `<tr onclick="if(event.ctrlKey||event.metaKey||event.shiftKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="cursor:pointer;background:${sel?'var(--accent-soft)':od?'rgba(255,69,58,.03)':'transparent'}">
+      h += `<tr onclick="if(event.ctrlKey||event.metaKey||event.shiftKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" oncontextmenu="if(state.selected.size>0){showBulkMenu(event);}else{event.preventDefault();toggleSelect('${a.id}');showBulkMenu(event);}" style="cursor:pointer;background:${sel?'var(--accent-soft)':od?'rgba(255,69,58,.03)':'transparent'}">
         <td onclick="event.stopPropagation()"><input type="checkbox" ${sel?'checked':''} onchange="toggleSelect('${a.id}')"></td>
         <td style="max-width:280px"><div style="font-weight:${a.priority?600:500}">${a.priority?'<span style="color:#D946EF;margin-right:4px">\u2605</span>':''}${esc(a.action)}</div></td>
         <td><span style="font-weight:600;font-size:12px">${esc(a.owner)}</span></td>
@@ -2874,6 +2874,108 @@ function renderActions(s) {
 // ═══════════════════════════════════════
 // PROJECTS TAB
 // ═══════════════════════════════════════
+
+// ═══ RENAME PROJECT / SUB-PROJECT ═══
+function renameProject(oldName){
+  const m=document.createElement('div');m.className='modal-overlay';m.onclick=e=>{if(e.target===m)m.remove();};
+  m.innerHTML='<div class="modal" style="max-width:360px"><h3 style="font-size:15px;font-weight:700;margin-bottom:10px">Rename project</h3><input class="input" id="rp-input" style="width:100%;margin-bottom:12px;font-size:13px" value="'+esc(oldName)+'" autofocus onkeydown="if(event.key===\'Enter\')document.getElementById(\'rp-confirm\').click()"><div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn btn-ghost" onclick="this.closest(\'.modal-overlay\').remove()">Cancel</button><button class="btn btn-primary" id="rp-confirm" onclick="doRenameProject(\''+esc(oldName)+'\',document.getElementById(\'rp-input\').value.trim())">Rename</button></div></div>';
+  document.body.appendChild(m);setTimeout(()=>{const el=document.getElementById('rp-input');if(el){el.focus();el.select();}},50);
+}
+function doRenameProject(oldName,newName){
+  if(!newName||newName===oldName){document.querySelector('.modal-overlay')?.remove();return;}
+  state.actions.forEach(a=>{if(a.project===oldName)a.project=newName;});
+  if(state.subProjects[oldName]){state.subProjects[newName]=state.subProjects[oldName];delete state.subProjects[oldName];}
+  saveState();document.querySelector('.modal-overlay')?.remove();render();toast('Renamed to '+newName);
+}
+
+function renameSubProject(proj,oldSub){
+  const label=subLabel(oldSub);
+  const m=document.createElement('div');m.className='modal-overlay';m.onclick=e=>{if(e.target===m)m.remove();};
+  m.innerHTML='<div class="modal" style="max-width:360px"><h3 style="font-size:15px;font-weight:700;margin-bottom:4px">Rename sub-project</h3><p style="font-size:11px;color:var(--text-mid);margin-bottom:10px">in '+esc(proj)+'</p><input class="input" id="rsp-input" style="width:100%;margin-bottom:12px;font-size:13px" value="'+esc(label)+'" autofocus onkeydown="if(event.key===\'Enter\')document.getElementById(\'rsp-confirm\').click()"><div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn btn-ghost" onclick="this.closest(\'.modal-overlay\').remove()">Cancel</button><button class="btn btn-primary" id="rsp-confirm" onclick="doRenameSub(\''+esc(proj)+'\',\''+esc(oldSub)+'\',document.getElementById(\'rsp-input\').value.trim())">Rename</button></div></div>';
+  document.body.appendChild(m);setTimeout(()=>{const el=document.getElementById('rsp-input');if(el){el.focus();el.select();}},50);
+}
+function doRenameSub(proj,oldFull,newLabel){
+  if(!newLabel){document.querySelector('.modal-overlay')?.remove();return;}
+  const subs=state.subProjects[proj]||[];
+  const parent=oldFull.split('/').slice(0,-1).join('/');
+  const newFull=parent?parent+'/'+newLabel:newLabel;
+  if(newFull===oldFull){document.querySelector('.modal-overlay')?.remove();return;}
+  subs.forEach((s,i)=>{if(s===oldFull)subs[i]=newFull;else if(s.startsWith(oldFull+'/'))subs[i]=newFull+s.slice(oldFull.length);});
+  state.actions.forEach(a=>{if(a.project===proj){if(a.subproject===oldFull)a.subproject=newFull;else if(a.subproject&&a.subproject.startsWith(oldFull+'/'))a.subproject=newFull+a.subproject.slice(oldFull.length);}});
+  saveState();document.querySelector('.modal-overlay')?.remove();render();toast('Renamed');
+}
+
+// ═══ BULK CONTEXT MENU ═══
+function showBulkMenu(event){
+  event.preventDefault();
+  const sel=state.selected;
+  if(!sel||sel.size===0) return;
+  // Remove any existing menu
+  document.getElementById('ctx-menu')?.remove();
+  const menu=document.createElement('div');menu.id='ctx-menu';
+  menu.style.cssText='position:fixed;z-index:2000;background:var(--card-solid);border:1px solid var(--border-vis);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);padding:4px;min-width:180px;font-family:var(--font);animation:scaleIn .12s ease-out;left:'+event.clientX+'px;top:'+event.clientY+'px';
+  const items=[
+    {label:'Change status',sub:true,action:()=>bulkStatusMenu(event.clientX,event.clientY)},
+    {label:'Change project',sub:true,action:()=>bulkProjectMenu(event.clientX,event.clientY)},
+    {label:'Set priority',action:()=>{sel.forEach(id=>patch(id,{priority:true}));toast(sel.size+' set to priority');sel.clear();render();}},
+    {label:'Remove priority',action:()=>{sel.forEach(id=>patch(id,{priority:false}));sel.clear();render();}},
+    {label:'Mark as Today Focus',action:()=>{sel.forEach(id=>patch(id,{todayFocus:true}));toast(sel.size+' added to Today');sel.clear();render();}},
+    {sep:true},
+    {label:'Archive selected',danger:true,action:()=>{if(!confirm('Archive '+sel.size+' actions?'))return;sel.forEach(id=>{const a=state.actions.find(x=>x.id===id);if(a){state.archived.push({...a,archivedAt:todayISO()});}});state.actions=state.actions.filter(a=>!sel.has(a.id));sel.clear();saveState();render();toast('Archived');}},
+    {label:'Delete selected',danger:true,action:()=>{if(!confirm('Permanently delete '+sel.size+' actions?'))return;state.actions=state.actions.filter(a=>!sel.has(a.id));sel.clear();saveState();render();toast('Deleted');}}
+  ];
+  items.forEach(it=>{
+    if(it.sep){menu.innerHTML+='<div style="height:1px;background:var(--border);margin:3px 0"></div>';return;}
+    const btn=document.createElement('button');
+    btn.style.cssText='display:block;width:100%;text-align:left;padding:6px 10px;border:none;background:none;cursor:pointer;font-size:12px;font-family:var(--font);border-radius:6px;color:'+(it.danger?'var(--danger)':'var(--text)');
+    btn.textContent=it.label;
+    btn.onmouseover=()=>btn.style.background='var(--accent-soft)';
+    btn.onmouseout=()=>btn.style.background='none';
+    btn.onclick=()=>{menu.remove();it.action();};
+    menu.appendChild(btn);
+  });
+  document.body.appendChild(menu);
+  const close=e=>{if(!menu.contains(e.target)){menu.remove();document.removeEventListener('click',close);}};
+  setTimeout(()=>document.addEventListener('click',close),10);
+}
+
+function bulkStatusMenu(x,y){
+  document.getElementById('ctx-menu')?.remove();
+  const menu=document.createElement('div');menu.id='ctx-menu';
+  menu.style.cssText='position:fixed;z-index:2000;background:var(--card-solid);border:1px solid var(--border-vis);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);padding:4px;min-width:140px;font-family:var(--font);left:'+x+'px;top:'+y+'px';
+  STATUSES.forEach(st=>{
+    const btn=document.createElement('button');
+    btn.style.cssText='display:block;width:100%;text-align:left;padding:6px 10px;border:none;background:none;cursor:pointer;font-size:12px;font-family:var(--font);border-radius:6px;color:var(--text)';
+    btn.textContent=st;
+    btn.onmouseover=()=>btn.style.background='var(--accent-soft)';
+    btn.onmouseout=()=>btn.style.background='none';
+    btn.onclick=()=>{menu.remove();state.selected.forEach(id=>patch(id,{status:st}));toast(state.selected.size+' set to '+st);state.selected.clear();render();};
+    menu.appendChild(btn);
+  });
+  document.body.appendChild(menu);
+  const close=e=>{if(!menu.contains(e.target)){menu.remove();document.removeEventListener('click',close);}};
+  setTimeout(()=>document.addEventListener('click',close),10);
+}
+
+function bulkProjectMenu(x,y){
+  document.getElementById('ctx-menu')?.remove();
+  const menu=document.createElement('div');menu.id='ctx-menu';
+  menu.style.cssText='position:fixed;z-index:2000;background:var(--card-solid);border:1px solid var(--border-vis);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);padding:4px;min-width:180px;max-height:300px;overflow:auto;font-family:var(--font);left:'+x+'px;top:'+y+'px';
+  getProjects().forEach(p=>{
+    const btn=document.createElement('button');
+    btn.style.cssText='display:block;width:100%;text-align:left;padding:6px 10px;border:none;background:none;cursor:pointer;font-size:12px;font-family:var(--font);border-radius:6px;color:var(--text)';
+    btn.textContent=p;
+    btn.onmouseover=()=>btn.style.background='var(--accent-soft)';
+    btn.onmouseout=()=>btn.style.background='none';
+    btn.onclick=()=>{menu.remove();state.selected.forEach(id=>patch(id,{project:p}));toast(state.selected.size+' moved to '+p);state.selected.clear();render();};
+    menu.appendChild(btn);
+  });
+  document.body.appendChild(menu);
+  const close=e=>{if(!menu.contains(e.target)){menu.remove();document.removeEventListener('click',close);}};
+  setTimeout(()=>document.addEventListener('click',close),10);
+}
+
+
 function renderProjects() {
   const projs = getProjects();
   const anyExpanded = projs.some(p=>!state.projCollapsed[p]);
@@ -2939,7 +3041,7 @@ function renderProjects() {
     const subs = getSubs(proj);
 
     h += `<div id="proj-${proj.replace(/\s/g,'')}" style="margin-bottom:16px">
-      <div onclick="state.projCollapsed[this.dataset.p]=!state.projCollapsed[this.dataset.p];render()" data-p="${esc(proj)}" ondragover="event.preventDefault();this.style.background=state.dark?'rgba(90,100,180,.1)':'rgba(90,100,180,.06)'" ondragleave="this.style.background=''" ondrop="event.preventDefault();this.style.background='';handleDropToProject('${esc(proj)}','')" style="display:flex;align-items:center;gap:8px;padding:10px 0;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s">
+      <div onclick="state.projCollapsed[this.dataset.p]=!state.projCollapsed[this.dataset.p];render()" oncontextmenu="event.preventDefault();event.stopPropagation();renameProject('${esc(proj)}')" data-p="${esc(proj)}" ondragover="event.preventDefault();this.style.background=state.dark?'rgba(90,100,180,.1)':'rgba(90,100,180,.06)'" ondragleave="this.style.background=''" ondrop="event.preventDefault();this.style.background='';handleDropToProject('${esc(proj)}','')" style="display:flex;align-items:center;gap:8px;padding:10px 0;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s">
         <div style="width:10px;height:10px;border-radius:5px;background:${col};flex-shrink:0"></div>
         <span style="font-size:15px;font-weight:700;flex:1">${esc(proj)}</span>
         <span style="font-size:11px;color:var(--text-light)">${open.length} open</span>
@@ -2964,7 +3066,7 @@ function renderProjects() {
         const dCol = depthAccents[depth%depthAccents.length];
         const subKey = proj+'//'+sub;
         const subColl = state.subCollapsed[subKey];
-        h += `<div onclick="toggleSubCollapse('${esc(proj)}','${esc(sub)}')" ondragover="event.preventDefault();this.style.background=state.dark?'rgba(90,100,180,.1)':'rgba(90,100,180,.06)'" ondragleave="this.style.background='${dBg}'" ondrop="event.preventDefault();this.style.background='${dBg}';handleDropToProject('${esc(proj)}','${esc(sub)}')" style="display:flex;align-items:center;gap:6px;padding:7px ${16+depth*20}px;background:${dBg};border-bottom:1px solid var(--border);border-left:2px solid ${dCol};transition:background .1s;cursor:pointer">
+        h += `<div onclick="toggleSubCollapse('${esc(proj)}','${esc(sub)}')" oncontextmenu="event.preventDefault();event.stopPropagation();renameSubProject('${esc(proj)}','${esc(sub)}')" ondragover="event.preventDefault();this.style.background=state.dark?'rgba(90,100,180,.1)':'rgba(90,100,180,.06)'" ondragleave="this.style.background='${dBg}'" ondrop="event.preventDefault();this.style.background='${dBg}';handleDropToProject('${esc(proj)}','${esc(sub)}')" style="display:flex;align-items:center;gap:6px;padding:7px ${16+depth*20}px;background:${dBg};border-bottom:1px solid var(--border);border-left:2px solid ${dCol};transition:background .1s;cursor:pointer">
           ${depth>0?'<span style="color:var(--text-light);font-size:10px">\u2514</span>':''}
           <span style="font-size:10px;color:${dCol};transform:rotate(${subColl?'-90deg':'0'});transition:transform .15s">\u25BE</span>
           <span style="font-size:${depth>0?'11.5':'12.5'}px;font-weight:700;color:${dCol}">${subLabel(sub)}</span>
@@ -2994,7 +3096,7 @@ function renderProjects() {
 }
 function projRow(a, col, depth) {
   const sel = state.selected.has(a.id);
-  return `<div draggable="true" ondragstart="state.dragId='${a.id}';event.dataTransfer.effectAllowed='move'" ondragend="state.dragId=null" ondragover="event.preventDefault();this.style.background=state.dark?'rgba(90,100,180,.1)':'rgba(90,100,180,.06)'" ondragleave="this.style.background='${sel?'var(--accent-soft)':''}'" ondrop="event.preventDefault();this.style.background='';handleReorder(state.dragId,'${a.id}')" onclick="if(event.shiftKey||event.ctrlKey||event.metaKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="display:flex;align-items:center;gap:5px;padding:6px 6px 6px ${16+depth*20}px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12px;transition:background .08s;background:${sel?'var(--accent-soft)':''}">
+  return `<div draggable="true" ondragstart="state.dragId='${a.id}';event.dataTransfer.effectAllowed='move'" ondragend="state.dragId=null" ondragover="event.preventDefault();this.style.background=state.dark?'rgba(90,100,180,.1)':'rgba(90,100,180,.06)'" ondragleave="this.style.background='${sel?'var(--accent-soft)':''}'" ondrop="event.preventDefault();this.style.background='';handleReorder(state.dragId,'${a.id}')" onclick="if(event.shiftKey||event.ctrlKey||event.metaKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" oncontextmenu="if(state.selected.size>0){showBulkMenu(event);}else{event.preventDefault();toggleSelect('${a.id}');showBulkMenu(event);}" style="display:flex;align-items:center;gap:5px;padding:6px 6px 6px ${16+depth*20}px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12px;transition:background .08s;background:${sel?'var(--accent-soft)':''}">
     <span style="cursor:grab;color:var(--text-light);font-size:12px;flex-shrink:0" onclick="event.stopPropagation()">\u2847</span>
     ${sel?'<span style="color:var(--accent);font-size:10px">\u2713</span>':''}
     ${a.priority?'<span style="color:#D946EF;font-size:11px">\u2605</span>':''}
