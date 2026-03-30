@@ -1228,20 +1228,31 @@ function renderDiary(){
   });
 
   // ── INSIGHTS ──
-    // Contribution graph + photo
-  h+='<div class="card" style="padding:12px;margin-bottom:12px;overflow-x:auto"><div style="font-size:11px;font-weight:700;color:var(--text-mid);margin-bottom:6px">365-Day Activity</div>'+smContributionGraph()+'</div>';
+    // Contribution graph
+  if(hideMap['sm-contrib']){h+=smSectionToggle('sm-contrib','365-Day Activity');}
+  else{h+='<div class="card" style="padding:12px;margin-bottom:12px;overflow-x:auto"><div style="display:flex;align-items:center;font-size:11px;font-weight:700;color:var(--text-mid);margin-bottom:6px">365-Day Activity'+smHideBtn('sm-contrib')+'</div>'+smContributionGraph()+'</div>';}
   
   // Photo
+  if(!hideMap['sm-photo']){
   const photo=diaryPhoto(td);
   h+=`<div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
     ${photo?'<img src="'+photo+'" style="width:60px;height:60px;border-radius:8px;object-fit:cover;border:2px solid var(--border)">':'<div style="width:60px;height:60px;border-radius:8px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:20px;opacity:.3">cam</div>'}
     <div><button class="btn btn-default" style="font-size:10px;padding:4px 10px" onclick="capturePhoto('${td}')">${ICON.camera} Photo</button>
     <div style="font-size:9px;color:var(--text-light);margin-top:2px">Daily snapshot</div></div>
   </div>`;
+  } else { h+=smSectionToggle('sm-photo','Photo'); }
 
   // Report + digest buttons
   h+='<div style="display:flex;gap:6px;margin-bottom:12px"><button class="btn btn-default" style="font-size:10px;padding:6px 12px" onclick="generateMonthlyReport()">Monthly Report</button><button class="btn btn-default" style="font-size:10px;padding:6px 12px" onclick="emailDigest()">Email Digest</button></div>';
 
+  // Hideable sections
+  const hideMap={'sm-contrib':localStorage.getItem('sm-hide-contrib')==='1','sm-photo':localStorage.getItem('sm-hide-photo')==='1','sm-7habits':localStorage.getItem('sm-hide-7habits')==='1','sm-insights':localStorage.getItem('sm-hide-insights')==='1'};
+  function smSectionToggle(key,label){
+    if(hideMap[key]) return '<div style="margin-bottom:6px"><button style="background:none;border:none;cursor:pointer;font-size:9px;color:var(--text-light);font-family:var(--font);opacity:.4" onclick="localStorage.removeItem(\'sm-hide-'+key+'\');render()">'+label+'</button></div>';
+    return '';
+  }
+  function smHideBtn(key){return '<button style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:8px;color:var(--text-light);font-family:var(--font);opacity:.3" onclick="localStorage.setItem(\'sm-hide-'+key+'\',\'1\');render()">hide</button>';}
+  
   // 7 Habits lens
   const habits7map=[
     {habit:'1. Be Proactive',areas:['Effort','Consistency','Self respect (delayed gratification)'],principle:'Focus on what you can control'},
@@ -1252,22 +1263,28 @@ function renderDiary(){
     {habit:'6. Synergize',areas:['Wife','Family','Friends'],principle:'The whole is greater than parts'},
     {habit:'7. Sharpen the Saw',areas:['Prayer','Weightlifting','Cardio','Intermittent fasting','Learning how to learn'],principle:'Renew: body, mind, spirit, social'}
   ];
+  if(hideMap['sm-7habits']){h+=smSectionToggle('sm-7habits','7 Habits Lens');}
+  else{
   h+=`<div class="card" style="padding:14px;margin-bottom:12px">
-    <div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--text-mid)">7 Habits Lens</div>
+    <div style="display:flex;align-items:center;font-size:12px;font-weight:600;margin-bottom:10px;color:var(--text-mid)">7 Habits Lens\${smHideBtn('sm-7habits')}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">`;
   habits7map.forEach(hb=>{
     const scores=hb.areas.map(a=>{const ae=entry[a];return ae?ae.score||0:0;}).filter(s=>s>0);
     const avg=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):'-';
     const pct=avg!=='-'?parseFloat(avg)*10:0;
-    h+=`<div style="padding:6px 8px;border-radius:var(--radius-xs);background:var(--accent-soft);display:flex;align-items:center;gap:8px">
-      <div style="width:28px;height:28px;border-radius:14px;background:var(--card);border:2px solid ${pct>60?'var(--success)':pct>30?'var(--warning)':'var(--border-vis)'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;color:var(--text-mid)">${avg}</div>
-      <div>
-        <div style="font-size:10px;font-weight:600;color:var(--text)">${hb.habit}</div>
-        <div style="font-size:8.5px;color:var(--text-light)">${hb.principle}</div>
+    h+=`<div style="padding:8px 10px;border-radius:var(--radius-xs);background:var(--accent-soft);cursor:pointer;transition:all .12s" onclick="show7HabitDetail(${habits7map.indexOf(hb)})">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:28px;height:28px;border-radius:14px;background:var(--card);border:2px solid ${pct>60?'var(--success)':pct>30?'var(--warning)':'var(--border-vis)'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;color:var(--text-mid)">${avg}</div>
+        <div style="flex:1">
+          <div style="font-size:10px;font-weight:600;color:var(--text)">${hb.habit}</div>
+          <div style="font-size:8.5px;color:var(--text-light)">${hb.principle}</div>
+        </div>
+        <span style="font-size:9px;color:var(--text-light)">details</span>
       </div>
     </div>`;
   });
   h+=`</div></div>`;
+  } // end 7 habits else
 
   const daysSinceLast=filled.length?Math.round((new Date()-new Date(filled[filled.length-1]))/864e5):999;
   h+=`<div class="card" style="padding:14px;margin-bottom:12px;border:1px solid #8B5CF620;background:linear-gradient(135deg,#8B5CF606,transparent)">
@@ -1516,6 +1533,72 @@ function copyPrompt(type){
   });
 }
 
+
+function show7HabitDetail(idx){
+  const habits=[
+    {habit:'1. Be Proactive',principle:'Focus on your Circle of Influence, not your Circle of Concern.',
+     idea:'Between stimulus and response, there is a space. In that space lies your freedom to choose. Proactive people focus energy on things they can control.',
+     outcome:'You stop blaming circumstances and take ownership. Reactive language ("I have to", "If only") becomes proactive ("I choose to", "I will").',
+     actions:['Replace "I can\'t" with "I choose not to" for one day','Identify 3 things bothering you — which can you actually influence?','When frustrated, pause 5 seconds before responding'],
+     areas:['Effort','Consistency','Self respect (delayed gratification)']},
+    {habit:'2. Begin with the End in Mind',principle:'Define what success looks like before you start.',
+     idea:'All things are created twice — first as a mental creation, then as a physical creation. Without a clear vision, you default to other people\'s agendas.',
+     outcome:'Your daily actions align with your long-term values. You stop drifting and start building deliberately.',
+     actions:['Write a personal mission statement (1 paragraph)','Define what "a good week" looks like in 3 sentences','Before any project, write the desired outcome first'],
+     areas:['Planning & Productivity','Self Map']},
+    {habit:'3. Put First Things First',principle:'Do what matters most, not what screams loudest.',
+     idea:'Urgent things demand attention. Important things build your future. Most people live in urgency and neglect importance. Quadrant II (important, not urgent) is where growth happens.',
+     outcome:'You spend less time firefighting and more time on deep work, relationships, health, and planning.',
+     actions:['Identify your top 3 Quadrant II activities this week','Block 1 hour for important-not-urgent work daily','Say no to one thing today that is urgent but not important'],
+     areas:['Focus/Attention','Planning & Productivity']},
+    {habit:'4. Think Win-Win',principle:'Seek mutual benefit in every interaction.',
+     idea:'Win-Win is not a technique — it\'s a character-based approach built on integrity, maturity, and abundance mentality. If Win-Win isn\'t possible, No Deal is better than Win-Lose.',
+     outcome:'Relationships deepen because people trust you. Negotiations become collaborative. You stop keeping score.',
+     actions:['In your next disagreement, ask "What would work for both of us?"','Identify one relationship where you\'ve been Win-Lose — reset it','Practice abundance: share credit publicly this week'],
+     areas:['Communication','Wife','Family','Friends']},
+    {habit:'5. Seek First to Understand, Then to Be Understood',principle:'Listen with the intent to understand, not to reply.',
+     idea:'Most people listen autobiographically — they filter everything through their own experience. Empathic listening means entering the other person\'s frame of reference.',
+     outcome:'People feel heard. Conflicts de-escalate. You gain information you would have missed. Trust accelerates.',
+     actions:['In your next conversation, don\'t offer advice — just reflect back what you heard','Ask "What does this mean to you?" instead of jumping to solutions','Practice 2 minutes of pure listening with your wife today'],
+     areas:['Communication','Emotional Stability/Stoicism']},
+    {habit:'6. Synergize',principle:'The whole is greater than the sum of its parts.',
+     idea:'Synergy means that 1+1 can equal 3 or more. It requires valuing differences rather than tolerating them. Creative cooperation produces options nobody saw alone.',
+     outcome:'Teams produce better solutions. Relationships become creative rather than defensive. You stop trying to clone yourself.',
+     actions:['Ask someone with a different view: "Help me see what I\'m missing"','In a group decision, push for a third option beyond the two on the table','Identify one person whose strengths complement your weaknesses — collaborate'],
+     areas:['Wife','Family','Friends','Communication']},
+    {habit:'7. Sharpen the Saw',principle:'Renew yourself in body, mind, heart, and spirit.',
+     idea:'You can\'t saw wood with a dull blade. The four dimensions — Physical (exercise, nutrition), Mental (reading, learning), Spiritual (prayer, meditation), Social/Emotional (relationships) — must all be maintained.',
+     outcome:'Sustained energy. You avoid burnout. Every other habit becomes easier because you have capacity.',
+     actions:['Physical: 20min exercise today','Spiritual: Pray all 5 prayers on time today','Mental: Read 10 pages of something challenging','Social: One meaningful conversation (not transactional)'],
+     areas:['Prayer','Weightlifting','Cardio','Intermittent fasting','Learning how to learn']}
+  ];
+  const hb=habits[idx];if(!hb)return;
+  const m=document.createElement('div');m.className='modal-overlay';m.onclick=e=>{if(e.target===m)m.remove();};
+  // Compute area scores
+  const td=state.diary.viewDate||todayISO();
+  const entry=smEntry(td);
+  const areaScores=hb.areas.map(a=>{const ae=entry[a];return{name:a,score:ae?ae.score||0:0};});
+  
+  m.innerHTML=`<div class="modal" style="max-width:480px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+      <h3 style="font-size:16px;font-weight:700">${hb.habit}</h3>
+      <button class="btn btn-ghost" style="font-size:14px;padding:2px 6px" onclick="this.closest('.modal-overlay').remove()">\u2715</button>
+    </div>
+    <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:6px">${hb.principle}</div>
+    <div style="font-size:12px;color:var(--text-mid);line-height:1.7;margin-bottom:14px">${hb.idea}</div>
+    
+    <div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:6px">Outcome when practiced</div>
+    <div style="font-size:11.5px;color:var(--text-mid);line-height:1.6;margin-bottom:14px;padding:8px 10px;background:var(--accent-soft);border-radius:var(--radius-xs)">${hb.outcome}</div>
+    
+    <div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:6px">Actions you can take today</div>
+    <div style="margin-bottom:14px">${hb.actions.map(a=>'<div style="font-size:11px;color:var(--text-mid);padding:5px 0;border-bottom:1px solid var(--border);line-height:1.5">'+a+'</div>').join('')}</div>
+    
+    <div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:6px">Your Self Map areas</div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap">${areaScores.map(a=>'<span style="font-size:10px;padding:3px 8px;border-radius:5px;background:var(--card);border:1px solid var(--border)">'+a.name+' <b>'+a.score+'</b>/10</span>').join('')}</div>
+  </div>`;
+  document.body.appendChild(m);
+}
+
 function renderCoach(){
   let h=`<div class="fade-in">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
@@ -1632,7 +1715,7 @@ async function fetchPrayerTimes(){
 }
 function prayerWidget(timings){
   if(!timings)return '';
-  if(localStorage.getItem('at-hide-prayer')==='1') return `<div style="margin-bottom:10px"><button class="btn btn-ghost" style="font-size:10px;color:var(--text-light)" onclick="localStorage.removeItem('at-hide-prayer');render()">Show prayer times</button></div>`;
+  if(localStorage.getItem('at-hide-prayer')==='1') return `<div style="margin-bottom:14px"><div style="display:flex;align-items:center;gap:6px"><span style="font-size:10px;font-weight:500;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em">Salah</span><button style="background:none;border:none;cursor:pointer;font-size:9px;color:var(--text-light);font-family:var(--font);opacity:.5" onclick="localStorage.removeItem('at-hide-prayer');render()">show</button></div></div>`;
   const prayers=[{n:'Fajr',t:timings.Fajr},{n:'Dhuhr',t:timings.Dhuhr},{n:'Asr',t:timings.Asr},{n:'Maghrib',t:timings.Maghrib},{n:'Isha',t:timings.Isha}];
   const now=new Date();const nowMin=now.getHours()*60+now.getMinutes();
   let next=null;
