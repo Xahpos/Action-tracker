@@ -502,7 +502,7 @@ const isOverdue = (due, st) => { if (!due||st==="Done"||st==="Cancelled") return
 
 let state = {
   actions: [], meetings: [], archived: [], subProjects: {}, milestones: [],
-  tab: "today", editId: null, dark: false, search: "", fStatus: "Active", fProj: "All", fOwner: "All", fPrio: false,
+  tab: "today", editId: null, dark: false, search: "", fStatus: "Active", fProj: "All", fOwner: "All", fPrio: false, fDate: "",
   projCollapsed: {}, subCollapsed: {}, diary: {areas:[],entries:{},habits:{}}, toast: null, selected: new Set(), dragId: null, projOrder: [], dragProj: null, kanbanProj: 'All', projSideOpen: false
 };
 
@@ -1253,9 +1253,11 @@ function renderDiary(){
     h+='</div></div>';
   }
 
-  // ── TREND OVERVIEW SECTION ──
+  // ── TREND OVERVIEW SECTION (collapsible) ──
+  const showTrends=!localStorage.getItem('sm-hide-trends');
+  h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:'+(showTrends?'0':'14')+'px;padding:0 2px"><button style="background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;font-family:var(--font);color:var(--text);padding:0;display:flex;align-items:center;gap:6px" onclick="if(localStorage.getItem(\'sm-hide-trends\'))localStorage.removeItem(\'sm-hide-trends\');else localStorage.setItem(\'sm-hide-trends\',\'1\');render()"><span style=\"font-size:10px;color:var(--text-light);transform:rotate('+(showTrends?'0':'-90')+'deg);transition:transform .15s\">\u25BE</span>Score Trends</button><span style="font-size:10px;color:var(--text-light);margin-left:auto">'+filled.length+' entries</span></div>';
+  if(showTrends){
   h+='<div class="card" style="padding:16px;margin-bottom:14px">';
-  h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font-size:13px;font-weight:600">Score Trends</span><span style="font-size:10px;color:var(--text-light)">'+filled.length+' entries since 2018</span></div>';
   // One sparkline per area, grouped by pillar
   SM_PILLARS.forEach(pillar=>{
     h+='<div style="margin-bottom:10px"><div style="font-size:10px;font-weight:600;color:'+pillar.color+';margin-bottom:4px">'+pillar.name+'</div>';
@@ -1272,6 +1274,7 @@ function renderDiary(){
     h+='</div></div>';
   });
   h+='</div>';
+  } // end showTrends
 
   SM_PILLARS.forEach((pillar,pi)=>{
     const pavg=pillarAvg[pillar.name]||0;
@@ -1293,12 +1296,12 @@ function renderDiary(){
     if(!pCollapsed){
       pillar.areas.forEach((area,ai)=>{
         const ae=entry[area]||{repeat:"",improve:"",action:"",score:0};
-        const areaChart=smScoreChart(area);
+        const areaChart=''; // removed for cleaner UI
         h+=`<div class="sm-area" style="animation-delay:${ai*30}ms">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
             <div style="display:flex;align-items:center;gap:8px">
               <span style="font-size:12.5px;font-weight:600">${esc(area)}</span>
-              ${areaChart?`<div style="opacity:.7">${areaChart}</div>`:''}
+              
             </div>
             <div style="display:flex;gap:2px">`;
         for(let s=1;s<=10;s++){
@@ -1321,7 +1324,7 @@ function renderDiary(){
   // ── INSIGHTS ──
     // Contribution graph
   if(hideMap['sm-contrib']){h+=smSectionToggle('sm-contrib','365-Day Activity');}
-  else{h+='<div class="card" style="padding:12px;margin-bottom:12px;overflow-x:auto"><div style="display:flex;align-items:center;font-size:11px;font-weight:700;color:var(--text-mid);margin-bottom:6px">365-Day Activity'+smHideBtn('sm-contrib')+'</div>'+smContributionGraph()+'</div>';}
+  else{h+='<div class="card" style="padding:12px;margin-bottom:12px;overflow-x:auto"><div style="display:flex;align-items:center;font-size:11px;font-weight:700;color:var(--text-mid);margin-bottom:6px">Activity'+smHideBtn('sm-contrib')+'</div>'+smContributionGraph()+'</div>';}
   
   // Photo
   if(!hideMap['sm-photo']){
@@ -2812,6 +2815,7 @@ function renderActions(s) {
   if (state.fProj!=="All") filtered = filtered.filter(a=>a.project===state.fProj);
   if (state.fOwner!=="All") filtered = filtered.filter(a=>a.owner.includes(state.fOwner));
   if (state.fPrio) filtered = filtered.filter(a=>a.priority);
+  if (state.fDate) { if(state.fDate==="today") filtered=filtered.filter(a=>a.createdAt===todayISO()); else if(state.fDate==="week"){const w=new Date();w.setDate(w.getDate()-7);const ws=w.toISOString().slice(0,10);filtered=filtered.filter(a=>a.createdAt>=ws);} else filtered=filtered.filter(a=>a.createdAt===state.fDate); }
   if (state.search) { const q=state.search.toLowerCase(); filtered=filtered.filter(a=>(a.action+a.num+a.owner).toLowerCase().includes(q)); }
 
   let h = quickAdd() + `<div class="fade-in"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -2829,6 +2833,11 @@ function renderActions(s) {
       <select class="select" onchange="state.fOwner=this.value;render()">
         <option value="All" ${state.fOwner==="All"?"selected":""}>All owners</option>
         ${getOwners().map(o=>`<option ${state.fOwner===o?"selected":""}>${esc(o)}</option>`).join("")}</select>
+      <select class="select" onchange="state.fDate=this.value;render()">
+        <option value="" ${!state.fDate?"selected":""}>All dates</option>
+        <option value="today" ${state.fDate==="today"?"selected":""}>Added today</option>
+        <option value="week" ${state.fDate==="week"?"selected":""}>This week</option>
+      </select>
     </div>${bulkBar()}`;
 
   // Store filtered IDs for select-all
@@ -3158,7 +3167,14 @@ function openEdit(id) {
       <label style="font-size:10.5px;font-weight:600;color:#5A6578">Status <select class="select" style="width:100%;margin-top:2px" onchange="patch('${a.id}',{status:this.value})">${STATUSES.map(s=>`<option ${s===a.status?'selected':''}>${s}</option>`).join("")}</select></label>
       <label style="font-size:10.5px;font-weight:600;color:#5A6578;grid-column:1/-1">Measurable outcome <input class="input" style="width:100%;margin-top:2px" value="${esc(a.measurable||'')}" onchange="patch('${a.id}',{measurable:this.value})"></label>
       <label style="font-size:10.5px;font-weight:600;color:#5A6578">Project <select class="select" style="width:100%;margin-top:2px" onchange="patch('${a.id}',{project:this.value,subproject:''})">${projs.map(p=>`<option ${p===a.project?'selected':''}>${esc(p)}</option>`).join("")}</select></label>
-      <label style="font-size:10.5px;font-weight:600;color:#5A6578">Sub-project <select class="select" style="width:100%;margin-top:2px" onchange="patch('${a.id}',{subproject:this.value})"><option value="">(none)</option>${subs.map(s=>`<option value="${esc(s)}" ${s===a.subproject?'selected':''}>${"\u00A0".repeat(subDepth(s)*2)+subLabel(s)}</option>`).join("")}</select></label>
+      <label style="font-size:10.5px;font-weight:600;color:#5A6578">Sub-project
+        <div style="display:flex;gap:4px;margin-top:2px">
+          <select class="select" style="flex:1" onchange="if(this.value==='__new__'){var n=prompt('New sub-project name:');if(n){if(!state.subProjects[a.project])state.subProjects[a.project]=[];state.subProjects[a.project].push(n);patch('${a.id}',{subproject:n});this.closest('.modal-overlay').remove();openEdit('${a.id}');}else{this.value='${esc(a.subproject)}';}return;}patch('${a.id}',{subproject:this.value})">
+            <option value="">(none)</option>
+            ${subs.map(s=>`<option value="${esc(s)}" ${s===a.subproject?'selected':''}>${"\u00A0".repeat(subDepth(s)*2)+subLabel(s)}</option>`).join("")}
+            <option value="__new__">+ New sub-project...</option>
+          </select>
+        </div></label>
       <div style="grid-column:1/-1"><div style="font-size:10.5px;font-weight:600;color:#5A6578;margin-bottom:4px">Notes</div>
         ${(a.notesLog||[]).length?`<div style="max-height:120px;overflow:auto;margin-bottom:6px;border:1px solid var(--border);border-radius:6px;padding:6px">${(a.notesLog||[]).map(n=>`<div style="font-size:11px;padding:3px 0;border-bottom:1px solid var(--border);display:flex;gap:8px"><span style="color:var(--text-light);font-size:10px;white-space:nowrap">${fmtDate(n.d)}</span><span>${esc(n.t)}</span></div>`).join("")}</div>`:""}
         <div style="display:flex;gap:4px"><input class="input" id="note-inp" style="flex:1" placeholder="Add a note..." onkeydown="if(event.key==='Enter'){addNote('${a.id}',this.value);this.closest('.modal-overlay').remove();openEdit('${a.id}');}"><button class="btn btn-primary" style="padding:5px 10px;font-size:11px" onclick="addNote('${a.id}',document.getElementById('note-inp').value);this.closest('.modal-overlay').remove();openEdit('${a.id}');">Add</button></div></div>
@@ -3179,25 +3195,123 @@ function openEdit(id) {
   document.body.appendChild(m);
 }
 
-function openAddModal() {
+function openAddModal(defaultProj) {
   const projs = getProjects();
+  const selProj = defaultProj || projs[0] || '';
+  const subs = getSubs(selProj);
+  const owners = getOwners();
   const m = document.createElement("div");
   m.className = "modal-overlay";
   m.onclick = e => { if(e.target===m) m.remove(); };
-  m.innerHTML = `<div class="modal">
-    <h3 style="font-size:15px;font-weight:700;margin-bottom:12px">Add Action</h3>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <label style="font-size:10.5px;font-weight:600;color:#5A6578"># <input class="input" id="add-num" style="width:100%;margin-top:2px"></label>
-      <label style="font-size:10.5px;font-weight:600;color:#5A6578">Owner <input class="input" id="add-owner" style="width:100%;margin-top:2px"></label>
-      <label style="font-size:10.5px;font-weight:600;color:#5A6578;grid-column:1/-1">Action <input class="input" id="add-action" style="width:100%;margin-top:2px"></label>
-      <label style="font-size:10.5px;font-weight:600;color:#5A6578">Due <input type="date" class="input" id="add-due" style="width:100%;margin-top:2px"></label>
-      <label style="font-size:10.5px;font-weight:600;color:#5A6578">Project <select class="select" id="add-proj" style="width:100%;margin-top:2px">${projs.map(p=>`<option>${esc(p)}</option>`).join("")}</select></label>
+  m.innerHTML = `<div class="modal" style="max-width:480px">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:16px">New action</h3>
+    
+    <div style="margin-bottom:12px">
+      <label style="font-size:10px;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.05em">Action</label>
+      <input class="input" id="add-action" style="width:100%;margin-top:4px;font-size:14px;padding:10px 12px" placeholder="What needs to be done?" autofocus>
     </div>
-    <div style="display:flex;gap:6px;margin-top:14px;justify-content:flex-end">
+    
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div>
+        <label style="font-size:10px;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.05em">Project</label>
+        <select class="select" id="add-proj" style="width:100%;margin-top:4px;padding:8px" onchange="var sp=document.getElementById('add-sub');var np=document.getElementById('add-newproj');if(this.value==='__new__'){np.style.display='block';sp.parentElement.style.display='none';}else{np.style.display='none';sp.parentElement.style.display='block';sp.innerHTML='<option value=\"\">(none)</option>'+getSubs(this.value).map(s=>'<option value=\"'+s+'\">'+subLabel(s)+'</option>').join('')+'<option value=\"__new__\">+ New sub-project</option>';}">
+          ${projs.map(p=>`<option ${p===selProj?'selected':''}>${esc(p)}</option>`).join("")}
+          <option value="__new__">+ New project</option>
+        </select>
+        <input class="input" id="add-newproj" style="width:100%;margin-top:4px;display:none" placeholder="New project name">
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.05em">Sub-project</label>
+        <select class="select" id="add-sub" style="width:100%;margin-top:4px;padding:8px">
+          <option value="">(none)</option>
+          ${subs.map(s=>`<option value="${esc(s)}">${subLabel(s)}</option>`).join("")}
+          <option value="__new__">+ New sub-project</option>
+        </select>
+      </div>
+    </div>
+    
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div>
+        <label style="font-size:10px;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.05em">Owner</label>
+        <input class="input" id="add-owner" list="owner-list" style="width:100%;margin-top:4px;padding:8px" placeholder="Who?" value="Faysal">
+        <datalist id="owner-list">${owners.map(o=>`<option value="${esc(o)}">`).join('')}</datalist>
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.05em">Due date</label>
+        <input type="date" class="input" id="add-due" style="width:100%;margin-top:4px;padding:8px">
+      </div>
+    </div>
+    
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+      <div>
+        <label style="font-size:10px;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.05em">Status</label>
+        <select class="select" id="add-status" style="width:100%;margin-top:4px;padding:8px">
+          ${STATUSES.map(s=>`<option ${s==='Open'?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.05em">Recurrence</label>
+        <select class="select" id="add-recur" style="width:100%;margin-top:4px;padding:8px">
+          <option value="">None</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.05em">#</label>
+        <input class="input" id="add-num" style="width:100%;margin-top:4px;padding:8px" placeholder="e.g. 14.1">
+      </div>
+    </div>
+    
+    <div style="margin-bottom:14px">
+      <label style="font-size:10px;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.05em">Measurable outcome</label>
+      <input class="input" id="add-measurable" style="width:100%;margin-top:4px;padding:8px" placeholder="How do we know it's done?">
+    </div>
+    
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-mid);cursor:pointer">
+        <input type="checkbox" id="add-prio"> Priority
+      </label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-mid);cursor:pointer">
+        <input type="checkbox" id="add-today"> Today focus
+      </label>
+    </div>
+    
+    <div style="display:flex;gap:6px;justify-content:flex-end;border-top:1px solid var(--border);padding-top:14px">
       <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-      <button class="btn btn-primary" onclick="addAction({num:document.getElementById('add-num').value,action:document.getElementById('add-action').value,owner:document.getElementById('add-owner').value,due:document.getElementById('add-due').value,project:document.getElementById('add-proj').value,status:'Open'});this.closest('.modal-overlay').remove()">Add</button>
-    </div></div>`;
+      <button class="btn btn-primary" style="padding:8px 20px" onclick="submitNewAction(this)">Add action</button>
+    </div>
+  </div>`;
   document.body.appendChild(m);
+  setTimeout(()=>document.getElementById('add-action')?.focus(),50);
+}
+
+function submitNewAction(btn){
+  const action=document.getElementById('add-action').value.trim();
+  if(!action){toast('Action cannot be empty');return;}
+  let proj=document.getElementById('add-proj').value;
+  if(proj==='__new__'){
+    proj=document.getElementById('add-newproj').value.trim();
+    if(!proj){toast('Enter project name');return;}
+  }
+  let sub=document.getElementById('add-sub').value;
+  if(sub==='__new__'){
+    sub=prompt('New sub-project name:');
+    if(sub){if(!state.subProjects[proj])state.subProjects[proj]=[];state.subProjects[proj].push(sub);}
+    else sub='';
+  }
+  addAction({
+    num:document.getElementById('add-num').value,
+    action:action,
+    owner:document.getElementById('add-owner').value||'Me',
+    due:document.getElementById('add-due').value,
+    project:proj,
+    subproject:sub||'',
+    status:document.getElementById('add-status').value,
+    measurable:document.getElementById('add-measurable').value,
+    priority:document.getElementById('add-prio').checked,
+    todayFocus:document.getElementById('add-today').checked,
+    recur:document.getElementById('add-recur').value||''
+  });
+  btn.closest('.modal-overlay').remove();
 }
 
 // ═══════════════════════════════════════
