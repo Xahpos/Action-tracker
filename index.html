@@ -548,7 +548,7 @@ function loadState() {
 // EXPORT / IMPORT
 // ═══════════════════════════════════════
 function exportJSON() {
-  const d = JSON.stringify({actions:state.actions,meetings:state.meetings,archived:state.archived,subProjects:state.subProjects,milestones:state.milestones}, null, 2);
+  const d = JSON.stringify({actions:state.actions,meetings:state.meetings,archived:state.archived,subProjects:state.subProjects,milestones:state.milestones,diary:state.diary}, null, 2);
   const blob = new Blob([d], {type:"application/json"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -797,10 +797,10 @@ function openAddInProject(proj){
 // Password-locked personal development diary with Repeat/Improve/Action/Score per area
 
 const SM_PILLARS = [
-  {name:"Self Discipline/Grit",color:"#EF4444",areas:["Effort","Consistency","Self respect (delayed gratification)"]},
-  {name:"Core Competencies",color:"#4A7BF7",areas:["Focus/Attention","Communication","Planning & Productivity","Structured problem solving","Emotional Stability/Stoicism","Learning how to learn"]},
-  {name:"Habits",color:"#10B981",areas:["Prayer","Weightlifting","Cardio","Intermittent fasting","Self Map"]},
-  {name:"Circle of influence",color:"#D946EF",areas:["Wife","Family","Friends"]},
+  {name:"Self Discipline/Grit",color:"#CF6F6F",areas:["Effort","Consistency","Self respect (delayed gratification)"]},
+  {name:"Core Competencies",color:"#5B8DEF",areas:["Focus/Attention","Communication","Planning & Productivity","Structured problem solving","Emotional Stability/Stoicism","Learning how to learn"]},
+  {name:"Habits",color:"#5A9E7E",areas:["Prayer","Weightlifting","Cardio","Intermittent fasting","Self Map"]},
+  {name:"Circle of influence",color:"#9B8ADE",areas:["Wife","Family","Friends"]},
 ];
 const SM_ALL_AREAS = SM_PILLARS.flatMap(p=>p.areas);
 function smPillarOf(area){return SM_PILLARS.find(p=>p.areas.includes(area));}
@@ -902,46 +902,94 @@ function smAvgScores(date){
 }
 
 // ── SELF MAP CHARTS ──
-function smRadarChart(pillarAvg, size){
-  const cx=size/2, cy=size/2, r=size/2-20;
-  const pillars=SM_PILLARS;
-  const n=pillars.length;
+function smRadarChart(pillarAvg, size, td){
+  // Full 17-area radar with pillar color coding + historical average overlay
+  const areas=SM_ALL_AREAS;
+  const n=areas.length;
+  const cx=size/2, cy=size/2, r=size/2-30;
   const angleStep=2*Math.PI/n;
-  // Grid
-  let svg=`<svg width="${size}" height="${size}" class="radar-svg" viewBox="0 0 ${size} ${size}">`;
-  // Background rings
+  const entry=td?smEntry(td):{};
+
+  // Compute historical averages per area
+  const filled=smFilledDates();
+  const histAvg={};
+  areas.forEach(area=>{
+    const scores=[];
+    filled.forEach(d=>{const e=state.diary.entries[d];if(e&&e[area]&&e[area].score)scores.push(e[area].score);});
+    histAvg[area]=scores.length?scores.reduce((a,b)=>a+b,0)/scores.length:0;
+  });
+
+  let svg=`<svg width="${size}" height="${size}" class="radar-svg" viewBox="0 0 ${size} ${size}" style="display:block">`;
+
+  // Background rings (5 levels)
   for(let ring=2;ring<=10;ring+=2){
     const rr=r*ring/10;
     let pts='';
     for(let i=0;i<n;i++){const a=angleStep*i-Math.PI/2;pts+=`${cx+rr*Math.cos(a)},${cy+rr*Math.sin(a)} `;}
-    svg+=`<polygon points="${pts}" fill="none" stroke="var(--border)" stroke-width="0.5" opacity="0.6"/>`;
+    svg+=`<polygon points="${pts}" fill="none" stroke="var(--border-vis)" stroke-width="0.4" opacity="0.5"/>`;
+    if(ring===10) svg+=`<text x="${cx+4}" y="${cy-rr+3}" font-size="6" fill="var(--text-light)" opacity="0.5">10</text>`;
+    if(ring===6) svg+=`<text x="${cx+3}" y="${cy-rr+3}" font-size="6" fill="var(--text-light)" opacity="0.5">6</text>`;
   }
-  // Axis lines + labels
+
+  // Axis lines + labels (colored by pillar)
   for(let i=0;i<n;i++){
     const a=angleStep*i-Math.PI/2;
+    const pillar=smPillarOf(areas[i]);
+    const col=pillar?pillar.color:'var(--text-light)';
     const x2=cx+r*Math.cos(a), y2=cy+r*Math.sin(a);
-    svg+=`<line x1="${cx}" y1="${cy}" x2="${x2}" y2="${y2}" stroke="var(--border)" stroke-width="0.5"/>`;
-    const lx=cx+(r+14)*Math.cos(a), ly=cy+(r+14)*Math.sin(a);
-    const short=pillars[i].name.length>12?pillars[i].name.slice(0,10)+'..':pillars[i].name;
-    svg+=`<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="middle" font-size="7" font-weight="600" fill="var(--text-mid)">${short}</text>`;
+    svg+=`<line x1="${cx}" y1="${cy}" x2="${x2}" y2="${y2}" stroke="var(--border)" stroke-width="0.3"/>`;
+    const lx=cx+(r+18)*Math.cos(a), ly=cy+(r+18)*Math.sin(a);
+    const short=areas[i].length>14?areas[i].slice(0,12)+'..':areas[i];
+    const anchor=lx<cx-10?'end':lx>cx+10?'start':'middle';
+    svg+=`<text x="${lx}" y="${ly}" text-anchor="${anchor}" dominant-baseline="middle" font-size="6.5" font-weight="500" fill="${col}" opacity="0.7">${short}</text>`;
   }
-  // Data polygon
-  let pts='';
+
+  // Historical average polygon (ghost layer)
+  let histPts='';
+  let hasHist=false;
   for(let i=0;i<n;i++){
-    const val=pillarAvg[pillars[i].name]||0;
+    const val=histAvg[areas[i]]||0;
+    if(val>0) hasHist=true;
     const a=angleStep*i-Math.PI/2;
     const rr=r*val/10;
-    pts+=`${cx+rr*Math.cos(a)},${cy+rr*Math.sin(a)} `;
+    histPts+=`${cx+rr*Math.cos(a)},${cy+rr*Math.sin(a)} `;
   }
-  svg+=`<polygon points="${pts}" fill="var(--accent)" fill-opacity="0.15" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>`;
-  // Data dots
+  if(hasHist){
+    svg+=`<polygon points="${histPts}" fill="var(--text-light)" fill-opacity="0.06" stroke="var(--text-light)" stroke-width="1" stroke-dasharray="3,3" stroke-linejoin="round" opacity="0.5"/>`;
+  }
+
+  // Today's data polygon
+  let todayPts='';
+  let hasToday=false;
   for(let i=0;i<n;i++){
-    const val=pillarAvg[pillars[i].name]||0;
+    const ae=entry[areas[i]];
+    const val=ae?ae.score||0:0;
+    if(val>0) hasToday=true;
+    const a=angleStep*i-Math.PI/2;
+    const rr=r*val/10;
+    todayPts+=`${cx+rr*Math.cos(a)},${cy+rr*Math.sin(a)} `;
+  }
+  if(hasToday){
+    svg+=`<polygon points="${todayPts}" fill="var(--accent)" fill-opacity="0.1" stroke="var(--accent)" stroke-width="1.5" stroke-linejoin="round"/>`;
+  }
+
+  // Data dots for today (colored by pillar)
+  for(let i=0;i<n;i++){
+    const ae=entry[areas[i]];
+    const val=ae?ae.score||0:0;
+    if(val<=0) continue;
+    const pillar=smPillarOf(areas[i]);
+    const col=pillar?pillar.color:'var(--accent)';
     const a=angleStep*i-Math.PI/2;
     const rr=r*val/10;
     const dx=cx+rr*Math.cos(a), dy=cy+rr*Math.sin(a);
-    if(val>0) svg+=`<circle cx="${dx}" cy="${dy}" r="3" fill="${pillars[i].color}" stroke="#fff" stroke-width="1.5"/>`;
+    svg+=`<circle cx="${dx}" cy="${dy}" r="2.5" fill="${col}" stroke="var(--card-solid)" stroke-width="1"/>`;
   }
+
+  // Legend
+  svg+=`<text x="${size-4}" y="${size-14}" text-anchor="end" font-size="6" fill="var(--text-light)" opacity="0.5">\u2014 today</text>`;
+  if(hasHist) svg+=`<text x="${size-4}" y="${size-6}" text-anchor="end" font-size="6" fill="var(--text-light)" opacity="0.4">- - avg</text>`;
+
   svg+=`</svg>`;
   return svg;
 }
@@ -1110,8 +1158,8 @@ function renderDiary(){
   
   // Radar chart (only if scores exist for today)
   if(hasScores){
-    h+=`<div class="card" style="padding:12px;display:flex;align-items:center;justify-content:center">
-      ${smRadarChart(pillarAvg, 180)}
+    h+=`<div class="card" style="padding:16px;display:flex;align-items:center;justify-content:center">
+      ${smRadarChart(pillarAvg, 280, td)}
     </div>`;
   }
 
@@ -1194,6 +1242,33 @@ function renderDiary(){
   // Report + digest buttons
   h+='<div style="display:flex;gap:6px;margin-bottom:12px"><button class="btn btn-default" style="font-size:10px;padding:6px 12px" onclick="generateMonthlyReport()">Monthly Report</button><button class="btn btn-default" style="font-size:10px;padding:6px 12px" onclick="emailDigest()">Email Digest</button></div>';
 
+  // 7 Habits lens
+  const habits7map=[
+    {habit:'1. Be Proactive',areas:['Effort','Consistency','Self respect (delayed gratification)'],principle:'Focus on what you can control'},
+    {habit:'2. End in Mind',areas:['Planning & Productivity','Self Map'],principle:'Define your mission'},
+    {habit:'3. First Things First',areas:['Focus/Attention','Planning & Productivity'],principle:'Do what matters, not what\'s urgent'},
+    {habit:'4. Win-Win',areas:['Communication','Wife','Family','Friends'],principle:'Mutual benefit in all relationships'},
+    {habit:'5. Understand First',areas:['Communication','Emotional Stability/Stoicism'],principle:'Listen before you speak'},
+    {habit:'6. Synergize',areas:['Wife','Family','Friends'],principle:'The whole is greater than parts'},
+    {habit:'7. Sharpen the Saw',areas:['Prayer','Weightlifting','Cardio','Intermittent fasting','Learning how to learn'],principle:'Renew: body, mind, spirit, social'}
+  ];
+  h+=`<div class="card" style="padding:14px;margin-bottom:12px">
+    <div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--text-mid)">7 Habits Lens</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">`;
+  habits7map.forEach(hb=>{
+    const scores=hb.areas.map(a=>{const ae=entry[a];return ae?ae.score||0:0;}).filter(s=>s>0);
+    const avg=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):'-';
+    const pct=avg!=='-'?parseFloat(avg)*10:0;
+    h+=`<div style="padding:6px 8px;border-radius:var(--radius-xs);background:var(--accent-soft);display:flex;align-items:center;gap:8px">
+      <div style="width:28px;height:28px;border-radius:14px;background:var(--card);border:2px solid ${pct>60?'var(--success)':pct>30?'var(--warning)':'var(--border-vis)'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;color:var(--text-mid)">${avg}</div>
+      <div>
+        <div style="font-size:10px;font-weight:600;color:var(--text)">${hb.habit}</div>
+        <div style="font-size:8.5px;color:var(--text-light)">${hb.principle}</div>
+      </div>
+    </div>`;
+  });
+  h+=`</div></div>`;
+
   const daysSinceLast=filled.length?Math.round((new Date()-new Date(filled[filled.length-1]))/864e5):999;
   h+=`<div class="card" style="padding:14px;margin-bottom:12px;border:1px solid #8B5CF620;background:linear-gradient(135deg,#8B5CF606,transparent)">
     <div style="font-size:13px;font-weight:700;color:#8B5CF6;margin-bottom:10px"> Insights</div>
@@ -1213,70 +1288,277 @@ function renderDiary(){
 // FEATURE 1: POMODORO TIMER
 // ═══════════════════════════════════════
 
-// AI COACH
+// AI COACH — Local Analysis Engine (no API needed)
 if(!state.coachHistory) state.coachHistory=[];
-let coachLoading=false;
 
-function coachContext(){
-  const s=getStats();const filled=smFilledDates();
-  let ctx="ACTIONS: "+s.total+" total, "+s.done+" done, "+s.overdue+" overdue, "+s.prio+" priority\n";
-  ctx+="Projects: "+getProjects().join(", ")+"\n";
-  const od=state.actions.filter(a=>isOverdue(a.due,a.status)).slice(0,5);
-  if(od.length){ctx+="Overdue: ";od.forEach(a=>ctx+=a.action.slice(0,40)+" ("+a.owner+"); ");ctx+="\n";}
-  ctx+="SELF MAP: "+filled.length+" entries, latest: "+(filled[filled.length-1]||"none")+"\n";
-  const latest=filled[filled.length-1];
-  if(latest){const e=state.diary.entries[latest];SM_ALL_AREAS.forEach(a=>{const ae=e[a];if(ae&&ae.score)ctx+=a+": "+ae.score+"/10 ";});}
-  return ctx;
+function coachAnalyze(type){
+  const s=getStats();
+  const filled=smFilledDates();
+  const td=todayISO();
+  const thisWeek=filled.filter(d=>{const diff=(new Date(td)-new Date(d))/864e5;return diff>=0&&diff<7;});
+  let streak=0;const d=new Date();
+  for(let i=0;i<365;i++){const ds=d.toISOString().slice(0,10);if(filled.includes(ds))streak++;else if(i>0)break;d.setDate(d.getDate()-1);}
+  
+  // Compute per-area averages
+  const areaAvg={};
+  SM_ALL_AREAS.forEach(area=>{
+    const scores=[];
+    filled.forEach(d=>{const e=state.diary.entries[d];if(e&&e[area]&&e[area].score)scores.push(e[area].score);});
+    areaAvg[area]=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):'-';
+  });
+  
+  const overdue=state.actions.filter(a=>isOverdue(a.due,a.status));
+  const todayFocus=state.actions.filter(a=>a.todayFocus&&a.status!=='Done');
+  
+  // 7 Habits mapping
+  const habits7={
+    'Be Proactive':['Effort','Consistency','Self respect (delayed gratification)'],
+    'Begin with End in Mind':['Planning & Productivity','Self Map'],
+    'Put First Things First':['Focus/Attention','Planning & Productivity'],
+    'Think Win-Win':['Communication','Wife','Family','Friends'],
+    'Seek to Understand':['Communication','Emotional Stability/Stoicism'],
+    'Synergize':['Wife','Family','Friends','Communication'],
+    'Sharpen the Saw':['Prayer','Weightlifting','Cardio','Intermittent fasting','Learning how to learn']
+  };
+  
+  let msg='';
+  
+  if(type==='focus'){
+    msg='<b>Today\'s Focus Analysis</b>\n\n';
+    if(todayFocus.length) msg+='Your focus items:\n'+todayFocus.slice(0,5).map(a=>'  '+a.action.slice(0,50)+' ('+a.owner+')').join('\n');
+    else msg+='No items marked as Today Focus. Go to Actions, star a few priorities.';
+    msg+='\n\n';
+    if(overdue.length) msg+='<b style="color:var(--danger)">'+overdue.length+' overdue</b> — consider: close what\'s stale, reschedule what\'s real, delegate what\'s not yours.';
+    msg+='\n\nHabit 3 reminder: Put First Things First. Ask: \"What is the ONE thing that, if done today, makes everything else easier?\"';
+  }
+  
+  else if(type==='selfmap'){
+    msg='<b>Self Map Pattern Analysis</b> ('+filled.length+' entries)\n\n';
+    // Find weakest and strongest areas
+    const ranked=SM_ALL_AREAS.filter(a=>areaAvg[a]!=='-').sort((a,b)=>parseFloat(areaAvg[a])-parseFloat(areaAvg[b]));
+    if(ranked.length>=4){
+      msg+='<b>Weakest areas:</b>\n';
+      ranked.slice(0,3).forEach(a=>msg+='  '+a+': '+areaAvg[a]+'/10\n');
+      msg+='\n<b>Strongest areas:</b>\n';
+      ranked.slice(-3).reverse().forEach(a=>msg+='  '+a+': '+areaAvg[a]+'/10\n');
+    }
+    msg+='\n<b>Streak:</b> '+streak+' days (record: 34)\nSelf Map entries this week: '+thisWeek.length+'/7';
+    msg+='\n\nHabit 7 — Sharpen the Saw: Balance across Physical (exercise), Spiritual (prayer), Mental (learning), Social (relationships). Your data shows where the imbalance is.';
+  }
+  
+  else if(type==='overdue'){
+    msg='<b>Overdue Review</b> — '+overdue.length+' items\n\n';
+    if(!overdue.length){msg+='Clean slate. Nothing overdue.';return msg;}
+    const byProj={};overdue.forEach(a=>{if(!byProj[a.project])byProj[a.project]=[];byProj[a.project].push(a);});
+    Object.entries(byProj).forEach(([p,items])=>{
+      msg+='<b>'+p+'</b> ('+items.length+'):\n';
+      items.slice(0,4).forEach(a=>msg+='  '+a.action.slice(0,45)+' — '+a.owner+(a.due?' (due '+a.due+')':'')+' \n');
+      if(items.length>4) msg+='  ...+'+(items.length-4)+' more\n';
+      msg+='\n';
+    });
+    msg+='Ask for each: Is this still relevant? Can someone else own it? What\'s the real next physical action?';
+  }
+  
+  else if(type==='patterns'){
+    msg='<b>Recurring Patterns</b> (from '+filled.length+' entries)\n\n';
+    // Search for common themes
+    const themes={};
+    ['anger','phone','prayer','focus','wife','planning','morning','sleep','gym','fasting','discipline','consistency'].forEach(term=>{
+      const matches=smSearch(term);
+      if(matches.length>=3) themes[term]=matches.length;
+    });
+    if(Object.keys(themes).length){
+      msg+='Themes that appear 3+ times in your journal:\n';
+      Object.entries(themes).sort((a,b)=>b[1]-a[1]).forEach(([t,n])=>{msg+='  "'+t+'" — '+n+' entries\n';});
+      msg+='\nThese are your loops. Habit 1 — Be Proactive: You can\'t control the stimulus, but you own the response.';
+    } else {
+      msg+='Not enough journal text to detect patterns. Keep writing in the Repeat/Improve/Action fields.';
+    }
+  }
+  
+  else if(type==='7habits'){
+    msg='<b>7 Habits Assessment</b>\n\n';
+    Object.entries(habits7).forEach(([habit,areas])=>{
+      const scores=areas.map(a=>parseFloat(areaAvg[a])||0).filter(s=>s>0);
+      const avg=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):'-';
+      const bar=avg!=='-'?'\u2588'.repeat(Math.round(parseFloat(avg)))+'\u2591'.repeat(10-Math.round(parseFloat(avg))):'\u2591'.repeat(10);
+      msg+='<b>'+habit+'</b> '+avg+'/10 '+bar+'\n';
+      msg+='  Areas: '+areas.join(', ')+'\n\n';
+    });
+    msg+='Habits 1-3 are about <b>Private Victory</b> (independence).\nHabits 4-6 are about <b>Public Victory</b> (interdependence).\nHabit 7 is <b>Renewal</b> — the foundation for everything else.';
+  }
+  
+  else if(type==='honest'){
+    msg='<b>Honest Assessment</b>\n\n';
+    const pct=s.total?Math.round(s.done/s.total*100):0;
+    msg+='Actions: '+s.done+'/'+s.total+' done ('+pct+'%). ';
+    if(pct<15) msg+='That\'s very low. Are you capturing actions you never intend to do?';
+    else if(pct<40) msg+='Below average. Many open items suggest either overcommitment or avoidance.';
+    else msg+='Decent completion rate.';
+    msg+='\n\n';
+    msg+='Self Map: '+filled.length+' entries across '+Math.round((new Date()-new Date(filled[0]||td))/864e5)+' days. ';
+    const fillRate=filled.length?(filled.length/Math.round((new Date()-new Date(filled[0]))/864e5)*100).toFixed(1):0;
+    msg+='Fill rate: '+fillRate+'%.\n';
+    if(streak===0) msg+='\nCurrent streak: 0 days. You\'re not using the Self Map right now.';
+    else if(streak<3) msg+='\nStreak: '+streak+' days. Fragile. The 2-day rule: never miss two days in a row.';
+    else msg+='\nStreak: '+streak+' days. Building momentum. Don\'t break it.';
+    msg+='\n\nHabit 2 — Begin with the End in Mind: What does your ideal week actually look like? If you can\'t describe it, you can\'t build it.';
+  }
+  
+  return msg;
 }
 
-async function coachAsk(userMsg){
-  if(coachLoading)return;
-  coachLoading=true;
-  if(userMsg)state.coachHistory.push({role:"user",content:userMsg});
-  render();
-  try{
-    const resp=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,
-        system:"You are a productivity coach. User data:\n"+coachContext()+"\nBe direct, concise, reference actual data.",
-        messages:state.coachHistory.map(m=>({role:m.role,content:m.content}))})});
-    const data=await resp.json();
-    const txt=data.content?.filter(b=>b.type==="text").map(b=>b.text).join("\n")||"No response.";
-    state.coachHistory.push({role:"assistant",content:txt});
-  }catch(e){state.coachHistory.push({role:"assistant",content:"Error: "+e.message});}
-  coachLoading=false;render();
+
+// Generate prompt for Claude chat
+function generatePrompt(type){
+  const s=getStats();
+  const filled=smFilledDates();
+  const td=todayISO();
+  const overdue=state.actions.filter(a=>isOverdue(a.due,a.status));
+  const todayFocus=state.actions.filter(a=>a.todayFocus&&a.status!=='Done');
+  
+  // Compute area averages
+  const areaAvg={};
+  SM_ALL_AREAS.forEach(area=>{
+    const scores=[];
+    filled.forEach(d=>{const e=state.diary.entries[d];if(e&&e[area]&&e[area].score)scores.push(e[area].score);});
+    areaAvg[area]=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):'-';
+  });
+  
+  // 7 Habits scores
+  const habits7=[
+    {habit:'Be Proactive',areas:['Effort','Consistency','Self respect (delayed gratification)']},
+    {habit:'Begin with End in Mind',areas:['Planning & Productivity','Self Map']},
+    {habit:'Put First Things First',areas:['Focus/Attention','Planning & Productivity']},
+    {habit:'Think Win-Win',areas:['Communication','Wife','Family','Friends']},
+    {habit:'Seek to Understand',areas:['Communication','Emotional Stability/Stoicism']},
+    {habit:'Synergize',areas:['Wife','Family','Friends','Communication']},
+    {habit:'Sharpen the Saw',areas:['Prayer','Weightlifting','Cardio','Intermittent fasting','Learning how to learn']}
+  ];
+  
+  let prompt='I use a personal development app with an Action Tracker and a Self Map journal. Here is my data:\n\n';
+  
+  prompt+='ACTION TRACKER: '+s.total+' actions, '+s.done+' done ('+Math.round(s.done/Math.max(s.total,1)*100)+'%), '+overdue.length+' overdue, '+s.prio+' priority\n';
+  prompt+='Projects: '+getProjects().join(', ')+'\n\n';
+  
+  prompt+='SELF MAP: '+filled.length+' diary entries from '+(filled[0]||'none')+' to '+(filled[filled.length-1]||'none')+'\n';
+  prompt+='Area averages (from all entries):\n';
+  SM_PILLARS.forEach(p=>{
+    prompt+=p.name+': ';
+    p.areas.forEach(a=>prompt+=a+'='+areaAvg[a]+' ');
+    prompt+='\n';
+  });
+  
+  prompt+='\n7 HABITS SCORES:\n';
+  habits7.forEach(hb=>{
+    const scores=hb.areas.map(a=>parseFloat(areaAvg[a])||0).filter(x=>x>0);
+    const avg=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):'-';
+    prompt+=hb.habit+': '+avg+'/10\n';
+  });
+  
+  if(type==='focus'){
+    prompt+='\nTODAY FOCUS: ';
+    if(todayFocus.length) prompt+=todayFocus.map(a=>a.action.slice(0,50)+' ('+a.owner+')').join('; ');
+    else prompt+='No items marked as today focus.';
+    prompt+='\nOverdue: '+overdue.slice(0,8).map(a=>a.action.slice(0,40)+' ('+a.owner+', due '+a.due+')').join('; ');
+    prompt+='\n\nBased on this data, what should I focus on today? Reference the 7 Habits. Be direct and specific.';
+  }
+  else if(type==='selfmap'){
+    // Add latest entry
+    const latest=filled[filled.length-1];
+    if(latest){
+      const e=state.diary.entries[latest];
+      prompt+='\nLATEST ENTRY ('+latest+'):\n';
+      SM_ALL_AREAS.forEach(a=>{const ae=e[a];if(ae&&(ae.score||ae.repeat||ae.improve||ae.action)){
+        prompt+=a+': score='+ae.score;
+        if(ae.repeat) prompt+=' | repeat: '+ae.repeat.slice(0,60);
+        if(ae.improve) prompt+=' | improve: '+ae.improve.slice(0,60);
+        if(ae.action) prompt+=' | action: '+ae.action.slice(0,60);
+        prompt+='\n';
+      }});
+    }
+    prompt+='\nAnalyze my Self Map patterns. What areas am I consistently weak in? What is improving? Map to the 7 Habits framework and give me 3 specific actions.';
+  }
+  else if(type==='overdue'){
+    prompt+='\nOVERDUE ACTIONS ('+overdue.length+'):\n';
+    overdue.slice(0,15).forEach(a=>prompt+=a.action.slice(0,50)+' | '+a.owner+' | due: '+a.due+' | project: '+a.project+'\n');
+    prompt+='\nReview these overdue items. For each: should I close it, delegate it, reschedule it, or do it today? Be ruthless. Reference Habit 3 (Put First Things First).';
+  }
+  else if(type==='patterns'){
+    prompt+='\nRECURRING THEMES FROM JOURNAL:\n';
+    ['anger','phone','prayer','focus','wife','planning','morning','discipline','consistency','sleep','gym'].forEach(term=>{
+      const matches=smSearch(term);
+      if(matches.length>=2) prompt+='"'+term+'": appears in '+matches.length+' entries\n';
+    });
+    prompt+='\nWhat patterns do you see? What are my deepest recurring struggles? How do I break these loops using the 7 Habits? Be brutally honest.';
+  }
+  else if(type==='7habits'){
+    prompt+='\nGive me a thorough 7 Habits assessment based on my data above. For each habit, tell me: what I am doing well, where I am failing, and one concrete next action. End with which habit I should focus on this week and why.';
+  }
+  else if(type==='honest'){
+    prompt+='\nGive me a brutally honest productivity assessment. Am I making real progress or just building systems and planning? What does my data actually show about my behavior vs my intentions? Don\'t be nice. Reference specific numbers.';
+  }
+  
+  return prompt;
+}
+
+function copyPrompt(type){
+  const prompt=generatePrompt(type);
+  navigator.clipboard.writeText(prompt).then(()=>{
+    toast('Copied to clipboard — paste into Claude chat');
+  }).catch(()=>{
+    // Fallback
+    const ta=document.createElement('textarea');
+    ta.value=prompt;document.body.appendChild(ta);
+    ta.select();document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('Copied to clipboard');
+  });
 }
 
 function renderCoach(){
   let h=`<div class="fade-in">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-    <div><h1 style="margin-bottom:2px">AI Coach</h1><p style="font-size:11px;color:var(--text-light)">Claude analyzes your data</p></div>
+    <div><h1 style="margin-bottom:2px">AI Coach</h1><p style="font-size:11px;color:var(--text-light)">Analyzes your data locally — no API needed</p></div>
     <button class="btn btn-ghost" style="font-size:10px" onclick="state.coachHistory=[];render()">Clear</button>
   </div>
   <div class="coach-quick">
-    <button onclick="coachAsk('What should I focus on today?')">Today\'s focus</button>
-    <button onclick="coachAsk('Analyze my Self Map patterns and trends')">Self Map analysis</button>
-    <button onclick="coachAsk('Review my overdue actions')">Overdue review</button>
-    <button onclick="coachAsk('What are my recurring patterns and how to break them?')">Pattern breaker</button>
-    <button onclick="coachAsk('Give me a brutally honest review')">Honest review</button>
+    <button onclick="state.coachHistory.push({role:'user',content:'Today\'s focus'},{role:'assistant',content:coachAnalyze('focus')});render()">Today\'s focus</button>
+    <button onclick="state.coachHistory.push({role:'user',content:'Self Map analysis'},{role:'assistant',content:coachAnalyze('selfmap')});render()">Self Map analysis</button>
+    <button onclick="state.coachHistory.push({role:'user',content:'Overdue review'},{role:'assistant',content:coachAnalyze('overdue')});render()">Overdue review</button>
+    <button onclick="state.coachHistory.push({role:'user',content:'Pattern search'},{role:'assistant',content:coachAnalyze('patterns')});render()">Patterns</button>
+    <button onclick="state.coachHistory.push({role:'user',content:'7 Habits assessment'},{role:'assistant',content:coachAnalyze('7habits')});render()">7 Habits</button>
+    <button onclick="state.coachHistory.push({role:'user',content:'Honest review'},{role:'assistant',content:coachAnalyze('honest')});render()">Honest review</button>
+  </div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;padding-top:8px;border-top:1px solid var(--border)">
+    <span style="font-size:10px;color:var(--text-light);display:flex;align-items:center;margin-right:4px">Copy to Claude:</span>
+    <button class="btn btn-default" style="font-size:11px;padding:5px 10px" onclick="copyPrompt('focus')">Focus</button>
+    <button class="btn btn-default" style="font-size:11px;padding:5px 10px" onclick="copyPrompt('selfmap')">Self Map</button>
+    <button class="btn btn-default" style="font-size:11px;padding:5px 10px" onclick="copyPrompt('overdue')">Overdue</button>
+    <button class="btn btn-default" style="font-size:11px;padding:5px 10px" onclick="copyPrompt('patterns')">Patterns</button>
+    <button class="btn btn-default" style="font-size:11px;padding:5px 10px" onclick="copyPrompt('7habits')">7 Habits</button>
+    <button class="btn btn-default" style="font-size:11px;padding:5px 10px" onclick="copyPrompt('honest')">Honest</button>
   </div>
   <div class="coach-chat">`;
   if(!state.coachHistory.length){
-    h+=`<div class="coach-msg ai">I have access to your actions (${getStats().total}) and Self Map (${smFilledDates().length} entries).<br><br><span style='font-size:10px;opacity:.6'>Note: AI Coach works when opened inside Claude.ai artifacts. From GitHub Pages, the API may be blocked by CORS. Use the Claude chat directly for analysis.</span></div>`;
+    h+=`<div class="coach-msg ai">
+      I analyze your ${getStats().total} actions and ${smFilledDates().length} Self Map entries locally. Works offline, anywhere.<br><br>
+      <b style="font-size:11px">Copy to Claude</b> buttons generate a prompt with your data — paste it into any Claude chat for deep AI coaching.
+    </div>`;
   }
   state.coachHistory.forEach(m=>{
-    const cls=m.role==="user"?"user":"ai";
-    let text=esc(m.content).replace(/\n/g,"<br>");
+    const cls=m.role==='user'?'user':'ai';
+    let text=m.content.replace(/\n/g,'<br>');
     h+=`<div class="coach-msg ${cls}">${text}</div>`;
   });
-  if(coachLoading)h+=`<div class="coach-msg ai"><div class="coach-typing"><span></span><span></span><span></span></div></div>`;
-  h+=`</div>
-  <div style="position:sticky;bottom:0;background:var(--bg);padding:8px 0;display:flex;gap:6px">
-    <input class="input" id="coach-input" style="flex:1;padding:10px 14px;font-size:13px;border-radius:20px" placeholder="Ask about your productivity..." onkeydown="if(event.key==='Enter'&&this.value.trim()){coachAsk(this.value.trim());this.value='';}">
-    <button class="btn btn-primary" style="border-radius:20px;padding:10px 18px" onclick="var i=document.getElementById('coach-input');if(i.value.trim()){coachAsk(i.value.trim());i.value='';}">Send</button>
-  </div></div>`;
+  h+=`</div></div>`;
   return h;
 }
 
+
+// ═══════════════════════════════════════
+// FEATURE 1: POMODORO TIMER
+// ═══════════════════════════════════════
 let pomodoroState={running:false,seconds:25*60,mode:'work',actionId:null,interval:null,sessions:0};
 function pomodoroStart(actionId){
   if(pomodoroState.interval)clearInterval(pomodoroState.interval);
@@ -1313,7 +1595,6 @@ function pomodoroWidget(){
   </div>`;
 }
 
-// ═══════════════════════════════════════
 // FEATURE 2: VOICE INPUT
 // ═══════════════════════════════════════
 function startVoiceInput(targetId){
@@ -1322,16 +1603,16 @@ function startVoiceInput(targetId){
   const recog=new SR();
   recog.continuous=false;recog.interimResults=false;recog.lang='en-GB';
   const btn=document.getElementById('voice-btn-'+targetId);
-  if(btn){btn.style.color='var(--danger)';btn.textContent='';}
+  if(btn){btn.style.color='var(--danger)';btn.textContent='\uD83D\uDD34';}
   recog.onresult=e=>{
     const text=e.results[0][0].transcript;
     const el=document.getElementById(targetId);
     if(el){el.value=(el.value?el.value+' ':'')+text;el.dispatchEvent(new Event('blur'));}
-    if(btn){btn.style.color='';btn.textContent='';}
+    if(btn){btn.style.color='';btn.textContent='\uD83C\uDF99';}
     toast('Transcribed!');
   };
-  recog.onerror=e=>{if(btn){btn.style.color='';btn.textContent='';}toast('Voice error: '+e.error);};
-  recog.onend=()=>{if(btn){btn.style.color='';btn.textContent='';}};
+  recog.onerror=e=>{if(btn){btn.style.color='';btn.textContent='\uD83C\uDF99';}toast('Voice error: '+e.error);};
+  recog.onend=()=>{if(btn){btn.style.color='';btn.textContent='\uD83C\uDF99';}};
   recog.start();
 }
 
@@ -1343,31 +1624,39 @@ async function fetchPrayerTimes(){
   const td=todayISO();
   if(prayerTimesCache[td])return prayerTimesCache[td];
   try{
-    const resp=await fetch(`https://api.aladhan.com/v1/timingsByCity/${td}?city=Antwerp&country=Belgium&method=2`);
+    const resp=await fetch(`https://api.aladhan.com/v1/timings/${td}?latitude=50.9823&longitude=4.6362&method=2`);
     const data=await resp.json();
-    if(data.data&&data.data.timings){
-      prayerTimesCache[td]=data.data.timings;
-      return data.data.timings;
-    }
-  }catch(e){console.error('Prayer times fetch failed:',e);}
+    if(data.data&&data.data.timings){prayerTimesCache[td]=data.data.timings;return data.data.timings;}
+  }catch(e){console.error('Prayer:',e);}
   return null;
 }
 function prayerWidget(timings){
   if(!timings)return '';
+  if(localStorage.getItem('at-hide-prayer')==='1') return `<div style="margin-bottom:10px"><button class="btn btn-ghost" style="font-size:10px;color:var(--text-light)" onclick="localStorage.removeItem('at-hide-prayer');render()">Show prayer times</button></div>`;
   const prayers=[{n:'Fajr',t:timings.Fajr},{n:'Dhuhr',t:timings.Dhuhr},{n:'Asr',t:timings.Asr},{n:'Maghrib',t:timings.Maghrib},{n:'Isha',t:timings.Isha}];
   const now=new Date();const nowMin=now.getHours()*60+now.getMinutes();
   let next=null;
   prayers.forEach(p=>{const[h,m]=p.t.split(':').map(Number);const pm=h*60+m;if(!next&&pm>nowMin)next=p.n;});
-  return `<div style="display:flex;gap:2px;margin-bottom:14px">${prayers.map(p=>{
-    const isNext=next===p.n;
-    return `<div style="flex:1;padding:8px 6px;text-align:center;border-radius:var(--radius-xs);${isNext?'background:var(--accent);color:#fff':'background:var(--card);border:1px solid var(--border)'}">
-      <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;${isNext?'opacity:.8':'color:var(--text-light)'}">${p.n}</div>
-      <div style="font-size:13px;font-weight:600;font-family:var(--mono);margin-top:1px;letter-spacing:-.02em">${p.t}</div>
-    </div>`;
-  }).join('')}</div>`;
+  if(!next) next=prayers[0].n;
+  let remaining='';
+  if(next){const np=prayers.find(p=>p.n===next);if(np){const[h,m]=np.t.split(':').map(Number);const diff=(h*60+m)-nowMin;if(diff>0){const rh=Math.floor(diff/60);const rm=diff%60;remaining=rh>0?rh+'h '+rm+'m':rm+'m';}}}
+  return `<div style="margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+      <span style="font-size:10px;font-weight:500;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em">Salah</span>
+      ${remaining?`<span style="font-size:10px;color:var(--accent);font-weight:500">${remaining} to ${next}</span>`:''}
+      <button style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:9px;color:var(--text-light);font-family:var(--font);opacity:.4" onclick="localStorage.setItem('at-hide-prayer','1');render()">hide</button>
+    </div>
+    <div style="display:flex;gap:3px">${prayers.map(p=>{
+      const isNext=next===p.n;
+      const isPast=!isNext&&prayers.indexOf(p)<prayers.indexOf(prayers.find(x=>x.n===next));
+      return `<div style="flex:1;padding:7px 4px;text-align:center;border-radius:var(--radius-xs);transition:all .15s;${isNext?'background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(0,113,227,.2)':isPast?'background:var(--card);border:1px solid var(--border);opacity:.5':'background:var(--card);border:1px solid var(--border)'}">
+        <div style="font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.04em;${isNext?'opacity:.85':'color:var(--text-light)'}">${p.n}</div>
+        <div style="font-size:12px;font-weight:600;font-family:var(--mono);margin-top:1px;letter-spacing:-.02em">${p.t}</div>
+      </div>`;
+    }).join('')}</div>
+  </div>`;
 }
 
-// ═══════════════════════════════════════
 // FEATURE 4: CONTRIBUTION GRAPH
 // ═══════════════════════════════════════
 function smContributionGraph(){
@@ -1500,7 +1789,7 @@ function generateDigestContent(){
 
   const overdue=state.actions.filter(a=>isOverdue(a.due,a.status)).slice(0,5);
   if(overdue.length){
-    body+=`\nOverdue:\n`;
+    body+=`\nOVERDUE:\n`;
     overdue.forEach(a=>body+=`- ${a.action} (${a.owner}, due ${fmtDate(a.due)})\n`);
   }
 
@@ -1573,7 +1862,7 @@ function weeklyReview(){
 
   const m=document.createElement('div');m.className='modal-overlay';
   m.innerHTML=`<div class="modal" style="max-width:560px;max-height:85vh;overflow:auto">
-    <div style="background:linear-gradient(135deg,#1B2332,#2D3C55);margin:-22px -22px 16px;padding:20px 22px;border-radius:16px 16px 0 0;color:rgba(255,255,255,.9)">
+    <div style="background:linear-gradient(135deg,#1B2332,#2D3C55);margin:-22px -22px 16px;padding:20px 22px;border-radius:16px 16px 0 0;color:#F1F5F9">
       <h2 style="font-size:18px;font-weight:800;margin-bottom:4px">Weekly Review</h2>
       <p style="font-size:11px;opacity:.6">${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</p>
     </div>
@@ -1582,8 +1871,8 @@ function weeklyReview(){
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:16px">
       <div class="card" style="padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--accent)">${completed}</div><div style="font-size:8px;color:var(--text-light)">Completed</div></div>
       <div class="card" style="padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--danger)">${stale.length}</div><div style="font-size:8px;color:var(--text-light)">Overdue</div></div>
-      <div class="card" style="padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:#5A9E7E">${filled.length}/7</div><div style="font-size:8px;color:var(--text-light)">SM Days</div></div>
-      <div class="card" style="padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:#8B72C4">${s.total}</div><div style="font-size:8px;color:var(--text-light)">Total</div></div>
+      <div class="card" style="padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:#10B981">${filled.length}/7</div><div style="font-size:8px;color:var(--text-light)">SM Days</div></div>
+      <div class="card" style="padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:#8B5CF6">${s.total}</div><div style="font-size:8px;color:var(--text-light)">Total</div></div>
     </div>
 
     <div style="font-size:13px;font-weight:700;margin-bottom:8px">2. Stale Actions — Close or Reschedule</div>
@@ -1694,7 +1983,6 @@ function renderKanban(){
   const statuses=['Open','In progress','Blocked','Done'];
   const colColors={Open:'#D4A04A','In progress':'#5B8DEF',Blocked:'#CF6F6F',Done:'#30D158'};
   const items=selProj==='All'?state.actions:state.actions.filter(a=>a.project===selProj);
-
   let h=`<div class="fade-in">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
       <div style="display:flex;align-items:center;gap:10px">
@@ -1702,116 +1990,36 @@ function renderKanban(){
         <select class="select" style="font-size:12px;padding:6px 10px;border-radius:20px" onchange="state.kanbanProj=this.value;render()">
           <option value="All" ${selProj==='All'?'selected':''}>All projects</option>
           ${projs.map(p=>'<option '+(p===selProj?'selected':'')+'>'+esc(p)+'</option>').join('')}
-        </select>
-      </div>
+        </select></div>
       <div style="display:flex;gap:6px">
         <button class="btn btn-default" style="font-size:11px" onclick="state.tab='actions';render()">Table</button>
         <button class="btn btn-default" style="font-size:11px" onclick="weeklyReview()">Review</button>
-      </div>
-    </div>
-    <div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:12px">`;
-
+      </div></div>
+    <div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:12px;align-items:stretch">`;
   statuses.forEach(st=>{
     const stItems=items.filter(a=>a.status===st).slice(0,40);
-    h+=`<div class="kanban-col">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid ${colColors[st]}">
+    h+=`<div class="kanban-col" style="display:flex;flex-direction:column" ondragover="event.preventDefault();this.style.background='var(--accent-soft)';this.style.borderRadius='var(--radius)'" ondragleave="this.style.background='';this.style.borderRadius=''" ondrop="event.preventDefault();this.style.background='';this.style.borderRadius='';if(state.dragId){patch(state.dragId,{status:'${st}'});state.dragId=null;}">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid ${colColors[st]};flex-shrink:0">
         <span style="font-size:14px;font-weight:700">${st}</span>
-        <span style="font-size:10px;color:var(--text-light);background:var(--border);padding:2px 8px;border-radius:10px">${stItems.length}</span>
-      </div>
-      <div style="min-height:250px" ondragover="event.preventDefault();this.style.background='rgba(99,102,241,.03)'" ondragleave="this.style.background=''" ondrop="event.preventDefault();this.style.background='';if(state.dragId){patch(state.dragId,{status:'${st}'});state.dragId=null;}">`;
+        <span style="font-size:10px;color:var(--text-light);background:var(--border-vis);padding:2px 8px;border-radius:10px">${stItems.length}</span></div>
+      <div style="flex:1;min-height:100px">`;
     stItems.forEach((a,i)=>{
       const col=WS_COLORS[a.project]||'#94A3B8';
-      h+=`<div class="kanban-card" draggable="true" ondragstart="state.dragId='${a.id}'" onclick="openEdit('${a.id}')" style="animation:smSlideUp .2s both;animation-delay:${i*20}ms">
+      h+=`<div class="kanban-card" draggable="true" ondragstart="state.dragId='${a.id}';event.dataTransfer.effectAllowed='move'" ondragend="state.dragId=null" onclick="openEdit('${a.id}')" style="animation:smSlideUp .2s both;animation-delay:${i*20}ms">
         <div style="font-size:12.5px;font-weight:500;margin-bottom:6px;line-height:1.4">${esc(a.action).slice(0,70)}</div>
         <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
           <span style="font-size:9px;padding:2px 7px;border-radius:4px;background:${col}12;color:${col};font-weight:600">${esc(a.project).slice(0,22)}</span>
           <span style="font-size:9.5px;color:var(--text-mid);font-weight:500">${esc(a.owner)}</span>
           ${a.due?`<span style="font-size:9px;color:${dueColor(a.due,a.status)};font-weight:600">${fmtDate(a.due)}</span>`:''}
-          ${a.priority?'<span style="color:#A855F7;font-size:10px">\u2605</span>':''}
-        </div>
-      </div>`;
+          ${a.priority?'<span style="color:#9B8ADE;font-size:10px">\u2605</span>':''}
+        </div></div>`;
     });
+    if(!stItems.length) h+=`<div style="padding:20px;text-align:center;color:var(--text-light);font-size:11px;opacity:.5">Drop here</div>`;
     h+=`</div></div>`;
   });
   h+=`</div></div>`;
   return h;
 }
-
-
-
-function editSmPillars(){
-  var m=document.createElement('div');m.className='modal-overlay';m.onclick=function(e){if(e.target===m)m.remove();};
-  var body='<div class="modal" style="max-width:520px;max-height:85vh;overflow:auto">';
-  body+='<h3 style="font-size:16px;font-weight:600;margin-bottom:14px">Edit Self Map Structure</h3>';
-  SM_PILLARS.forEach(function(p,pi){
-    body+='<div style="margin-bottom:14px;padding:12px;border-radius:var(--radius-sm);background:'+p.color+'10;border:1px solid '+p.color+'20">';
-    body+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
-    body+='<div style="width:10px;height:10px;border-radius:3px;background:'+p.color+'"></div>';
-    body+='<input class="input" style="font-weight:600;font-size:13px;flex:1" value="'+esc(p.name)+'" id="pn-'+pi+'">';
-    body+='<button class="btn btn-ghost" style="font-size:10px;color:var(--danger)" id="pd-'+pi+'">Remove</button>';
-    body+='</div>';
-    p.areas.forEach(function(a,ai){
-      body+='<div style="display:flex;align-items:center;gap:4px;padding-left:18px;margin-bottom:3px">';
-      body+='<span style="color:var(--text-light);font-size:9px">\u2514</span>';
-      body+='<input class="input" style="font-size:11px;flex:1;padding:4px 8px" value="'+esc(a)+'" id="pa-'+pi+'-'+ai+'">';
-      body+='<button class="btn btn-ghost" style="font-size:9px;color:var(--danger);padding:2px 4px" id="pad-'+pi+'-'+ai+'">\u2715</button>';
-      body+='</div>';
-    });
-    body+='<button class="btn btn-ghost" style="font-size:10px;padding-left:22px;margin-top:3px" id="paa-'+pi+'">+ Add area</button>';
-    body+='</div>';
-  });
-  body+='<button class="btn btn-default" style="width:100%;margin-bottom:10px" id="pap">+ Add pillar</button>';
-  body+='<div style="display:flex;gap:6px;justify-content:flex-end;border-top:1px solid var(--border);padding-top:12px">';
-  body+='<button class="btn btn-ghost" onclick="this.closest(\'.modal-overlay\').remove()">Cancel</button>';
-  body+='<button class="btn btn-primary" id="sm-save">Save</button>';
-  body+='</div></div>';
-  m.innerHTML=body;
-  document.body.appendChild(m);
-  // Wire up events
-  SM_PILLARS.forEach(function(p,pi){
-    var delBtn=document.getElementById('pd-'+pi);
-    if(delBtn)delBtn.onclick=function(){SM_PILLARS.splice(pi,1);SM_ALL_AREAS=SM_PILLARS.flatMap(function(x){return x.areas;});m.remove();editSmPillars();};
-    var addArea=document.getElementById('paa-'+pi);
-    if(addArea)addArea.onclick=function(){SM_PILLARS[pi].areas.push('New area');SM_ALL_AREAS=SM_PILLARS.flatMap(function(x){return x.areas;});m.remove();editSmPillars();};
-    p.areas.forEach(function(a,ai){
-      var adel=document.getElementById('pad-'+pi+'-'+ai);
-      if(adel)adel.onclick=function(){SM_PILLARS[pi].areas.splice(ai,1);SM_ALL_AREAS=SM_PILLARS.flatMap(function(x){return x.areas;});m.remove();editSmPillars();};
-    });
-  });
-  var addP=document.getElementById('pap');
-  if(addP)addP.onclick=function(){SM_PILLARS.push({name:'New Pillar',color:'#7B83D4',areas:['Area 1']});SM_ALL_AREAS=SM_PILLARS.flatMap(function(x){return x.areas;});m.remove();editSmPillars();};
-  var saveBtn=document.getElementById('sm-save');
-  if(saveBtn)saveBtn.onclick=function(){
-    SM_PILLARS.forEach(function(p,pi){var el=document.getElementById('pn-'+pi);if(el)p.name=el.value;p.areas.forEach(function(a,ai){var el2=document.getElementById('pa-'+pi+'-'+ai);if(el2)p.areas[ai]=el2.value;});});
-    SM_ALL_AREAS=SM_PILLARS.flatMap(function(x){return x.areas;});
-    saveState();m.remove();render();toast('Structure saved');
-  };
-}
-
-function showContextMenu(e){
-  e.preventDefault();
-  const sel=Array.from(state.selected);
-  if(!sel.length)return;
-  document.querySelectorAll('.ctx-menu').forEach(m=>m.remove());
-  const m=document.createElement('div');m.className='ctx-menu';
-  const acts=[
-    {l:'Mark Done',fn:function(){sel.forEach(id=>patch(id,{status:'Done'}));toast(sel.length+' done')}},
-    {l:'Mark In Progress',fn:function(){sel.forEach(id=>patch(id,{status:'In progress'}));toast(sel.length+' updated')}},
-    {l:'Toggle Priority',fn:function(){sel.forEach(id=>{const a=state.actions.find(x=>x.id===id);if(a)patch(id,{priority:!a.priority})});toast('Toggled')}},
-    {l:'Today Focus',fn:function(){sel.forEach(id=>patch(id,{todayFocus:true}));toast(sel.length+' focused')}},
-    {l:'Archive',fn:function(){sel.forEach(id=>archiveAction(id));state.selected.clear();toast(sel.length+' archived')}},
-  ];
-  let html='<div style="position:fixed;left:'+e.clientX+'px;top:'+e.clientY+'px;z-index:2000;background:var(--card-solid);border:1px solid var(--border-vis);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);padding:4px;min-width:160px;animation:scaleIn .12s ease-out">';
-  html+='<div style="padding:6px 10px;font-size:10px;color:var(--text-light);font-weight:500">'+sel.length+' selected</div>';
-  acts.forEach(function(a,i){html+='<div id="ctx-'+i+'" style="padding:7px 12px;font-size:12px;cursor:pointer;border-radius:6px;transition:background .08s" onmouseover="this.style.background=\'var(--accent-soft)\'" onmouseout="this.style.background=\'\'">'+a.l+'</div>';});
-  html+='</div>';
-  m.innerHTML=html;
-  document.body.appendChild(m);
-  acts.forEach(function(a,i){document.getElementById('ctx-'+i).onclick=function(){a.fn();m.remove();};});
-  var close=function(){m.remove();document.removeEventListener('click',close);};
-  setTimeout(function(){document.addEventListener('click',close);},10);
-}
-document.addEventListener('contextmenu',function(e){if(state.selected.size>0)showContextMenu(e);});
 
 function renderGuide() {
   return `<div class="fade-in"><h1 style="margin-bottom:16px">Guide</h1>
