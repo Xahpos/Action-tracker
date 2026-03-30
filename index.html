@@ -179,7 +179,7 @@ tr:hover{background:var(--accent-soft)!important}
 /* ═ DARK ═ */
 body.dark{--bg:#1E1B2E;--card:rgba(40,36,58,.7);--card-solid:#262240;--border:rgba(255,255,255,.06);--border-vis:rgba(255,255,255,.1);--text:#E8E6F0;--text-mid:#9590B0;--text-light:#6A6580;--sidebar-bg:#141225;--accent-soft:rgba(120,110,200,.1)}
 body.dark{background:linear-gradient(160deg,#1E1B2E 0%,#252240 40%,#1E1B30 100%)}
-body.dark .sidebar{border-right:1px solid rgba(255,255,255,.03);background:linear-gradient(180deg,#050508 0%,#000 100%)}
+
 body.dark .input,body.dark .select{background:rgba(40,36,58,.6);color:#E8E6F0;border-color:rgba(255,255,255,.08)}
 body.dark th{border-color:var(--border);background:rgba(255,255,255,.03)}
 body.dark .gauth-overlay{background:#1E1B2E}
@@ -188,8 +188,8 @@ body.dark .toast{background:rgba(230,226,245,.92);color:#1A1830}
 body.dark .btn-default{background:rgba(255,255,255,.06);color:var(--text-mid);border:1px solid rgba(255,255,255,.06)}
 
 /* ═ SELF MAP ═ */
-.sm-hero{background:#1D1D1F;border-radius:18px;padding:24px;color:rgba(255,255,255,.9);margin-bottom:16px}
-body.dark .sm-hero{background:#1C1C1E;border:1px solid rgba(255,255,255,.04)}
+.sm-hero{background:linear-gradient(135deg,#2D2854 0%,#3B3570 50%,#2A2650 100%);border-radius:18px;padding:24px;color:rgba(255,255,255,.92);margin-bottom:16px}
+body.dark .sm-hero{background:linear-gradient(135deg,#201D38 0%,#2A264A 50%,#1E1B35 100%);border:1px solid rgba(255,255,255,.04)}
 .sm-pillar{border-radius:var(--radius);overflow:hidden;margin-bottom:10px;border:1px solid var(--border);background:var(--card);backdrop-filter:var(--blur)}
 .sm-pillar-head{padding:14px 18px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:background .1s}
 .sm-pillar-head:hover{background:var(--accent-soft)}
@@ -203,7 +203,7 @@ body.dark .sm-hero{background:#1C1C1E;border:1px solid rgba(255,255,255,.04)}
 .sm-timeline-dot{width:6px;height:6px;border-radius:2px;display:inline-block;cursor:pointer;transition:transform .1s}
 .sm-timeline-dot:hover{transform:scale(2)}
 .sm-lock{min-height:70vh;display:flex;align-items:center;justify-content:center}
-.sm-lock-card{background:#1D1D1F;border-radius:24px;padding:48px;text-align:center;color:rgba(255,255,255,.9);max-width:340px;box-shadow:0 24px 80px rgba(0,0,0,.15)}
+.sm-lock-card{background:linear-gradient(145deg,#2D2854,#3B3570);border-radius:24px;padding:48px;text-align:center;color:rgba(255,255,255,.9);max-width:340px;box-shadow:0 24px 80px rgba(0,0,0,.15)}
 .radar-svg{filter:drop-shadow(0 1px 4px rgba(0,0,0,.04))}
 
 /* ═ COACH ═ */
@@ -638,7 +638,7 @@ function esc(s) { return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").repl
 function statusBadge(st) { const sc=stColors(); const s=sc[st]||{bg:"rgba(0,0,0,.04)",fg:"var(--text-mid)"}; return `<span class="status-badge" style="background:${s.bg};color:${s.fg}">${st}</span>`; }
 function projTag(p,sub) { const c=WS_COLORS[p]||"#94A3B8"; return `<span class="proj-tag" style="background:${c}18;color:${c}">${esc(p)}${sub?` <span style="opacity:.6">/ ${esc(subLabel(sub))}</span>`:""}</span>`; }
 function actionBtns(a) {
-  return `<div class="action-btns">
+  return `<div class="action-btns"><button class="toggle-btn off" onclick="event.stopPropagation();archiveAction('${a.id}')" title="Archive" style="font-size:9px;opacity:.15;transition:opacity .1s" onmouseover="this.style.opacity=.7" onmouseout="this.style.opacity=.15">\u2715</button>
     <button class="toggle-btn ${a.priority?'on-prio':'off'}" onclick="event.stopPropagation();patch('${a.id}',{priority:${!a.priority}})">\u2605</button>
     <button class="toggle-btn ${a.todayFocus?'on-today':'off'}" onclick="event.stopPropagation();patch('${a.id}',{todayFocus:${!a.todayFocus}})">\u25C9</button>
     <select onchange="event.stopPropagation();patch('${a.id}',{status:this.value})" onclick="event.stopPropagation()">
@@ -678,7 +678,32 @@ function getOwners() {
 }
 function getSubs(p){return[...new Set([...(state.subProjects[p]||[]),...state.actions.filter(a=>a.project===p&&a.subproject).map(a=>a.subproject)])].sort();}
 function addSub(proj,name,parent){if(!name||!name.trim())return;const full=parent?(parent+" / "+name.trim()):name.trim();if(!state.subProjects[proj])state.subProjects[proj]=[];if(state.subProjects[proj].includes(full)){toast("Already exists");return;}state.subProjects[proj].push(full);saveState();render();toast("Created: "+full);}
-function deleteSub(proj,sub){if(!confirm("Remove '"+subLabel(sub)+"' and its children?"))return;state.subProjects[proj]=(state.subProjects[proj]||[]).filter(s=>s!==sub&&!s.startsWith(sub+" / "));state.actions=state.actions.map(a=>a.project===proj&&(a.subproject===sub||a.subproject?.startsWith(sub+" / "))?{...a,subproject:""}:a);saveState();render();toast("Removed "+subLabel(sub));}
+function deleteSub(proj,sub){
+  var items=state.actions.filter(function(a){return a.project===proj&&a.subproject===sub;});
+  var cnt=items.length;
+  var m=document.createElement('div');m.className='modal-overlay';m.onclick=function(e){if(e.target===m)m.remove();};
+  var body='<div class="modal" style="max-width:380px">';
+  body+='<h3 style="font-size:15px;font-weight:600;margin-bottom:8px">Remove: '+esc(subLabel(sub))+'</h3>';
+  body+='<p style="font-size:12px;color:var(--text-mid);margin-bottom:14px">'+cnt+' actions in this sub-project.</p>';
+  body+='<div style="display:flex;flex-direction:column;gap:6px">';
+  body+='<button class="btn btn-default" style="text-align:left;padding:10px 14px" id="ds-unassign"><b>Unassign actions</b><br><span style="font-size:10px;color:var(--text-light)">Keep actions, remove label</span></button>';
+  body+='<button class="btn btn-danger" style="text-align:left;padding:10px 14px" id="ds-archive"><b>Archive all</b><br><span style="font-size:10px;opacity:.8">Move to archive</span></button>';
+  body+='<button class="btn btn-ghost" onclick="this.closest(\'.modal-overlay\').remove()">Cancel</button>';
+  body+='</div></div>';
+  m.innerHTML=body;
+  document.body.appendChild(m);
+  document.getElementById('ds-unassign').onclick=function(){
+    state.actions.forEach(function(a){if(a.project===proj&&a.subproject===sub)a.subproject='';});
+    var s=state.subProjects[proj]||[];state.subProjects[proj]=s.filter(function(x){return x!==sub;});
+    saveState();m.remove();render();toast('Actions unassigned');
+  };
+  document.getElementById('ds-archive').onclick=function(){
+    state.actions.filter(function(a){return a.project===proj&&a.subproject===sub;}).forEach(function(a){state.archived.push(Object.assign({},a,{archivedAt:todayISO()}));});
+    state.actions=state.actions.filter(function(a){return !(a.project===proj&&a.subproject===sub);});
+    var s=state.subProjects[proj]||[];state.subProjects[proj]=s.filter(function(x){return x!==sub;});
+    saveState();m.remove();render();toast(cnt+' archived');
+  };
+}
 function subDepth(s){return s?s.split(" / ").length-1:0;}
 function subLabel(s){return s?s.split(" / ").pop():s;}
 function toggleSelect(id){if(state.selected.has(id))state.selected.delete(id);else state.selected.add(id);render();}
@@ -1020,7 +1045,7 @@ function renderDiary(){
         <div style="font-size:48px;margin-bottom:12px;animation:smPulse 2s ease-in-out infinite;opacity:.4">\u25CF</div>
         <h2 style="font-size:20px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px">Self Map</h2>
         <p style="font-size:12px;opacity:.6;margin-bottom:20px">Your personal development journal is locked</p>
-        <button class="btn" style="background:rgba(255,255,255,.12);color:#F1F5F9;padding:10px 32px;font-size:13px;border:1px solid rgba(255,255,255,.15)" onclick="smUnlock()">Unlock with PIN</button>
+        <button class="btn" style="background:rgba(255,255,255,.12);color:rgba(255,255,255,.9);padding:10px 32px;font-size:13px;border:1px solid rgba(255,255,255,.15)" onclick="smUnlock()">Unlock with PIN</button>
       </div>
     </div>`;
   }
@@ -1048,9 +1073,12 @@ function renderDiary(){
         <div style="font-size:11px;opacity:.5">${new Date(td+'T12:00:00').toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</div>
       </div>
       <div style="display:flex;gap:4px;align-items:center">
-        <button class="btn" style="background:rgba(255,255,255,.12);color:#F1F5F9;padding:6px 12px;font-size:10px;border:1px solid rgba(255,255,255,.1)" onclick="smQuickScore()"> Quick score</button>
+        <button class="btn" style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);padding:5px 10px;font-size:10px;border:1px solid rgba(255,255,255,.08)" onclick="smQuickScore()">Quick score</button>
+        <button class="btn" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);padding:5px 8px;font-size:10px;border:1px solid rgba(255,255,255,.05)" onclick="SM_PILLARS.forEach(function(p,i){state.diary['sm-p-'+i]=true});saveState();render()">Collapse</button>
+        <button class="btn" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);padding:5px 8px;font-size:10px;border:1px solid rgba(255,255,255,.05)" onclick="SM_PILLARS.forEach(function(p,i){state.diary['sm-p-'+i]=false});saveState();render()">Expand</button>
+        <button class="btn" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);padding:5px 8px;font-size:10px;border:1px solid rgba(255,255,255,.05)" onclick="editSmPillars()">Edit</button>
         <button class="btn" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);padding:4px 10px;font-size:10px;border:1px solid rgba(255,255,255,.1)" onclick="state.diary.viewDate=null;render()">\u25C9 Today</button>
-        <input type="date" class="input" style="font-size:10px;padding:4px 6px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#F1F5F9" value="${td}" onchange="state.diary.viewDate=this.value;render()">
+        <input type="date" class="input" style="font-size:10px;padding:4px 6px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.85)" value="${td}" onchange="state.diary.viewDate=this.value;render()">
       </div>
     </div>
 
@@ -1113,7 +1141,7 @@ function renderDiary(){
     const trend=smPillarTrendChart(pillar.name);
 
     h+=`<div class="sm-pillar" style="animation:smSlideUp .3s ease-out both;animation-delay:${pi*50}ms">
-      <div class="sm-pillar-head" onclick="state.diary['${pcKey}']=!state.diary['${pcKey}'];saveState();render()" style="background:linear-gradient(135deg,${pillar.color}10,${pillar.color}04)">
+      <div class="sm-pillar-head" onclick="state.diary['${pcKey}']=!state.diary['${pcKey}'];saveState();render()" style="background:linear-gradient(135deg,${pillar.color}20,${pillar.color}08)">
         <div style="width:4px;height:28px;border-radius:2px;background:${pillar.color};flex-shrink:0"></div>
         <div style="flex:1">
           <div style="font-size:13px;font-weight:700">${pillar.name}</div>
@@ -1545,7 +1573,7 @@ function weeklyReview(){
 
   const m=document.createElement('div');m.className='modal-overlay';
   m.innerHTML=`<div class="modal" style="max-width:560px;max-height:85vh;overflow:auto">
-    <div style="background:linear-gradient(135deg,#1B2332,#2D3C55);margin:-22px -22px 16px;padding:20px 22px;border-radius:16px 16px 0 0;color:#F1F5F9">
+    <div style="background:linear-gradient(135deg,#1B2332,#2D3C55);margin:-22px -22px 16px;padding:20px 22px;border-radius:16px 16px 0 0;color:rgba(255,255,255,.9)">
       <h2 style="font-size:18px;font-weight:800;margin-bottom:4px">Weekly Review</h2>
       <p style="font-size:11px;opacity:.6">${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</p>
     </div>
@@ -1709,6 +1737,82 @@ function renderKanban(){
   return h;
 }
 
+
+
+function editSmPillars(){
+  var m=document.createElement('div');m.className='modal-overlay';m.onclick=function(e){if(e.target===m)m.remove();};
+  var body='<div class="modal" style="max-width:520px;max-height:85vh;overflow:auto">';
+  body+='<h3 style="font-size:16px;font-weight:600;margin-bottom:14px">Edit Self Map Structure</h3>';
+  SM_PILLARS.forEach(function(p,pi){
+    body+='<div style="margin-bottom:14px;padding:12px;border-radius:var(--radius-sm);background:'+p.color+'10;border:1px solid '+p.color+'20">';
+    body+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
+    body+='<div style="width:10px;height:10px;border-radius:3px;background:'+p.color+'"></div>';
+    body+='<input class="input" style="font-weight:600;font-size:13px;flex:1" value="'+esc(p.name)+'" id="pn-'+pi+'">';
+    body+='<button class="btn btn-ghost" style="font-size:10px;color:var(--danger)" id="pd-'+pi+'">Remove</button>';
+    body+='</div>';
+    p.areas.forEach(function(a,ai){
+      body+='<div style="display:flex;align-items:center;gap:4px;padding-left:18px;margin-bottom:3px">';
+      body+='<span style="color:var(--text-light);font-size:9px">\u2514</span>';
+      body+='<input class="input" style="font-size:11px;flex:1;padding:4px 8px" value="'+esc(a)+'" id="pa-'+pi+'-'+ai+'">';
+      body+='<button class="btn btn-ghost" style="font-size:9px;color:var(--danger);padding:2px 4px" id="pad-'+pi+'-'+ai+'">\u2715</button>';
+      body+='</div>';
+    });
+    body+='<button class="btn btn-ghost" style="font-size:10px;padding-left:22px;margin-top:3px" id="paa-'+pi+'">+ Add area</button>';
+    body+='</div>';
+  });
+  body+='<button class="btn btn-default" style="width:100%;margin-bottom:10px" id="pap">+ Add pillar</button>';
+  body+='<div style="display:flex;gap:6px;justify-content:flex-end;border-top:1px solid var(--border);padding-top:12px">';
+  body+='<button class="btn btn-ghost" onclick="this.closest(\'.modal-overlay\').remove()">Cancel</button>';
+  body+='<button class="btn btn-primary" id="sm-save">Save</button>';
+  body+='</div></div>';
+  m.innerHTML=body;
+  document.body.appendChild(m);
+  // Wire up events
+  SM_PILLARS.forEach(function(p,pi){
+    var delBtn=document.getElementById('pd-'+pi);
+    if(delBtn)delBtn.onclick=function(){SM_PILLARS.splice(pi,1);SM_ALL_AREAS=SM_PILLARS.flatMap(function(x){return x.areas;});m.remove();editSmPillars();};
+    var addArea=document.getElementById('paa-'+pi);
+    if(addArea)addArea.onclick=function(){SM_PILLARS[pi].areas.push('New area');SM_ALL_AREAS=SM_PILLARS.flatMap(function(x){return x.areas;});m.remove();editSmPillars();};
+    p.areas.forEach(function(a,ai){
+      var adel=document.getElementById('pad-'+pi+'-'+ai);
+      if(adel)adel.onclick=function(){SM_PILLARS[pi].areas.splice(ai,1);SM_ALL_AREAS=SM_PILLARS.flatMap(function(x){return x.areas;});m.remove();editSmPillars();};
+    });
+  });
+  var addP=document.getElementById('pap');
+  if(addP)addP.onclick=function(){SM_PILLARS.push({name:'New Pillar',color:'#7B83D4',areas:['Area 1']});SM_ALL_AREAS=SM_PILLARS.flatMap(function(x){return x.areas;});m.remove();editSmPillars();};
+  var saveBtn=document.getElementById('sm-save');
+  if(saveBtn)saveBtn.onclick=function(){
+    SM_PILLARS.forEach(function(p,pi){var el=document.getElementById('pn-'+pi);if(el)p.name=el.value;p.areas.forEach(function(a,ai){var el2=document.getElementById('pa-'+pi+'-'+ai);if(el2)p.areas[ai]=el2.value;});});
+    SM_ALL_AREAS=SM_PILLARS.flatMap(function(x){return x.areas;});
+    saveState();m.remove();render();toast('Structure saved');
+  };
+}
+
+function showContextMenu(e){
+  e.preventDefault();
+  const sel=Array.from(state.selected);
+  if(!sel.length)return;
+  document.querySelectorAll('.ctx-menu').forEach(m=>m.remove());
+  const m=document.createElement('div');m.className='ctx-menu';
+  const acts=[
+    {l:'Mark Done',fn:function(){sel.forEach(id=>patch(id,{status:'Done'}));toast(sel.length+' done')}},
+    {l:'Mark In Progress',fn:function(){sel.forEach(id=>patch(id,{status:'In progress'}));toast(sel.length+' updated')}},
+    {l:'Toggle Priority',fn:function(){sel.forEach(id=>{const a=state.actions.find(x=>x.id===id);if(a)patch(id,{priority:!a.priority})});toast('Toggled')}},
+    {l:'Today Focus',fn:function(){sel.forEach(id=>patch(id,{todayFocus:true}));toast(sel.length+' focused')}},
+    {l:'Archive',fn:function(){sel.forEach(id=>archiveAction(id));state.selected.clear();toast(sel.length+' archived')}},
+  ];
+  let html='<div style="position:fixed;left:'+e.clientX+'px;top:'+e.clientY+'px;z-index:2000;background:var(--card-solid);border:1px solid var(--border-vis);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);padding:4px;min-width:160px;animation:scaleIn .12s ease-out">';
+  html+='<div style="padding:6px 10px;font-size:10px;color:var(--text-light);font-weight:500">'+sel.length+' selected</div>';
+  acts.forEach(function(a,i){html+='<div id="ctx-'+i+'" style="padding:7px 12px;font-size:12px;cursor:pointer;border-radius:6px;transition:background .08s" onmouseover="this.style.background=\'var(--accent-soft)\'" onmouseout="this.style.background=\'\'">'+a.l+'</div>';});
+  html+='</div>';
+  m.innerHTML=html;
+  document.body.appendChild(m);
+  acts.forEach(function(a,i){document.getElementById('ctx-'+i).onclick=function(){a.fn();m.remove();};});
+  var close=function(){m.remove();document.removeEventListener('click',close);};
+  setTimeout(function(){document.addEventListener('click',close);},10);
+}
+document.addEventListener('contextmenu',function(e){if(state.selected.size>0)showContextMenu(e);});
+
 function renderGuide() {
   return `<div class="fade-in"><h1 style="margin-bottom:16px">Guide</h1>
 
@@ -1740,7 +1844,7 @@ function renderGuide() {
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
     <div class="card" style="padding:18px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:28px;height:28px;border-radius:14px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--accent)">1</div><div style="font-size:14px;font-weight:700">Quick reference</div></div><div style="font-size:12px;color:var(--text-mid);line-height:1.7"><span style="color:#8B72C4">\u2605</span> Toggle high priority<br><span style="color:var(--accent)">\u25C9</span> Toggle today focus<br><b>Click</b> any action to edit all fields<br><b>Shift+click</b> to multi-select in Projects<br><b>Drag</b> actions to reorder or move to projects<br><b>Archive</b> removes without permanent delete</div></div>
     <div class="card" style="padding:18px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:28px;height:28px;border-radius:14px;background:rgba(48,209,88,.1);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--success)">2</div><div style="font-size:14px;font-weight:700">Cross-device sync</div></div><div style="font-size:12px;color:var(--text-mid);line-height:1.7">Sign in with Google to save to Drive.<br>Open <b>xahpos.github.io/Action-tracker</b> on any PC, sign in, same data.<br>Green dot = synced. Yellow = local only.<br><b>Pull</b> = force-reload from Drive.<br><b>Push</b> = force-save to Drive.</div></div>
-    <div class="card" style="padding:18px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:28px;height:28px;border-radius:14px;background:#EDE9FE;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#5B21B6">3</div><div style="font-size:14px;font-weight:700">Import meetings</div></div><div style="font-size:12px;color:var(--text-mid);line-height:1.7">Paste a meeting transcript in the <b>Import</b> tab.<br>Uses 7-column format:<br><span style="font-family:var(--mono);font-size:10px">| # | Action | Owner | Due | Outcome | Project | Status |</span><br>Actions land in the right projects automatically.</div></div>
+    <div class="card" style="padding:18px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:28px;height:28px;border-radius:14px;background:rgba(130,100,200,.1);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#8B72C4">3</div><div style="font-size:14px;font-weight:700">Import meetings</div></div><div style="font-size:12px;color:var(--text-mid);line-height:1.7">Paste a meeting transcript in the <b>Import</b> tab.<br>Uses 7-column format:<br><span style="font-family:var(--mono);font-size:10px">| # | Action | Owner | Due | Outcome | Project | Status |</span><br>Actions land in the right projects automatically.</div></div>
     <div class="card" style="padding:18px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:28px;height:28px;border-radius:14px;background:rgba(200,170,60,.1);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#D4A04A">4</div><div style="font-size:14px;font-weight:700">Updating the app</div></div><div style="font-size:12px;color:var(--text-mid);line-height:1.7">Go to <b>github.com/Xahpos/Action-tracker</b><br>Edit index.html \u2192 Ctrl+A \u2192 paste new code \u2192 Commit<br>Wait 1-2 min \u2192 site updates<br>Data in Google Drive is untouched.</div></div>
   </div></div>`;
 }
@@ -1922,7 +2026,7 @@ function renderInbox(s) {
 // ═══════════════════════════════════════
 function renderDashboard(s) {
   let h = `<div class="fade-in">
-    <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:linear-gradient(135deg,#1B2332 0%,#2D3C55 100%);border-radius:10px;margin-bottom:16px;color:#F1F5F9">
+    <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:linear-gradient(135deg,#1B2332 0%,#2D3C55 100%);border-radius:10px;margin-bottom:16px;color:rgba(255,255,255,.9)">
       <div style="text-align:center;min-width:48px"><div style="font-size:20px;font-weight:600;line-height:1">${s.level}</div><div style="font-size:9px;opacity:0.6;text-transform:uppercase;letter-spacing:0.08em">Level</div></div>
       <div style="flex:1"><div style="display:flex;justify-content:space-between;font-size:10px;opacity:0.7;margin-bottom:3px"><span>${s.xpInLevel}/100 XP</span><span>${s.xp} total</span></div>
         <div style="height:5px;background:rgba(255,255,255,0.1);border-radius:3px"><div class="progress-fill" style="height:5px;background:linear-gradient(90deg,#4A7BF7,#8B5CF6);border-radius:3px;width:${s.xpInLevel}%"></div></div>
@@ -1986,7 +2090,7 @@ function renderDashboard(s) {
     h += `<div class="card card-hover" onclick="state.tab='projects';render()" style="padding:12px 14px;border-left:3px solid ${col};cursor:pointer">
       <div style="font-size:12.5px;font-weight:700;margin-bottom:2px">${esc(p)}</div>
       <div style="font-size:11.5px;color:var(--text-mid)">${op} open / ${it.length}</div>
-      <div style="height:3px;background:#E8EBF0;border-radius:2px;margin-top:5px"><div style="height:3px;background:${col};border-radius:2px;width:${it.length?Math.round((it.length-op)/it.length*100):0}%"></div></div></div>`;
+      <div style="height:3px;background:var(--border-vis);border-radius:2px;margin-top:5px"><div style="height:3px;background:${col};border-radius:2px;width:${it.length?Math.round((it.length-op)/it.length*100):0}%"></div></div></div>`;
   });
   h += `</div></div>`;
   return h;
