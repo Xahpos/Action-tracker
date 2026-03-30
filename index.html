@@ -1161,6 +1161,39 @@ function renderDiary(){
     </div>
   </div>`;
 
+  // ── LIFE COUNTER ──
+  if(state.diary.birthday){
+    const bday=new Date(state.diary.birthday);
+    const now=new Date();
+    const thisYearBday=new Date(now.getFullYear(),bday.getMonth(),bday.getDate());
+    if(thisYearBday<now) thisYearBday.setFullYear(thisYearBday.getFullYear()+1);
+    const daysToNext=Math.ceil((thisYearBday-now)/864e5);
+    const nextAge=thisYearBday.getFullYear()-bday.getFullYear();
+    const livedDays=Math.floor((now-bday)/864e5);
+    const remainingDays=Math.max(80*365-livedDays,0);
+    const livedPct=(livedDays/(80*365)*100).toFixed(1);
+    h+=`<div style="display:flex;gap:8px;margin-bottom:14px">
+      <div style="flex:1;padding:10px 12px;border-radius:var(--radius-xs);background:var(--card);border:1px solid var(--border);text-align:center">
+        <div style="font-size:18px;font-weight:700;color:var(--text)">${daysToNext}</div>
+        <div style="font-size:8px;color:var(--text-light);text-transform:uppercase;letter-spacing:.05em">days to ${nextAge}</div>
+      </div>
+      <div style="flex:1;padding:10px 12px;border-radius:var(--radius-xs);background:var(--card);border:1px solid var(--border);text-align:center">
+        <div style="font-size:18px;font-weight:700;color:var(--text)">${livedDays.toLocaleString()}</div>
+        <div style="font-size:8px;color:var(--text-light);text-transform:uppercase;letter-spacing:.05em">days lived</div>
+      </div>
+      <div style="flex:1;padding:10px 12px;border-radius:var(--radius-xs);background:var(--card);border:1px solid var(--border);text-align:center">
+        <div style="font-size:18px;font-weight:700;color:var(--text-mid)">${remainingDays.toLocaleString()}</div>
+        <div style="font-size:8px;color:var(--text-light);text-transform:uppercase;letter-spacing:.05em">~days remaining</div>
+      </div>
+      <div style="flex:1;padding:10px 12px;border-radius:var(--radius-xs);background:var(--card);border:1px solid var(--border);text-align:center">
+        <div style="font-size:18px;font-weight:700;color:var(--accent)">${livedPct}%</div>
+        <div style="font-size:8px;color:var(--text-light);text-transform:uppercase;letter-spacing:.05em">of ~80 years</div>
+      </div>
+    </div>`;
+  } else {
+    h+=`<div style="margin-bottom:10px"><button class="btn btn-default" style="font-size:10px" onclick="var bd=prompt('Enter birthday (YYYY-MM-DD):');if(bd){state.diary.birthday=bd;saveState();render();}">Set birthday for life counter</button></div>`;
+  }
+
   // ── RADAR + TIMELINE ROW ──
   h+=`<div style="display:grid;grid-template-columns:${hasScores?'auto ':''} 1fr;gap:12px;margin-bottom:14px">`;
   
@@ -1172,13 +1205,13 @@ function renderDiary(){
   }
 
   // Timeline heatmap
-  h+=`<div class="card" style="padding:10px 12px;overflow-x:auto">
+  h+=`<div class="card" style="padding:10px 12px;overflow-x:auto" id="sm-timeline-scroll">
     <div style="font-size:10px;font-weight:600;color:var(--text-light);margin-bottom:6px;display:flex;justify-content:space-between">
       <span>\u25A0 ${filled.length} days filled since 2018</span>
       <span style="opacity:.6">${Math.round((new Date()-new Date('2018-03-10'))/864e5)} total days</span>
     </div>
     <div style="display:flex;gap:1px;flex-wrap:nowrap">`;
-  const recent=timeline.slice(-14);
+  const recent=timeline; // Show ALL months, scrollable
   recent.forEach(m=>{
     h+=`<div style="margin-right:3px">`;
     m.days.forEach(d=>{
@@ -1190,6 +1223,56 @@ function renderDiary(){
   h+=`</div></div></div>`;
 
   // ── PILLAR SECTIONS WITH TREND CHARTS ──
+
+  // ── YEAR + MONTH BUTTONS ──
+  const years=[...new Set(smFilledDates().map(d=>d.slice(0,4)))].sort();
+  if(years.length>0){
+    h+='<div style="margin-bottom:14px">';
+    h+='<div style="display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap;align-items:center">';
+    h+='<span style="font-size:10px;color:var(--text-light);font-weight:500;margin-right:2px">Year:</span>';
+    years.forEach(y=>{
+      const cnt=smFilledDates().filter(d=>d.startsWith(y)).length;
+      h+='<button class="btn btn-default" style="font-size:10px;padding:3px 8px" onclick="yearlySummary('+y+')">'+y+' ('+cnt+')</button>';
+    });
+    h+='</div>';
+    // Monthly buttons for the current viewing year
+    const viewYear=td.slice(0,4);
+    const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    h+='<div style="display:flex;gap:2px;flex-wrap:wrap;align-items:center">';
+    h+='<span style="font-size:10px;color:var(--text-light);font-weight:500;margin-right:2px">'+viewYear+':</span>';
+    months.forEach((m,i)=>{
+      const mm=String(i+1).padStart(2,'0');
+      const ym=viewYear+'-'+mm;
+      const cnt=smFilledDates().filter(d=>d.startsWith(ym)).length;
+      if(cnt>0){
+        h+='<button class="btn btn-default" style="font-size:9px;padding:2px 6px" onclick="monthlySummary(\''+ym+'\')">'+m+' ('+cnt+')</button>';
+      } else {
+        h+='<span style="font-size:9px;padding:2px 6px;color:var(--text-light);opacity:.3">'+m+'</span>';
+      }
+    });
+    h+='</div></div>';
+  }
+
+  // ── TREND OVERVIEW SECTION ──
+  h+='<div class="card" style="padding:16px;margin-bottom:14px">';
+  h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font-size:13px;font-weight:600">Score Trends</span><span style="font-size:10px;color:var(--text-light)">'+filled.length+' entries since 2018</span></div>';
+  // One sparkline per area, grouped by pillar
+  SM_PILLARS.forEach(pillar=>{
+    h+='<div style="margin-bottom:10px"><div style="font-size:10px;font-weight:600;color:'+pillar.color+';margin-bottom:4px">'+pillar.name+'</div>';
+    h+='<div style="display:flex;flex-wrap:wrap;gap:4px">';
+    pillar.areas.forEach(area=>{
+      const chart=smScoreChart(area);
+      if(chart){
+        h+='<div style="flex:1;min-width:120px;padding:4px 6px;border-radius:var(--radius-xs);background:var(--accent-soft);cursor:pointer" onclick="state.diary.viewDate=null;render()" title="'+area+'">';
+        h+='<div style="font-size:8px;font-weight:500;color:var(--text-mid);margin-bottom:2px">'+area+'</div>';
+        h+=chart;
+        h+='</div>';
+      }
+    });
+    h+='</div></div>';
+  });
+  h+='</div>';
+
   SM_PILLARS.forEach((pillar,pi)=>{
     const pavg=pillarAvg[pillar.name]||0;
     const pcKey='sm-p-'+pi;
@@ -1598,6 +1681,269 @@ function show7HabitDetail(idx){
   </div>`;
   document.body.appendChild(m);
 }
+
+
+// ═══ YEARLY SUMMARY ANALYSIS ═══
+function yearlySummary(year){
+  const filled=smFilledDates().filter(d=>d.startsWith(String(year)));
+  if(!filled.length){toast('No entries for '+year);return;}
+  
+  // Compute per-area averages for this year
+  const areaAvg={};const areaTexts={};
+  SM_ALL_AREAS.forEach(area=>{
+    const scores=[];const repeats=[];const improves=[];const actions=[];
+    filled.forEach(d=>{
+      const e=state.diary.entries[d];if(!e||!e[area])return;
+      if(e[area].score) scores.push(e[area].score);
+      if(e[area].repeat) repeats.push(e[area].repeat);
+      if(e[area].improve) improves.push(e[area].improve);
+      if(e[area].action) actions.push(e[area].action);
+    });
+    areaAvg[area]=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):'-';
+    areaTexts[area]={repeats,improves,actions,count:scores.length};
+  });
+  
+  // Pillar averages
+  const pillarAvg={};
+  SM_PILLARS.forEach(p=>{
+    const scores=p.areas.map(a=>parseFloat(areaAvg[a])||0).filter(s=>s>0);
+    pillarAvg[p.name]=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):'-';
+  });
+  
+  // 7 Habits scores for this year
+  const habits7=[
+    {habit:'1. Be Proactive',areas:['Effort','Consistency','Self respect (delayed gratification)']},
+    {habit:'2. End in Mind',areas:['Planning & Productivity','Self Map']},
+    {habit:'3. First Things First',areas:['Focus/Attention','Planning & Productivity']},
+    {habit:'4. Win-Win',areas:['Communication','Wife','Family','Friends']},
+    {habit:'5. Understand First',areas:['Communication','Emotional Stability/Stoicism']},
+    {habit:'6. Synergize',areas:['Wife','Family','Friends','Communication']},
+    {habit:'7. Sharpen the Saw',areas:['Prayer','Weightlifting','Cardio','Intermittent fasting','Learning how to learn']}
+  ];
+  
+  // Find recurring themes from text
+  const allText=filled.map(d=>{const e=state.diary.entries[d];return SM_ALL_AREAS.map(a=>e[a]?[e[a].repeat,e[a].improve,e[a].action].join(' '):'').join(' ');}).join(' ').toLowerCase();
+  const themes={};
+  ['anger','phone','prayer','focus','wife','planning','morning','discipline','consistency','sleep','gym','fasting','effort','lazy','procrastinat','afraid','anxiety','stress','grateful','happy','strong','weak','fail','succeed','improve','struggle'].forEach(term=>{
+    const count=(allText.match(new RegExp(term,'g'))||[]).length;
+    if(count>=2) themes[term]=count;
+  });
+  
+  // Strongest and weakest
+  const ranked=SM_ALL_AREAS.filter(a=>areaAvg[a]!=='-').sort((a,b)=>parseFloat(areaAvg[a])-parseFloat(areaAvg[b]));
+  
+  // Build modal
+  const m=document.createElement('div');m.className='modal-overlay';m.onclick=e=>{if(e.target===m)m.remove();};
+  
+  let body=`<div class="modal" style="max-width:600px;max-height:90vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+      <div>
+        <h2 style="font-size:20px;font-weight:700">${year} Year in Review</h2>
+        <p style="font-size:12px;color:var(--text-mid);margin-top:2px">${filled.length} entries</p>
+      </div>
+      <button class="btn btn-ghost" style="font-size:14px" onclick="this.closest('.modal-overlay').remove()">\u2715</button>
+    </div>
+    
+    <div style="font-size:12px;font-weight:600;margin-bottom:8px">Pillar Scores</div>
+    <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">`;
+  SM_PILLARS.forEach(p=>{
+    const avg=pillarAvg[p.name];
+    body+=`<div style="flex:1;min-width:100px;padding:10px;border-radius:var(--radius-xs);background:${p.color}08;border:1px solid ${p.color}15;text-align:center">
+      <div style="font-size:20px;font-weight:700;color:${p.color}">${avg}</div>
+      <div style="font-size:9px;color:var(--text-mid);margin-top:2px">${p.name.split('/')[0]}</div>
+    </div>`;
+  });
+  body+=`</div>`;
+  
+  // Strongest & Weakest
+  if(ranked.length>=4){
+    body+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <div><div style="font-size:12px;font-weight:600;color:var(--success);margin-bottom:6px">Strongest Areas</div>`;
+    ranked.slice(-3).reverse().forEach(a=>{
+      body+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px"><span>${a}</span><span style="font-weight:600">${areaAvg[a]}</span></div>`;
+    });
+    body+=`</div><div><div style="font-size:12px;font-weight:600;color:var(--danger);margin-bottom:6px">Weakest Areas</div>`;
+    ranked.slice(0,3).forEach(a=>{
+      body+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px"><span>${a}</span><span style="font-weight:600">${areaAvg[a]}</span></div>`;
+    });
+    body+=`</div></div>`;
+  }
+  
+  // 7 Habits Assessment
+  body+=`<div style="font-size:12px;font-weight:600;margin-bottom:8px">7 Habits Assessment</div>
+    <div style="margin-bottom:16px">`;
+  habits7.forEach(hb=>{
+    const scores=hb.areas.map(a=>parseFloat(areaAvg[a])||0).filter(s=>s>0);
+    const avg=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):'-';
+    const pct=avg!=='-'?parseFloat(avg)*10:0;
+    body+=`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:11px;width:160px;flex-shrink:0">${hb.habit}</span>
+      <div style="flex:1;height:6px;background:var(--border-vis);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--accent);border-radius:3px"></div></div>
+      <span style="font-size:11px;font-weight:600;width:32px;text-align:right">${avg}</span>
+    </div>`;
+  });
+  body+=`</div>`;
+  
+  // Recurring Themes
+  const sortedThemes=Object.entries(themes).sort((a,b)=>b[1]-a[1]);
+  if(sortedThemes.length){
+    body+=`<div style="font-size:12px;font-weight:600;margin-bottom:8px">Recurring Themes</div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:16px">`;
+    sortedThemes.slice(0,12).forEach(([term,count])=>{
+      body+=`<span style="font-size:10px;padding:3px 8px;border-radius:12px;background:var(--accent-soft);color:var(--text-mid)">${term} (${count})</span>`;
+    });
+    body+=`</div>`;
+  }
+  
+  // What went well / What needs improvement (from text analysis)
+  body+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+    <div style="padding:10px;border-radius:var(--radius-xs);background:rgba(48,209,88,.04);border:1px solid rgba(48,209,88,.08)">
+      <div style="font-size:11px;font-weight:600;color:var(--success);margin-bottom:6px">What went well</div>
+      <div style="font-size:10.5px;color:var(--text-mid);line-height:1.6">`;
+  // Pull top repeat entries from strongest areas
+  if(ranked.length){
+    ranked.slice(-2).reverse().forEach(area=>{
+      const reps=areaTexts[area].repeats.slice(-3);
+      if(reps.length) body+=`<b>${area}:</b> ${reps.map(r=>r.slice(0,50)).join('; ')}<br>`;
+    });
+  }
+  body+=`</div></div>
+    <div style="padding:10px;border-radius:var(--radius-xs);background:rgba(255,69,58,.03);border:1px solid rgba(255,69,58,.06)">
+      <div style="font-size:11px;font-weight:600;color:var(--danger);margin-bottom:6px">Needs improvement</div>
+      <div style="font-size:10.5px;color:var(--text-mid);line-height:1.6">`;
+  if(ranked.length){
+    ranked.slice(0,2).forEach(area=>{
+      const imps=areaTexts[area].improves.slice(-3);
+      if(imps.length) body+=`<b>${area}:</b> ${imps.map(r=>r.slice(0,50)).join('; ')}<br>`;
+    });
+  }
+  body+=`</div></div></div>`;
+  
+  // Goals planned vs achieved
+  const yearActions=state.actions.filter(a=>(a.createdAt||'').startsWith(String(year)));
+  const yearDone=state.actions.filter(a=>a.status==='Done'&&(a.createdAt||'').startsWith(String(year)));
+  const yearOverdue=state.actions.filter(a=>a.status!=='Done'&&a.status!=='Cancelled'&&(a.createdAt||'').startsWith(String(year))&&a.due&&a.due<todayISO());
+  const yearByProj={};
+  yearActions.forEach(a=>{if(!yearByProj[a.project])yearByProj[a.project]={planned:0,done:0};yearByProj[a.project].planned++;});
+  yearDone.forEach(a=>{if(!yearByProj[a.project])yearByProj[a.project]={planned:0,done:0};yearByProj[a.project].done++;});
+  
+  body+=`<div style="font-size:12px;font-weight:600;margin-bottom:8px">Goals Planned vs Achieved</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <div style="flex:1;padding:10px;border-radius:var(--radius-xs);background:var(--accent-soft);text-align:center">
+        <div style="font-size:20px;font-weight:700;color:var(--accent)">${yearActions.length}</div>
+        <div style="font-size:9px;color:var(--text-mid)">Planned</div>
+      </div>
+      <div style="flex:1;padding:10px;border-radius:var(--radius-xs);background:rgba(48,209,88,.06);text-align:center">
+        <div style="font-size:20px;font-weight:700;color:var(--success)">${yearDone.length}</div>
+        <div style="font-size:9px;color:var(--text-mid)">Achieved</div>
+      </div>
+      <div style="flex:1;padding:10px;border-radius:var(--radius-xs);background:rgba(255,69,58,.04);text-align:center">
+        <div style="font-size:20px;font-weight:700;color:var(--danger)">${yearOverdue.length}</div>
+        <div style="font-size:9px;color:var(--text-mid)">Still open</div>
+      </div>
+      <div style="flex:1;padding:10px;border-radius:var(--radius-xs);background:var(--card);border:1px solid var(--border);text-align:center">
+        <div style="font-size:20px;font-weight:700;color:var(--text)">${yearActions.length?Math.round(yearDone.length/yearActions.length*100):0}%</div>
+        <div style="font-size:9px;color:var(--text-mid)">Hit rate</div>
+      </div>
+    </div>`;
+  // Per project breakdown
+  const projEntries=Object.entries(yearByProj).sort((a,b)=>b[1].planned-a[1].planned).slice(0,8);
+  if(projEntries.length){
+    body+=`<div style="margin-bottom:14px">`;
+    projEntries.forEach(([proj,data])=>{
+      const pct=data.planned?Math.round(data.done/data.planned*100):0;
+      body+=`<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid var(--border);font-size:11px">
+        <span style="width:140px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${proj.slice(0,25)}</span>
+        <div style="flex:1;height:6px;background:var(--border-vis);border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:var(--success);border-radius:3px"></div>
+        </div>
+        <span style="width:70px;text-align:right;color:var(--text-mid);flex-shrink:0">${data.done}/${data.planned}</span>
+      </div>`;
+    });
+    body+=`</div>`;
+  }
+
+  // Copy to Claude button
+  body+=`<div style="display:flex;gap:6px;border-top:1px solid var(--border);padding-top:12px">
+    <button class="btn btn-default" style="font-size:11px" onclick="this.closest('.modal-overlay').remove()">Close</button>
+    <button class="btn btn-primary" style="font-size:11px" onclick="copyYearlySummary(${year});toast('Copied for Claude')">Copy analysis to Claude</button>
+  </div>`;
+  
+  body+=`</div>`;
+  m.innerHTML=body;
+  document.body.appendChild(m);
+}
+
+
+function monthlySummary(ym){
+  const year=ym.slice(0,4);const monthIdx=parseInt(ym.slice(5,7))-1;
+  const monthName=new Date(parseInt(year),monthIdx,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  const filled=smFilledDates().filter(d=>d.startsWith(ym));
+  if(!filled.length){toast('No entries for '+monthName);return;}
+  
+  const areaAvg={};
+  SM_ALL_AREAS.forEach(area=>{
+    const scores=[];
+    filled.forEach(d=>{const e=state.diary.entries[d];if(e&&e[area]&&e[area].score)scores.push(e[area].score);});
+    areaAvg[area]=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):'-';
+  });
+  
+  const ranked=SM_ALL_AREAS.filter(a=>areaAvg[a]!=='-').sort((a,b)=>parseFloat(areaAvg[a])-parseFloat(areaAvg[b]));
+  
+  const m=document.createElement('div');m.className='modal-overlay';m.onclick=e=>{if(e.target===m)m.remove();};
+  let body=`<div class="modal" style="max-width:480px;max-height:85vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+      <div><h3 style="font-size:16px;font-weight:700">${monthName}</h3><p style="font-size:11px;color:var(--text-mid)">${filled.length} entries</p></div>
+      <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">\u2715</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:14px">`;
+  SM_PILLARS.forEach(p=>{
+    const scores=p.areas.map(a=>parseFloat(areaAvg[a])||0).filter(s=>s>0);
+    const avg=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):'-';
+    body+=`<div style="padding:8px;border-radius:var(--radius-xs);background:${p.color}06;border:1px solid ${p.color}10;text-align:center">
+      <div style="font-size:16px;font-weight:700;color:${p.color}">${avg}</div>
+      <div style="font-size:9px;color:var(--text-mid)">${p.name.split('/')[0]}</div>
+    </div>`;
+  });
+  body+=`</div>`;
+  if(ranked.length>=4){
+    body+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <div><div style="font-size:11px;font-weight:600;color:var(--success);margin-bottom:4px">Strongest</div>`;
+    ranked.slice(-3).reverse().forEach(a=>body+=`<div style="font-size:10.5px;padding:3px 0;border-bottom:1px solid var(--border)">${a} <b>${areaAvg[a]}</b></div>`);
+    body+=`</div><div><div style="font-size:11px;font-weight:600;color:var(--danger);margin-bottom:4px">Weakest</div>`;
+    ranked.slice(0,3).forEach(a=>body+=`<div style="font-size:10.5px;padding:3px 0;border-bottom:1px solid var(--border)">${a} <b>${areaAvg[a]}</b></div>`);
+    body+=`</div></div>`;
+  }
+  // Daily heatmap for the month
+  body+=`<div style="font-size:11px;font-weight:600;margin-bottom:4px">Days filled</div>
+    <div style="display:flex;gap:2px;flex-wrap:wrap;margin-bottom:12px">`;
+  const daysInMonth=new Date(parseInt(year),monthIdx+1,0).getDate();
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=ym+'-'+String(d).padStart(2,'0');
+    const isFilled=filled.includes(ds);
+    body+=`<div style="width:18px;height:18px;border-radius:3px;background:${isFilled?'var(--accent)':'var(--border)'};cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:7px;color:${isFilled?'#fff':'var(--text-light)'}" onclick="this.closest('.modal-overlay').remove();state.diary.viewDate='${ds}';render()">${d}</div>`;
+  }
+  body+=`</div>
+    <button class="btn btn-default" style="font-size:10px;width:100%" onclick="this.closest('.modal-overlay').remove()">Close</button>
+  </div>`;
+  m.innerHTML=body;
+  document.body.appendChild(m);
+}
+
+
+function copyYearlySummary(year){
+  const filled=smFilledDates().filter(d=>d.startsWith(String(year)));
+  let prompt='YEARLY SELF MAP REVIEW — '+year+'\n'+filled.length+' entries\n\n';
+  SM_ALL_AREAS.forEach(area=>{
+    const scores=[];
+    filled.forEach(d=>{const e=state.diary.entries[d];if(e&&e[area]&&e[area].score)scores.push(e[area].score);});
+    const avg=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):'-';
+    prompt+=area+': '+avg+'/10\n';
+  });
+  prompt+='\nGive me a deep 7 Habits analysis of this year. What patterns do you see? What should I focus on next year?';
+  navigator.clipboard.writeText(prompt).catch(()=>{});
+}
+
 
 function renderCoach(){
   let h=`<div class="fade-in">
@@ -2190,7 +2536,7 @@ function render() {
       case "projects": main.innerHTML = renderProjects(); break;
       case "import": main.innerHTML = renderImport(); break;
       case "calendar": main.innerHTML = renderCalendar(); break;
-      case "diary": main.innerHTML = renderDiary(); break;
+      case "diary": main.innerHTML = renderDiary(); setTimeout(()=>{const el=document.getElementById("sm-timeline-scroll");if(el)el.scrollLeft=el.scrollWidth;},50); break;
       case "coach": main.innerHTML = renderCoach(); break;
       case "guide": main.innerHTML = renderGuide(); break;
       default: main.innerHTML = "";
