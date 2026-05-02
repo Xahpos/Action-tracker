@@ -462,6 +462,8 @@ async function saveToDrive() {
   }
 }
 
+let _renderDebTimer=null;
+function renderDebounced(){clearTimeout(_renderDebTimer);_renderDebTimer=setTimeout(()=>render(),120);}
 function debouncedDriveSync() {
   if (!gdriveEnabled) return;
   clearTimeout(syncDebounceTimer);
@@ -510,7 +512,7 @@ const isOverdue = (due, st) => { if (!due||st==="Done"||st==="Cancelled") return
 let state = {
   actions: [], meetings: [], archived: [], subProjects: {}, milestones: [],
   tab: "today", editId: null, dark: false, search: "", fStatus: "Active", fProj: "All", fOwner: "All", fPrio: false, fDate: "",
-  projCollapsed: {}, subCollapsed: {}, diary: {areas:[],entries:{},habits:{}}, toast: null, selected: new Set(), dragId: null, projOrder: [], dragProj: null, kanbanProj: 'All', projSideOpen: false
+  projCollapsed: {}, subCollapsed: {}, diary: {areas:[],entries:{},habits:{}}, toast: null, selected: new Set(), dragId: null, projOrder: [], dragProj: null, kanbanProj: 'All', projSideOpen: true
 };
 
 // ═══════════════════════════════════════
@@ -525,7 +527,7 @@ function saveState() {
   debouncedDriveSync();
 }
 function loadPrefs() {
-  try { const p=JSON.parse(localStorage.getItem('at-prefs')||'{}'); state.projCollapsed=p.projCollapsed||{}; state.subCollapsed=p.subCollapsed||{}; state.projOrder=p.projOrder||[]; state.projSideOpen=p.projSideOpen||false; } catch(e) {}
+  try { const p=JSON.parse(localStorage.getItem('at-prefs')||'{}'); state.projCollapsed=p.projCollapsed||{}; state.subCollapsed=p.subCollapsed||{}; state.projOrder=p.projOrder||[]; state.projSideOpen=p.projSideOpen!==undefined?p.projSideOpen:true; } catch(e) {}
 }
 function loadState() {
   loadPrefs();
@@ -632,7 +634,20 @@ function addAction(data) {
   state.actions.push({id:uid(),createdAt:todayISO(),notes:"",project:"Untagged",subproject:"",startDate:"",deps:[],isMilestone:false,gantt:false,priority:false,todayFocus:false,sortIdx:Date.now(),...data});
   saveState(); render(); toast("Added");
 }
-function quickAdd(){return `<div style="display:flex;gap:6px;margin-bottom:16px"><input class="input" id="qa" style="flex:1" placeholder="Add an action..." onkeydown="if(event.key==='Enter'&&this.value.trim()){addAction({action:this.value.trim(),owner:'Me',num:'',status:'Open'});this.value='';}"><button class="btn btn-primary" style="padding:7px 12px" onclick="var i=document.getElementById('qa');if(i.value.trim()){addAction({action:i.value.trim(),owner:'Me',num:'',status:'Open'});i.value='';}">+</button></div>`;}
+function quickAdd(opts){
+  opts=opts||{};
+  var tf=opts.todayFocus?'true':'false';
+  var ph=opts.todayFocus?'Add a focus action...':'Add an action...';
+  return '<div style="display:flex;gap:6px;margin-bottom:16px">'+
+    '<input class="input" id="qa" style="flex:1" placeholder="'+ph+'"'+
+    ' onkeydown="if(event.key===\'Enter\'&&this.value.trim()){addAction({action:this.value.trim(),owner:\'Me\',num:\'\',status:\'Open\',todayFocus:'+tf+'});this.value=\'\';}"'+
+    '>'+
+    '<button class="btn btn-primary" style="padding:7px 14px;font-size:15px;line-height:1" title="Quick add"'+
+    ' onclick="var i=document.getElementById(\'qa\');if(i.value.trim()){addAction({action:i.value.trim(),owner:\'Me\',num:\'\',status:\'Open\',todayFocus:'+tf+'});i.value=\'\';}"'+
+    '>+</button>'+
+    '<button class="btn btn-default" style="padding:7px 10px;font-size:11px" title="Add with details" onclick="openAddModal()">&#8943;</button>'+
+    '</div>';
+}
 function dueColor(d,st) {
   if(!d||st==="Done"||st==="Cancelled") return "var(--text-light)";
   const diff = (new Date(d+"T23:59:59") - new Date()) / 864e5;
@@ -2597,7 +2612,7 @@ function renderToday(s) {
       ${!pomodoroState.running?`<button class="btn btn-default" style="font-size:11px;padding:5px 12px;display:flex;align-items:center;gap:5px" onclick="pomodoroStart()">${ICON.play} Focus 25m</button>`:''}
       </div>
   </div>`;
-  h += quickAdd();
+  h += quickAdd({todayFocus:true});
   h += `<div><p style="font-size:12px;color:var(--text-light);margin:2px 0 16px">${dateStr}</p></div>`;
   fetchPrayerTimes().then(t=>{const el=document.getElementById("prayer-slot");if(el&&t)el.innerHTML=prayerWidget(t);});
   h += `<div id="prayer-slot"></div>`;
@@ -2771,12 +2786,124 @@ function renderStatsTab(s) {
   });
   const maxOwner = Math.max(...byOwner.map(o=>o.open+o.done), 1);
 
-  let h = `<div class="fade-in"><div class="page-header"><h1>Stats</h1></div>
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;text-align:center;padding:20px;margin-bottom:14px" class="card">`;
-  [["Captured",s.total,"var(--text)"],["Completed",s.done,"var(--success)"],["Overdue",s.overdue,"var(--danger)"],["Priority",s.prio,"var(--text-mid)"],["Meetings",state.meetings.length,"var(--text-mid)"]].forEach(([l,v,c])=>{
-    h+=`<div><div style="font-size:24px;font-weight:600;color:${c}">${v}</div><div style="font-size:10px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em">${l}</div></div>`;
-  });
-  h += `</div>`;
+  // ── Green Line: compute from Self Map habit scores ──
+  const smFilled = typeof smFilledDates==='function' ? smFilledDates() : [];
+  const habitAreas = ["Prayer","Weightlifting","Cardio","Intermittent fasting","Self Map"];
+  const disciplineAreas = ["Effort","Consistency","Self respect (delayed gratification)"];
+  const mindAreas = ["Focus/Attention","Planning & Productivity","Learning how to learn","Emotional Stability/Stoicism"];
+  const relationAreas = ["Wife","Family","Friends","Communication"];
+  function areaAvgStat(areas, entries, dates){
+    const scores=[];
+    dates.forEach(d=>{const e=entries[d];if(!e)return;areas.forEach(a=>{if(e[a]&&e[a].score)scores.push(e[a].score);});});
+    return scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length):0;
+  }
+  const entries = (state.diary&&state.diary.entries)||{};
+  const recent30 = smFilled.slice(-30);
+  const recent7 = smFilled.slice(-7);
+  const greenPillars = [
+    {name:"Habits", areas:habitAreas, color:"#5A9E7E", icon:"◎"},
+    {name:"Discipline", areas:disciplineAreas, color:"#CF6F6F", icon:"⬡"},
+    {name:"Mind", areas:mindAreas, color:"#5B8DEF", icon:"◈"},
+    {name:"Relations", areas:relationAreas, color:"#9B8ADE", icon:"◇"},
+  ];
+  const pillarScores = greenPillars.map(p=>({...p, score: areaAvgStat(p.areas, entries, recent30)}));
+  const activePillars = pillarScores.filter(p=>p.score>0);
+  const greenScore = activePillars.length>0 ? activePillars.reduce((s,p)=>s+p.score,0)/activePillars.length : 0;
+  const greenScore7 = greenPillars.reduce((s,p)=>s+areaAvgStat(p.areas,entries,recent7)/greenPillars.length,0);
+  const greenTrend = greenScore7 > greenScore+0.2 ? "↑" : greenScore7 < greenScore-0.2 ? "↓" : "→";
+  const completionRate = s.total>0?Math.round(s.done/s.total*100):0;
+  const inProg = state.actions.filter(a=>a.status==="In progress").length;
+  const velocity = state.meetings.length>0?Math.round((s.done/state.meetings.length)*10)/10:0;
+  const overdueRate = (s.open+inProg)>0?Math.round(s.overdue/(s.open+inProg)*100):0;
+
+  let h = `<div class="fade-in"><div class="page-header"><h1>Stats</h1></div>`;
+
+  // ═══ THE TWO LINES ═══
+  h += `<div class="card" style="padding:20px;margin-bottom:14px;background:linear-gradient(135deg,#0F1923 0%,#1A2535 100%);color:#fff;border:none">
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;opacity:.4;margin-bottom:14px">Your two lines</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div style="padding:16px;background:rgba(90,158,126,.12);border:1px solid rgba(90,158,126,.25);border-radius:10px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <div style="width:10px;height:10px;border-radius:50%;background:#5A9E7E;box-shadow:0 0 8px #5A9E7E"></div>
+          <span style="font-size:11px;font-weight:600;color:#5A9E7E;text-transform:uppercase;letter-spacing:.06em">Green Line — Intrinsic Value</span>
+        </div>
+        <div style="font-size:36px;font-weight:700;color:#5A9E7E;line-height:1">${greenScore>0?greenScore.toFixed(1):"—"}<span style="font-size:16px;opacity:.6">/10</span> <span style="font-size:18px">${greenScore>0?greenTrend:""}</span></div>
+        <div style="font-size:10px;color:rgba(255,255,255,.4);margin:4px 0 12px">30-day Self Map average · who you're becoming</div>
+        ${pillarScores.map(p=>{const pct=p.score>0?p.score/10*100:0;return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+          <span style="font-size:9px;color:${p.color};width:62px;flex-shrink:0">${p.name}</span>
+          <div style="flex:1;height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${p.color};border-radius:2px;transition:width .6s"></div></div>
+          <span style="font-size:10px;color:rgba(255,255,255,.45);width:26px;text-align:right">${p.score>0?p.score.toFixed(1):"—"}</span>
+        </div>`;}).join("")}
+        ${smFilled.length===0?`<div style="font-size:10px;color:rgba(255,255,255,.3);margin-top:10px;font-style:italic">Log in Self Map to see your green line grow</div>`:`<div style="font-size:9px;color:rgba(255,255,255,.25);margin-top:8px">${smFilled.length} entries tracked</div>`}
+      </div>
+      <div style="padding:16px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:10px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <div style="width:10px;height:10px;border-radius:50%;background:#F59E0B;box-shadow:0 0 8px #F59E0B"></div>
+          <span style="font-size:11px;font-weight:600;color:#F59E0B;text-transform:uppercase;letter-spacing:.06em">Orange Line — Outcomes</span>
+        </div>
+        <div style="font-size:36px;font-weight:700;color:#F59E0B;line-height:1">${completionRate}<span style="font-size:16px;opacity:.6">%</span></div>
+        <div style="font-size:10px;color:rgba(255,255,255,.4);margin:4px 0 12px">completion rate · what's visible right now</div>
+        ${[["Done",s.done,"#30D158"],["Open",s.open,"#F59E0B"],["Overdue",s.overdue,"#FF453A"],["In Progress",inProg,"#3B82F6"]].map(([l,v,c])=>`
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+            <span style="font-size:9px;color:rgba(255,255,255,.4);width:62px;flex-shrink:0">${l}</span>
+            <div style="flex:1;height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden"><div style="width:${s.total?Math.round(v/s.total*100):0}%;height:100%;background:${c};border-radius:2px;transition:width .6s"></div></div>
+            <span style="font-size:10px;color:rgba(255,255,255,.45);width:26px;text-align:right">${v}</span>
+          </div>`).join("")}
+        <div style="font-size:10px;color:rgba(255,255,255,.25);margin-top:10px;font-style:italic;line-height:1.5">The orange line always reverts to the green line. Build the green line.</div>
+      </div>
+    </div>
+  </div>`;
+
+  // ─ Green line detail: habit areas ─
+  if(smFilled.length>0){
+    h+=`<div class="card" style="padding:18px;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px">Green Line — Habit breakdown</div>
+      <div style="font-size:11px;color:var(--text-light);margin-bottom:14px">${smFilled.length} Self Map entries &nbsp;·&nbsp; 30-day area averages</div>`;
+    greenPillars.forEach(pillar=>{
+      h+=`<div style="margin-bottom:14px"><div style="font-size:10px;font-weight:700;color:${pillar.color};text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">${pillar.icon} ${pillar.name}</div>`;
+      pillar.areas.forEach(area=>{
+        const scores=[];
+        recent30.forEach(d=>{const e=entries[d];if(e&&e[area]&&e[area].score)scores.push(e[area].score);});
+        const avg=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length):0;
+        const trend7val=areaAvgStat([area],entries,recent7);
+        const tr=scores.length>0&&trend7val>avg+0.3?"↑":trend7val<avg-0.3?"↓":"";
+        h+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span style="font-size:10.5px;color:var(--text-mid);width:170px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(area)}</span>
+          <div style="flex:1;height:5px;background:var(--border-vis);border-radius:3px;overflow:hidden">
+            <div style="width:${avg>0?avg/10*100:0}%;height:100%;background:${pillar.color};border-radius:3px;transition:width .5s;opacity:${avg>0?1:0.25}"></div>
+          </div>
+          <span style="font-size:10px;color:var(--text-light);width:38px;text-align:right">${avg>0?avg.toFixed(1)+tr:"—"}</span>
+        </div>`;
+      });
+      h+=`</div>`;
+    });
+    h+=`</div>`;
+  }
+
+  // ─ Orange line: velocity ─
+  if(state.meetings.length>0){
+    const recentMeetings=state.meetings.slice(-12);
+    const maxActs=Math.max(...recentMeetings.map(m=>m.count||0),1);
+    h+=`<div class="card" style="padding:18px;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px">Orange Line — Action velocity</div>
+      <div style="font-size:11px;color:var(--text-light);margin-bottom:12px">
+        <b style="color:var(--text)">${velocity}</b> done/meeting &nbsp;·&nbsp; overdue rate <b style="color:${overdueRate>30?'var(--danger)':'var(--text)'}">${overdueRate}%</b> &nbsp;·&nbsp; ${s.total} captured total
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:3px;height:52px">`;
+    recentMeetings.forEach(m=>{
+      const hh=Math.max(Math.round((m.count||0)/maxActs*52),2);
+      h+=`<div style="flex:1" title="${esc(m.name)}: ${m.count} actions">
+        <div style="width:100%;background:#F59E0B;border-radius:2px 2px 0 0;height:${hh}px;opacity:.65"></div>
+      </div>`;
+    });
+    h+=`</div>
+      <div style="display:flex;justify-content:space-between;margin-top:3px">
+        <span style="font-size:9px;color:var(--text-light)">${esc(recentMeetings[0]?.name||"")}</span>
+        <span style="font-size:9px;color:var(--text-light)">${esc(recentMeetings[recentMeetings.length-1]?.name||"")}</span>
+      </div>
+    </div>`;
+  }
+
 
   // By project bar chart (CSS)
   h += `<div class="card" style="padding:18px;margin-bottom:14px"><div style="font-size:13px;font-weight:700;margin-bottom:12px">By project</div>`;
@@ -2841,7 +2968,7 @@ function renderActions(s) {
     <div><h1>Actions</h1><div class="subtitle">${filtered.length} of ${state.actions.length}</div></div>
     <div class="actions"><button class="btn btn-primary" onclick="openAddModal()">+ Add</button><button class="btn btn-default" onclick="exportJSON()">JSON</button><button class="btn btn-default" onclick="exportMD()">MD</button></div></div>
     <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">
-      <input class="input" id="search-input" style="flex:1;min-width:120px" placeholder="Search... (press /)" value="${esc(state.search)}" oninput="state.search=this.value;render()">
+      <input class="input" id="search-input" style="flex:1;min-width:120px" placeholder="Search... (press /)" value="${esc(state.search)}" oninput="state.search=this.value;renderDebounced()">
       <button class="btn ${state.fPrio?'btn-primary':'btn-default'}" onclick="state.fPrio=!state.fPrio;render()">\u2605 Priority</button>
       <select class="select" onchange="state.fStatus=this.value;render()">
         <option ${state.fStatus==="Active"?"selected":""}>Active</option><option ${state.fStatus==="All"?"selected":""}>All</option>
@@ -3054,9 +3181,9 @@ function renderProjects() {
   h += `<div style="flex:1;min-width:0">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <div class="page-header"><div style="display:flex;align-items:center;gap:8px">
-        <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="state.projSideOpen=!state.projSideOpen;saveState();render()">${sideOpen?'\u25C0 Hide panel':'\u25B6 Show panel'}</button>
         <h1>Projects</h1>
-      </div>
+      </div></div>
+      <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;flex-shrink:0" onclick="state.projSideOpen=!state.projSideOpen;saveState();render()">${sideOpen?'\u25C4 Hide panel':'\u25BA Show panel'}</button>
     </div>`;
 
   projs.forEach(proj => {
