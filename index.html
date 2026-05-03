@@ -195,6 +195,10 @@ body.dark .sm-hero{background:linear-gradient(135deg,#201D38 0%,#2A264A 50%,#1E1
 .sm-pillar-head:hover{background:var(--accent-soft)}
 .sm-area{padding:14px 18px;border-top:1px solid var(--border);animation:smSlideUp .2s cubic-bezier(.16,1,.3,1) both}
 .sm-prev-hint{margin-top:5px;padding:5px 8px;font-size:10.5px;color:var(--text-light);background:rgba(0,0,0,.025);border-left:2px solid var(--border);border-radius:0 4px 4px 0;line-height:1.4;font-style:italic;opacity:.75}
+.sm-grow{min-height:32px;transition:min-height .15s}
+.sm-grow:focus{min-height:52px}
+.sm-field textarea.sm-grow{height:32px;min-height:32px}
+.sm-field textarea.sm-grow:focus,.sm-field textarea.sm-grow:not(:placeholder-shown){height:auto;min-height:52px}
 body.dark .sm-prev-hint{background:rgba(255,255,255,.03);color:rgba(255,255,255,.4)}
 .sm-prev-label{font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-mid);margin-right:4px;font-style:normal;opacity:.7}
 .sm-score-dot{width:22px;height:22px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;cursor:pointer;transition:all .1s}
@@ -912,6 +916,21 @@ function smInit(){
       areas:p.areas.map(a=>typeof a==='string'?{name:a,question:'',adhered:'',notAdhered:''}:a)
     }));
   }
+  // Habits store: {id, name, weeklyGoal, createdAt, color}
+  if(!state.diary.habits||Array.isArray(state.diary.habits))state.diary.habits={};
+  if(!state.diary.habitsList||state.diary.habitsList.length===0){
+    state.diary.habitsList=[
+      {id:'h_prayer',name:'Prayer',weeklyGoal:7,createdAt:'2026-01-01',color:'#5A9E7E'},
+      {id:'h_weights',name:'Weightlifting',weeklyGoal:4,createdAt:'2026-01-01',color:'#5A9E7E'},
+      {id:'h_cardio',name:'Cardio',weeklyGoal:3,createdAt:'2026-01-01',color:'#5A9E7E'},
+      {id:'h_fast',name:'Intermittent Fasting',weeklyGoal:6,createdAt:'2026-01-01',color:'#5A9E7E'},
+      {id:'h_selfmap',name:'Self Map',weeklyGoal:7,createdAt:'2026-01-01',color:'#5A9E7E'}
+    ];
+  }
+  // Habit log: state.diary.habitLog[habitId][date]='done'|'missed'|'skip'
+  if(!state.diary.habitLog)state.diary.habitLog={};
+  if(!state.diary.weights)state.diary.weights={}; // {date: kg}
+  
   // Migrate old area names to new names
   const MIGRATIONS={'Self respect (delayed gratification)':'Impulse Control','Effort':'Proactivity','Consistency':'Process Commitment','Focus/Attention':'Focus/Attention','Structured problem solving':'Problem Solving Approach','Emotional Stability/Stoicism':'Emotional Stability','Learning how to learn':'Notes & Reading','Circle of influence':'Circle of Influence'};
   Object.values(state.diary.entries||{}).forEach(day=>{
@@ -1308,6 +1327,375 @@ function editSmPillars(){
   renderPillarEditor();
 }
 
+// ═══════════════════════════════════════
+// REFLECT TAB - Habits + Weight
+// ═══════════════════════════════════════
+function habitToggle(habitId, date){
+  smInit();
+  if(!state.diary.habitLog[habitId]) state.diary.habitLog[habitId]={};
+  const cur=state.diary.habitLog[habitId][date]||'';
+  // Cycle: '' -> 'done' -> 'missed' -> 'skip' -> ''
+  const next=cur===''?'done':cur==='done'?'missed':cur==='missed'?'skip':'';
+  if(next==='') delete state.diary.habitLog[habitId][date];
+  else state.diary.habitLog[habitId][date]=next;
+  saveState();
+  render();
+}
+function habitAdd(){
+  const name=prompt('Habit name?');
+  if(!name||!name.trim()) return;
+  const goal=parseInt(prompt('Weekly goal (1-7 times per week)?','5'))||5;
+  smInit();
+  state.diary.habitsList.push({
+    id:'h_'+Math.random().toString(36).slice(2,9),
+    name:name.trim(),
+    weeklyGoal:Math.min(7,Math.max(1,goal)),
+    createdAt:todayISO(),
+    color:'#5A9E7E'
+  });
+  saveState();render();
+}
+function habitEdit(habitId){
+  const h=state.diary.habitsList.find(x=>x.id===habitId);
+  if(!h) return;
+  const name=prompt('Habit name:',h.name);
+  if(name===null) return;
+  const goal=parseInt(prompt('Weekly goal (1-7):',h.weeklyGoal))||h.weeklyGoal;
+  h.name=name.trim()||h.name;
+  h.weeklyGoal=Math.min(7,Math.max(1,goal));
+  saveState();render();
+}
+function habitDelete(habitId){
+  if(!confirm('Delete this habit and all its log entries?')) return;
+  state.diary.habitsList=state.diary.habitsList.filter(x=>x.id!==habitId);
+  delete state.diary.habitLog[habitId];
+  saveState();render();
+}
+function weightLog(){
+  const inp=document.getElementById('weight-input');
+  if(!inp) return;
+  const v=parseFloat(inp.value);
+  if(!v||v<30||v>300){alert('Enter a valid weight in kg');return;}
+  smInit();
+  state.diary.weights[todayISO()]=v;
+  saveState();render();
+}
+
+function renderReflect(){
+  smInit();
+  const habits=state.diary.habitsList||[];
+  const log=state.diary.habitLog||{};
+  const weights=state.diary.weights||{};
+  const today=todayISO();
+  const todayObj=new Date(today+'T12:00:00');
+  
+  // Compute today's status per habit
+  const todayStatus=habits.map(h=>({
+    habit:h,
+    status:(log[h.id]||{})[today]||''
+  }));
+  const todayDone=todayStatus.filter(s=>s.status==='done').length;
+  
+  // Compute streak per habit (consecutive 'done' days backwards)
+  function getStreak(habitId){
+    const hl=log[habitId]||{};
+    let streak=0;
+    let d=new Date(today+'T12:00:00');
+    for(let i=0;i<365;i++){
+      const ds=d.toISOString().slice(0,10);
+      if(hl[ds]==='done'){streak++;}
+      else if(hl[ds]==='skip'){/* skip-day doesn't break streak */}
+      else if(i===0){/* today not yet logged is OK */}
+      else break;
+      d.setDate(d.getDate()-1);
+    }
+    return streak;
+  }
+  
+  // Get last 7 days for the bar
+  const last7=[];
+  for(let i=6;i>=0;i--){
+    const d=new Date(todayObj);d.setDate(d.getDate()-i);
+    last7.push(d.toISOString().slice(0,10));
+  }
+  
+  let h=`<div class="fade-in">
+    <div class="page-header" style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <h1>Reflect</h1>
+      <span style="font-size:11px;color:var(--text-light)">Daily habits, weight, and the green line</span>
+    </div>`;
+  
+  // ── 1. TODAY'S HABITS ──
+  h+=`<div class="card" style="padding:18px;margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700">Today's habits</div>
+      <span style="font-size:11px;color:var(--text-light)">${todayObj.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'})}</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--text-mid);font-weight:600">${todayDone} / ${habits.length}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px">`;
+  
+  todayStatus.forEach(({habit,status})=>{
+    const streak=getStreak(habit.id);
+    const isDone=status==='done';
+    const isMissed=status==='missed';
+    const isSkip=status==='skip';
+    const bg=isDone?'var(--accent-soft)':isMissed?'rgba(207,111,111,.08)':isSkip?'rgba(148,163,184,.08)':'var(--card)';
+    const border=isDone?'1px solid #5A9E7E':isMissed?'1px solid rgba(207,111,111,.4)':'1px solid var(--border)';
+    const dotBg=isDone?'#5A9E7E':isMissed?'#CF6F6F':isSkip?'#94A3B8':'transparent';
+    const dotBorder=isDone||isMissed||isSkip?'none':'1.5px solid var(--border-vis)';
+    const icon=isDone?'\u2713':isMissed?'\u2715':isSkip?'\u2014':'';
+    
+    h+=`<div onclick="habitToggle('${habit.id}','${today}')" oncontextmenu="event.preventDefault();habitEdit('${habit.id}')" style="background:${bg};border:${border};border-radius:8px;padding:10px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;transition:all .15s" title="Click to cycle: pending → done → missed → skip">
+      <div style="width:24px;height:24px;border-radius:50%;background:${dotBg};border:${dotBorder};display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700">${icon}</div>
+      <div style="font-size:11px;font-weight:600;color:${isDone||isMissed||isSkip?'var(--text)':'var(--text-mid)'};line-height:1.2">${esc(habit.name)}</div>
+      <div style="font-size:9px;color:var(--text-light)">${streak>0?streak+' day streak':'tap to log'}</div>
+    </div>`;
+  });
+  
+  h+=`</div>`;
+  
+  // Weekly bar (last 7 days, summarised across habits)
+  h+=`<div style="margin-top:14px"><div style="font-size:9.5px;color:var(--text-light);margin-bottom:6px;display:flex;justify-content:space-between"><span>Last 7 days</span><span>tap a square to log earlier</span></div>
+    <div style="display:flex;gap:3px">`;
+  last7.forEach((d,i)=>{
+    const dObj=new Date(d+'T12:00:00');
+    const totalForDay=habits.length;
+    const doneForDay=habits.filter(h=>(log[h.id]||{})[d]==='done').length;
+    const missForDay=habits.filter(h=>(log[h.id]||{})[d]==='missed').length;
+    const ratio=totalForDay>0?doneForDay/totalForDay:0;
+    const bg=ratio>=0.8?'#5A9E7E':ratio>=0.5?'#D4A04A':ratio>0?'#CF6F6F':'var(--border-vis)';
+    const op=missForDay+doneForDay>0?1:0.5;
+    const isToday=d===today;
+    h+=`<div style="flex:1;height:34px;background:${bg};opacity:${op};border-radius:4px;position:relative;cursor:pointer;${isToday?'outline:2px solid var(--accent);outline-offset:1px':''}" title="${dObj.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'})} - ${doneForDay}/${totalForDay} done">
+      <span style="position:absolute;bottom:-14px;left:0;right:0;text-align:center;font-size:9px;color:var(--text-light)">${dObj.toLocaleDateString('en-GB',{weekday:'short'}).slice(0,1)}</span>
+    </div>`;
+  });
+  h+=`</div></div>`;
+  h+=`</div>`;
+  
+  // ── 2. MONTHLY GRID ──
+  // Allow scrolling months
+  if(!state.diary.reflectMonth) state.diary.reflectMonth=today.slice(0,7); // YYYY-MM
+  const [year,month]=state.diary.reflectMonth.split('-').map(Number);
+  const daysInMonth=new Date(year,month,0).getDate();
+  const firstDayOfMonth=new Date(year,month-1,1);
+  const monthDays=[];
+  for(let i=1;i<=daysInMonth;i++){
+    const d=new Date(year,month-1,i);
+    monthDays.push({day:i,iso:d.toISOString().slice(0,10),dow:d.getDay()});
+  }
+  
+  function shiftMonth(delta){
+    const d=new Date(year,month-1+delta,1);
+    state.diary.reflectMonth=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    saveState();render();
+  }
+  // Make available globally
+  window.shiftReflectMonth=shiftMonth;
+  
+  h+=`<div class="card" style="padding:16px;margin-bottom:14px;overflow-x:auto">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:700">Monthly grid</div>
+      <span style="font-size:11px;color:var(--text-light)">tap cell: pending → done → missed → skip</span>
+      <div style="margin-left:auto;display:flex;gap:4px;align-items:center">
+        <button onclick="window.shiftReflectMonth(-1)" style="background:none;border:1px solid var(--border-vis);border-radius:4px;padding:3px 8px;cursor:pointer;font-family:var(--font);font-size:11px">\u2039</button>
+        <span style="font-size:12px;font-weight:600;padding:0 8px;min-width:120px;text-align:center">${firstDayOfMonth.toLocaleDateString('en-GB',{month:'long',year:'numeric'})}</span>
+        <button onclick="window.shiftReflectMonth(1)" style="background:none;border:1px solid var(--border-vis);border-radius:4px;padding:3px 8px;cursor:pointer;font-family:var(--font);font-size:11px">\u203A</button>
+        <button onclick="state.diary.reflectMonth='${today.slice(0,7)}';saveState();render()" style="background:none;border:1px solid var(--border-vis);border-radius:4px;padding:3px 8px;cursor:pointer;font-family:var(--font);font-size:11px;margin-left:4px">today</button>
+      </div>
+    </div>
+    
+    <table style="border-collapse:separate;border-spacing:0;font-size:11px;width:100%;min-width:680px">
+      <thead>
+        <tr>
+          <th style="text-align:left;padding:6px 8px;font-weight:600;color:var(--text-mid);font-size:10px;background:var(--card);border-bottom:1px solid var(--border-vis);position:sticky;left:0;z-index:2;min-width:130px">Habit</th>`;
+  
+  monthDays.forEach(({day,iso,dow})=>{
+    const isWeekend=dow===0||dow===6;
+    const isToday=iso===today;
+    h+=`<th style="padding:4px 0;font-weight:400;font-size:9px;color:${isToday?'var(--accent)':'var(--text-light)'};border-bottom:1px solid var(--border-vis);width:20px;text-align:center;${isWeekend?'background:rgba(0,0,0,.03)':''};${isToday?'background:rgba(91,141,239,.12);font-weight:700':''}">${day}</th>`;
+  });
+  h+=`<th style="padding:6px 8px;font-weight:600;color:var(--text-mid);font-size:10px;border-bottom:1px solid var(--border-vis);border-left:1px solid var(--border-vis);text-align:center;padding-left:12px;min-width:50px">Goal</th>
+      <th style="padding:6px 8px;font-weight:600;color:var(--text-mid);font-size:10px;border-bottom:1px solid var(--border-vis);text-align:center;min-width:50px">Done</th>
+      <th style="padding:6px 8px;font-weight:600;color:var(--text-mid);font-size:10px;border-bottom:1px solid var(--border-vis);text-align:center;min-width:50px">Hit</th>
+    </tr></thead><tbody>`;
+  
+  habits.forEach(habit=>{
+    const hl=log[habit.id]||{};
+    let monthDone=0,monthMissed=0,monthSkip=0;
+    monthDays.forEach(({iso})=>{
+      const st=hl[iso];
+      if(st==='done')monthDone++;
+      else if(st==='missed')monthMissed++;
+      else if(st==='skip')monthSkip++;
+    });
+    // Monthly goal = weekly goal × ~4.3 weeks per month
+    const monthlyGoal=Math.round(habit.weeklyGoal*daysInMonth/7);
+    const remainingDays=monthDays.filter(({iso})=>iso>today).length;
+    const verdict = monthDone>=monthlyGoal ? 'Yes' : (monthDone+remainingDays<monthlyGoal ? 'No' : '\u2026');
+    const verdictBg=verdict==='Yes'?'#EAF3DE':verdict==='No'?'#FCEBEB':'#FAEEDA';
+    const verdictColor=verdict==='Yes'?'#3B6D11':verdict==='No'?'#A32D2D':'#854F0B';
+    
+    h+=`<tr>
+      <td style="padding:6px 8px;font-weight:600;font-size:11.5px;background:var(--card);border-bottom:1px solid var(--border);position:sticky;left:0;z-index:1;display:flex;align-items:center;gap:6px">
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(habit.name)}</span>
+        <button onclick="habitEdit('${habit.id}')" style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-light);opacity:.5;padding:0" title="Edit habit">\u270E</button>
+        <button onclick="habitDelete('${habit.id}')" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--text-light);opacity:.4;padding:0" title="Delete habit">\u00D7</button>
+      </td>`;
+    monthDays.forEach(({day,iso,dow})=>{
+      const st=hl[iso];
+      const isWeekend=dow===0||dow===6;
+      const isFuture=iso>today;
+      const isToday=iso===today;
+      let bg='transparent',content='';
+      if(st==='done'){bg='#5A9E7E';content='';}
+      else if(st==='missed'){bg='#CF6F6F';content='';}
+      else if(st==='skip'){bg='#CBD5E1';content='';}
+      else if(isWeekend){bg='rgba(0,0,0,.03)';}
+      h+=`<td onclick="${isFuture?'':"habitToggle('"+habit.id+"','"+iso+"')"}" style="background:${bg};border:1px solid #fff;cursor:${isFuture?'default':'pointer'};${isToday?'outline:1.5px solid var(--accent);outline-offset:-1.5px':''};${isFuture?'opacity:.4':''};height:22px" title="${iso} - ${st||'pending'}"></td>`;
+    });
+    h+=`<td style="text-align:center;font-size:11px;border-left:1px solid var(--border-vis);padding:6px 8px;padding-left:12px;border-bottom:1px solid var(--border)">${monthlyGoal}<div style="font-size:8.5px;color:var(--text-light);font-weight:400">(${habit.weeklyGoal}/wk)</div></td>
+      <td style="text-align:center;font-size:12px;font-weight:600;padding:6px 8px;border-bottom:1px solid var(--border)">${monthDone}</td>
+      <td style="text-align:center;padding:6px 8px;border-bottom:1px solid var(--border)"><span style="background:${verdictBg};color:${verdictColor};font-size:10px;padding:3px 9px;border-radius:10px;font-weight:600">${verdict}</span></td>
+    </tr>`;
+  });
+  
+  h+=`</tbody></table>
+    
+    <div style="display:flex;align-items:center;gap:10px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:10px;color:var(--text-light);flex-wrap:wrap">
+      <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:11px;height:11px;background:#5A9E7E;border-radius:2px"></span>done</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:11px;height:11px;background:#CF6F6F;border-radius:2px"></span>missed</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:11px;height:11px;background:#CBD5E1;border-radius:2px"></span>skip-day</span>
+      <button onclick="habitAdd()" style="margin-left:auto;background:var(--accent);color:#fff;border:none;border-radius:4px;padding:5px 12px;cursor:pointer;font-family:var(--font);font-size:11px;font-weight:600">+ Add habit</button>
+    </div>
+  </div>`;
+  
+  // ── 3. SUCCESS RATE — overall passes/tries × 100 ──
+  h+=`<div class="card" style="padding:18px;margin-bottom:14px">
+    <div style="font-size:13px;font-weight:700;margin-bottom:4px">Success rate</div>
+    <div style="font-size:11px;color:var(--text-light);margin-bottom:14px">Passes / tries × 100 across all logged history. Skip-days don't count as a try.</div>`;
+  
+  habits.forEach(habit=>{
+    const hl=log[habit.id]||{};
+    let pass=0,tries=0;
+    Object.values(hl).forEach(st=>{
+      if(st==='done'){pass++;tries++;}
+      else if(st==='missed'){tries++;}
+    });
+    const rate=tries>0?Math.round(pass/tries*100):0;
+    const rateColor=rate>=80?'#5A9E7E':rate>=50?'#D4A04A':'#CF6F6F';
+    const skipCount=Object.values(hl).filter(s=>s==='skip').length;
+    
+    h+=`<div style="margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+        <span style="font-size:12px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(habit.name)}</span>
+        <span style="font-size:11px;color:var(--text-light)">${pass} / ${tries} tries${skipCount?' · '+skipCount+' skipped':''}</span>
+        <span style="font-size:14px;font-weight:700;color:${rateColor};min-width:50px;text-align:right">${tries>0?rate+'%':'\u2014'}</span>
+      </div>
+      <div style="height:6px;background:var(--border-vis);border-radius:3px;overflow:hidden">
+        <div style="width:${rate}%;height:100%;background:${rateColor};border-radius:3px;transition:width .5s"></div>
+      </div>
+    </div>`;
+  });
+  
+  if(habits.length===0){
+    h+=`<div style="text-align:center;color:var(--text-light);font-size:11px;padding:14px">No habits yet. <button onclick="habitAdd()" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:5px 12px;cursor:pointer;font-family:var(--font);font-size:11px;font-weight:600;margin-left:8px">+ Add habit</button></div>`;
+  }
+  
+  h+=`</div>`;
+  
+  // ── 4. WEIGHT TRACKER ──
+  const weightDates=Object.keys(weights).sort();
+  const latestWeight=weightDates.length?weights[weightDates[weightDates.length-1]]:null;
+  const TARGET=85;
+  const delta=latestWeight!==null?(latestWeight-TARGET):null;
+  
+  h+=`<div class="card" style="padding:18px;margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:700">Weight</div>
+      <div style="display:flex;align-items:baseline;gap:4px;margin-left:auto">
+        ${latestWeight!==null?`<span style="font-size:20px;font-weight:700">${latestWeight.toFixed(1)}</span><span style="font-size:11px;color:var(--text-light)">kg</span>`:'<span style="font-size:11px;color:var(--text-light);font-style:italic">no entries yet</span>'}
+        ${delta!==null?`<span style="font-size:11px;color:${delta<=0?'#5A9E7E':'var(--text-mid)'};margin-left:8px;font-weight:600">${delta>0?'+':''}${delta.toFixed(1)} to target</span>`:''}
+      </div>
+    </div>
+    
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+      <input type="number" id="weight-input" placeholder="${latestWeight!==null?latestWeight.toFixed(1):'88.0'}" step="0.1" style="width:90px;height:32px;padding:0 10px;font-size:13px;border:1px solid var(--border-vis);border-radius:6px;background:var(--card);font-family:var(--font);font-weight:600" onkeydown="if(event.key==='Enter')weightLog()">
+      <span style="font-size:11px;color:var(--text-light)">log today's weight (kg)</span>
+      <button onclick="weightLog()" style="margin-left:auto;height:32px;padding:0 14px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:var(--font);font-size:12px;font-weight:600">Log</button>
+    </div>`;
+  
+  if(weightDates.length>0){
+    // Build chart
+    const minW=Math.min(...Object.values(weights),TARGET-2);
+    const maxW=Math.max(...Object.values(weights),TARGET+5);
+    const cw=900,ch=240,padL=44,padR=20,padT=16,padB=36;
+    const plotW=cw-padL-padR,plotH=ch-padT-padB;
+    const minDate=new Date(weightDates[0]+'T12:00:00');
+    const maxDate=new Date(weightDates[weightDates.length-1]+'T12:00:00');
+    const dateSpan=Math.max(maxDate-minDate,86400000);
+    const xFor=d=>padL+((new Date(d+'T12:00:00')-minDate)/dateSpan)*plotW;
+    const yFor=w=>padT+(1-(w-minW)/(maxW-minW))*plotH;
+    
+    h+=`<svg viewBox="0 0 ${cw} ${ch}" style="width:100%;height:auto;display:block;font-family:var(--font)">`;
+    
+    // Y gridlines for whole kg values
+    const yStart=Math.ceil(minW),yEnd=Math.floor(maxW);
+    for(let y=yStart;y<=yEnd;y++){
+      if((y-yStart)%2!==0&&yEnd-yStart>6)continue;
+      const py=yFor(y);
+      h+=`<line x1="${padL}" y1="${py}" x2="${cw-padR}" y2="${py}" stroke="var(--border)" stroke-width="1" stroke-dasharray="2,3" opacity="0.7"/>`;
+      h+=`<text x="${padL-8}" y="${py+3}" text-anchor="end" font-size="10" fill="var(--text-light)">${y}</text>`;
+    }
+    
+    // Target line at 85kg
+    const targetY=yFor(TARGET);
+    h+=`<line x1="${padL}" y1="${targetY}" x2="${cw-padR}" y2="${targetY}" stroke="#5A9E7E" stroke-width="2" stroke-dasharray="6,4" opacity="0.85"/>`;
+    h+=`<text x="${cw-padR-4}" y="${targetY-4}" text-anchor="end" font-size="11" fill="#5A9E7E" font-weight="700">85 kg target</text>`;
+    
+    // Data path
+    let pathD='';
+    weightDates.forEach((d,i)=>{
+      pathD+=(i===0?'M':' L')+xFor(d)+','+yFor(weights[d]);
+    });
+    h+=`<path d="${pathD}" fill="none" stroke="#185FA5" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    
+    // Dots
+    weightDates.forEach(d=>{
+      h+=`<circle cx="${xFor(d)}" cy="${yFor(weights[d])}" r="3" fill="#185FA5" stroke="var(--card)" stroke-width="1.5"><title>${new Date(d+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}: ${weights[d].toFixed(1)} kg</title></circle>`;
+    });
+    
+    // X axis date labels (max 6)
+    const tickCount=Math.min(weightDates.length,6);
+    for(let i=0;i<tickCount;i++){
+      const idx=Math.round(i*(weightDates.length-1)/Math.max(tickCount-1,1));
+      const d=weightDates[idx];
+      const x=xFor(d);
+      const lbl=new Date(d+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+      h+=`<text x="${x}" y="${padT+plotH+18}" text-anchor="middle" font-size="10" fill="var(--text-mid)">${lbl}</text>`;
+    }
+    
+    h+=`</svg>`;
+    
+    // Stats row
+    const startW=weights[weightDates[0]];
+    const lostKg=startW-latestWeight;
+    h+=`<div style="display:flex;gap:12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:11px;flex-wrap:wrap">
+      <div><span style="color:var(--text-light)">Start</span> <span style="font-weight:600">${startW.toFixed(1)} kg</span></div>
+      <div><span style="color:var(--text-light)">Now</span> <span style="font-weight:600">${latestWeight.toFixed(1)} kg</span></div>
+      <div><span style="color:var(--text-light)">Change</span> <span style="font-weight:600;color:${lostKg>0?'#5A9E7E':lostKg<0?'#CF6F6F':'var(--text)'}">${lostKg>0?'\u2212':''}${Math.abs(lostKg).toFixed(1)} kg</span></div>
+      <div style="margin-left:auto"><span style="color:var(--text-light)">${weightDates.length} entries</span></div>
+    </div>`;
+  } else {
+    h+=`<div style="padding:20px;text-align:center;color:var(--text-light);font-size:11px;font-style:italic">Log your first weight above to start the chart.</div>`;
+  }
+  
+  h+=`</div>`;
+  
+  h+=`</div>`;
+  return h;
+}
+
 function renderDiary(){
   smInit();
   const td=state.diary.viewDate||todayISO();
@@ -1356,8 +1744,8 @@ function renderDiary(){
       </div>
       <div style="display:flex;gap:4px;align-items:center">
         <button class="btn" style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);padding:5px 10px;font-size:10px;border:1px solid rgba(255,255,255,.08)" onclick="smQuickScore()">Quick score</button>
-        <button class="btn" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);padding:5px 8px;font-size:10px;border:1px solid rgba(255,255,255,.05)" onclick="SM_PILLARS.forEach(function(p,i){state.diary['sm-p-'+i]=true});saveState();render()">Collapse</button>
-        <button class="btn" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);padding:5px 8px;font-size:10px;border:1px solid rgba(255,255,255,.05)" onclick="SM_PILLARS.forEach(function(p,i){state.diary['sm-p-'+i]=false});saveState();render()">Expand</button>
+        <button class="btn" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);padding:5px 8px;font-size:10px;border:1px solid rgba(255,255,255,.05)" onclick="SM_PILLARS.forEach(function(p,i){state.diary['sm-p-'+i]='closed'});saveState();render()">Collapse</button>
+        <button class="btn" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);padding:5px 8px;font-size:10px;border:1px solid rgba(255,255,255,.05)" onclick="SM_PILLARS.forEach(function(p,i){state.diary['sm-p-'+i]='open'});saveState();render()">Expand</button>
         <button class="btn" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);padding:5px 8px;font-size:10px;border:1px solid rgba(255,255,255,.05)" onclick="editSmPillars()">Edit</button>
         <button class="btn" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);padding:4px 10px;font-size:10px;border:1px solid rgba(255,255,255,.1)" onclick="state.diary.viewDate=null;render()">\u25C9 Today</button>
         <input type="date" class="input" style="font-size:10px;padding:4px 6px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.85)" value="${td}" onchange="state.diary.viewDate=this.value;render()">
@@ -1646,11 +2034,15 @@ function renderDiary(){
   SM_PILLARS.forEach((pillar,pi)=>{
     const pavg=pillarAvg[pillar.name]||0;
     const pcKey='sm-p-'+pi;
-    const pCollapsed=state.diary[pcKey];
+    // Default: collapsed unless explicitly opened, OR pillar has content today
+    const hasTodayContent=pillar.areas.some(a=>{const n=typeof a==='object'?a.name:a;const ae=entry[n];return ae&&(ae.score||ae.repeat||ae.improve||ae.action);});
+    const userOpened=state.diary[pcKey]==='open';
+    const userClosed=state.diary[pcKey]==='closed';
+    const pCollapsed = userOpened ? false : userClosed ? true : !hasTodayContent;
     const trend=smPillarTrendChart(pillar.name);
 
     h+=`<div class="sm-pillar" style="animation:smSlideUp .3s ease-out both;animation-delay:${pi*50}ms">
-      <div class="sm-pillar-head" onclick="state.diary['${pcKey}']=!state.diary['${pcKey}'];saveState();render()" style="background:linear-gradient(135deg,${pillar.color}20,${pillar.color}08)">
+      <div class="sm-pillar-head" onclick="state.diary['${pcKey}']=(${pCollapsed?'true':'false'})?'open':'closed';saveState();render()" style="background:linear-gradient(135deg,${pillar.color}20,${pillar.color}08)">
         <div style="width:4px;height:28px;border-radius:2px;background:${pillar.color};flex-shrink:0"></div>
         <div style="flex:1">
           <div style="font-size:13px;font-weight:700">${pillar.name}</div>
@@ -1665,49 +2057,63 @@ function renderDiary(){
         const area=typeof areaObj==='object'?areaObj.name:areaObj;
         const ae=entry[area]||{repeat:"",improve:"",action:"",score:0};
         const areaDef=smAreaDef(area);
+        const hasContent=ae.score||ae.repeat||ae.improve||ae.action;
+        const aKey='sm-a-'+pi+'-'+ai;
+        const userOpenA=state.diary[aKey]==='open';
+        const userClosedA=state.diary[aKey]==='closed';
+        const aCollapsed = userOpenA ? false : userClosedA ? true : !hasContent;
+        
         // Look up previous day's entry for reflection
         const filledBefore=smFilledDates().filter(d=>d<td).sort();
         const prevDate=filledBefore[filledBefore.length-1];
         const prevEntry=prevDate?(state.diary.entries[prevDate]||{})[area]:null;
         const prevHasContent=prevEntry&&(prevEntry.repeat||prevEntry.improve||prevEntry.action||prevEntry.score);
         const prevDateLabel=prevDate?new Date(prevDate+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'';
+        const scoreCol=ae.score?(ae.score<=3?'#CF6F6F':ae.score<=6?'#D4A04A':'#5A9E7E'):'var(--text-light)';
         
-        let scoreDots='';
-        for(let s=1;s<=10;s++){
-          const on=ae.score>=s;
-          const dotCol=s<=3?'#CF6F6F':s<=6?'#D4A04A':'#5A9E7E';
-          scoreDots+=`<div class="sm-score-dot${on?' active':''}" style="background:${on?dotCol:'var(--border)'};color:${on?'#fff':'var(--text-light)'}" onclick="smSaveField('${td}','${esc(area)}','score',${ae.score===s?0:s});render()">${s}</div>`;
-        }
-        
-        h+=`<div class="sm-area" style="animation-delay:${ai*30}ms">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px;flex-wrap:wrap">
-            <div style="display:flex;flex-direction:column;flex:1;min-width:200px">
-              <div style="display:flex;align-items:center;gap:8px">
-                <span style="font-size:12.5px;font-weight:600">${esc(area)}</span>
-                ${areaDef.adhered?`<button onclick="event.stopPropagation();showAdherence('${esc(area)}')" style="font-size:9px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:rgba(90,158,126,.08);color:#5A9E7E;cursor:pointer;font-family:var(--font)">guide</button>`:''}
+        if(aCollapsed){
+          // Single-line collapsed stub
+          h+=`<div onclick="state.diary['${aKey}']='open';saveState();render()" style="display:flex;align-items:center;gap:10px;padding:9px 18px;border-top:1px solid var(--border);cursor:pointer;transition:background .1s" onmouseover="this.style.background='var(--accent-soft)'" onmouseout="this.style.background=''">
+            <span style="font-size:12px;font-weight:500;flex:1;color:var(--text-mid)">${esc(area)}</span>
+            ${ae.score?`<span style="font-size:10px;color:var(--text-light)">last: ${prevHasContent&&prevEntry.score?prevEntry.score+'/10':'\u2014'}</span>`:''}
+            <span style="font-size:11px;font-weight:700;color:${scoreCol};min-width:34px;text-align:right">${ae.score?ae.score+'/10':'\u2014'}</span>
+            <span style="font-size:9px;color:var(--text-light)">\u203A</span>
+          </div>`;
+        } else {
+          h+=`<div class="sm-area" style="animation-delay:${ai*30}ms">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;flex-wrap:wrap">
+              <div style="display:flex;flex-direction:column;flex:1;min-width:200px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span onclick="state.diary['${aKey}']='closed';saveState();render()" style="cursor:pointer;font-size:9px;color:var(--text-light)" title="Collapse">\u25BE</span>
+                  <span style="font-size:12.5px;font-weight:600">${esc(area)}</span>
+                  ${areaDef.adhered?`<button onclick="event.stopPropagation();showAdherence('${esc(area)}')" style="font-size:9px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:rgba(90,158,126,.08);color:#5A9E7E;cursor:pointer;font-family:var(--font)">guide</button>`:''}
+                </div>
+                ${areaDef.question?`<span style="font-size:10.5px;color:var(--text-light);font-style:italic;margin-top:2px">${esc(areaDef.question)}</span>`:''}
               </div>
-              ${areaDef.question?`<span style="font-size:10.5px;color:var(--text-light);font-style:italic;margin-top:2px">${esc(areaDef.question)}</span>`:''}
+              <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;min-width:240px">
+                <input type="range" min="0" max="10" step="1" value="${ae.score||0}" oninput="this.nextElementSibling.textContent=this.value+'/10';this.nextElementSibling.style.color=this.value==0?'var(--text-light)':this.value<=3?'#CF6F6F':this.value<=6?'#D4A04A':'#5A9E7E'" onchange="smSaveField('${td}','${esc(area)}','score',parseInt(this.value));render()" style="flex:1;accent-color:${scoreCol};height:4px">
+                <span style="font-size:13px;font-weight:700;color:${scoreCol};min-width:46px;text-align:right;font-variant-numeric:tabular-nums">${ae.score?ae.score+'/10':'0/10'}</span>
+              </div>
             </div>
-            <div style="display:flex;gap:2px;flex-shrink:0">${scoreDots}</div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
-            <div class="sm-field">
-              <label style="color:#5A9E7E">\u2713 Repeat</label>
-              <textarea placeholder="What went well..." onblur="smSaveField('${td}','${esc(area)}','repeat',this.value)">${esc(ae.repeat)}</textarea>
-              ${prevHasContent&&prevEntry.repeat?`<div class="sm-prev-hint" title="From ${prevDateLabel}"><span class="sm-prev-label">${prevDateLabel}</span> ${esc(prevEntry.repeat)}</div>`:''}
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+              <div class="sm-field">
+                <label style="color:#5A9E7E">\u2713 Repeat</label>
+                <textarea class="sm-grow" placeholder="What went well..." onfocus="this.style.minHeight='52px'" onblur="smSaveField('${td}','${esc(area)}','repeat',this.value);if(!this.value)this.style.minHeight=''" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,200)+'px'">${esc(ae.repeat)}</textarea>
+                ${prevHasContent&&prevEntry.repeat?`<div class="sm-prev-hint" title="From ${prevDateLabel}"><span class="sm-prev-label">${prevDateLabel}</span> ${esc(prevEntry.repeat)}</div>`:''}
+              </div>
+              <div class="sm-field">
+                <label style="color:#D4A04A">\u26A0 Improve</label>
+                <textarea class="sm-grow" placeholder="What needs work..." onfocus="this.style.minHeight='52px'" onblur="smSaveField('${td}','${esc(area)}','improve',this.value);if(!this.value)this.style.minHeight=''" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,200)+'px'">${esc(ae.improve)}</textarea>
+                ${prevHasContent&&prevEntry.improve?`<div class="sm-prev-hint" title="From ${prevDateLabel}"><span class="sm-prev-label">${prevDateLabel}</span> ${esc(prevEntry.improve)}</div>`:''}
+              </div>
+              <div class="sm-field">
+                <label style="color:#5B8DEF">\u25B6 Action</label>
+                <textarea class="sm-grow" placeholder="Next step..." onfocus="this.style.minHeight='52px'" onblur="smSaveField('${td}','${esc(area)}','action',this.value);if(!this.value)this.style.minHeight=''" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,200)+'px'">${esc(ae.action)}</textarea>
+                ${prevHasContent&&prevEntry.action?`<div class="sm-prev-hint" title="From ${prevDateLabel}"><span class="sm-prev-label">${prevDateLabel}</span> ${esc(prevEntry.action)}</div>`:''}
+              </div>
             </div>
-            <div class="sm-field">
-              <label style="color:#D4A04A">\u26A0 Improve</label>
-              <textarea placeholder="What needs work..." onblur="smSaveField('${td}','${esc(area)}','improve',this.value)">${esc(ae.improve)}</textarea>
-              ${prevHasContent&&prevEntry.improve?`<div class="sm-prev-hint" title="From ${prevDateLabel}"><span class="sm-prev-label">${prevDateLabel}</span> ${esc(prevEntry.improve)}</div>`:''}
-            </div>
-            <div class="sm-field">
-              <label style="color:#5B8DEF">\u25B6 Action</label>
-              <textarea placeholder="Next step..." onblur="smSaveField('${td}','${esc(area)}','action',this.value)">${esc(ae.action)}</textarea>
-              ${prevHasContent&&prevEntry.action?`<div class="sm-prev-hint" title="From ${prevDateLabel}"><span class="sm-prev-label">${prevDateLabel}</span> ${esc(prevEntry.action)}</div>`:''}
-            </div>
-          </div>
-        </div>`;
+          </div>`;
+        }
       });
     }
     h+=`</div>`;
@@ -3023,6 +3429,7 @@ const TABS = [
   {id:"kanban",icon:'<svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2" y="2" width="3" height="7" rx="0.5"/><rect x="6" y="2" width="3" height="11" rx="0.5"/><rect x="10" y="2" width="3" height="5" rx="0.5"/></svg>',label:"Kanban"},
   {id:"projects",icon:'<svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 3h3l1.5 1.5H13v8H2z"/></svg>',label:"Projects"},
   {g:"Reflect"},
+  {id:"reflect",icon:'<svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M3 3h3v3H3zM9 3h3v3H9zM3 9h3v3H3zM9 9h3v3H9z"/><path d="M5 5l1 1M11 5l-1 1M5 10l1 1M11 10l-1 1"/></svg>',label:"Habits"},
   {id:"dashboard",icon:'<svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2" y="2" width="4.5" height="4.5" rx="1"/><rect x="8.5" y="2" width="4.5" height="4.5" rx="1"/><rect x="2" y="8.5" width="4.5" height="4.5" rx="1"/><rect x="8.5" y="8.5" width="4.5" height="4.5" rx="1"/></svg>',label:"Dashboard"},
   {id:"stats",icon:'<svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 12.5h11M4 9v3.5M7 6v6.5M10 3v9.5"/></svg>',label:"Stats"},
   {id:"diary",icon:'<svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M3 2.5h9a1 1 0 011 1v8a1 1 0 01-1 1H3a1 1 0 01-1-1v-8a1 1 0 011-1z"/><path d="M5 2.5v10M8 5.5h3M8 8h2"/></svg>',label:"Self Map"},
@@ -3056,6 +3463,7 @@ function render() {
 
     switch(state.tab) {
       case "today": main.innerHTML = renderToday(s); break;
+      case "reflect": main.innerHTML = renderReflect(); break;
       case "inbox": main.innerHTML = renderInbox(s); break;
       case "dashboard": main.innerHTML = renderDashboard(s); break;
       case "stats": main.innerHTML = renderStatsTab(s); break;
