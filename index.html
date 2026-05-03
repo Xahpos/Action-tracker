@@ -647,6 +647,14 @@ function patch(id, upd) {
   state.actions = state.actions.map(a => a.id === id ? {...a, ...upd} : a);
   saveState(); render();
 }
+function deleteActionForever(id) {
+  if (!confirm('Delete this action forever? This cannot be undone.')) return;
+  state.actions = state.actions.filter(a => a.id !== id);
+  state.archived = state.archived.filter(a => a.id !== id);
+  saveState();
+  render();
+  toast('Deleted permanently');
+}
 function archiveAction(id) {
   const a = state.actions.find(x => x.id === id);
   if (!a) return;
@@ -799,16 +807,31 @@ function reorderProj(targetP){
 }
 function createProject(){const n=prompt("New project name:");if(!n||!n.trim())return;const name=n.trim();if(getProjects().includes(name)){toast("Already exists");return;}addAction({action:"(placeholder — delete after adding real actions)",owner:"Me",project:name,status:"Open"});toast("Project created: "+name);}
 function deleteProject(p){
-  const cnt=state.actions.filter(a=>a.project===p).length;
+  const activeCnt=state.actions.filter(a=>a.project===p).length;
+  const archivedCnt=state.archived.filter(a=>a.project===p).length;
   const m=document.createElement("div");m.className="modal-overlay";m.onclick=e=>{if(e.target===m)m.remove();};
-  m.innerHTML=`<div class="modal" style="max-width:380px">
-    <h3 style="font-size:15px;font-weight:700;margin-bottom:8px">Delete project: ${esc(p)}</h3>
-    <p style="font-size:12px;color:var(--text-mid);margin-bottom:14px">${cnt} actions in this project. What should happen to them?</p>
-    <div style="display:flex;flex-direction:column;gap:6px">
-      <button class="btn btn-default" style="text-align:left;padding:10px 14px" onclick="state.actions.forEach(a=>{if(a.project==='${esc(p)}'){a.project='Untagged';a.subproject='';}});delete state.subProjects['${esc(p)}'];saveState();this.closest('.modal-overlay').remove();render();toast('Actions moved to Untagged')"><b>Move to Untagged</b><br><span style="font-size:10px;color:var(--text-light)">Keep all actions, remove project label</span></button>
-      <button class="btn btn-danger" style="text-align:left;padding:10px 14px" onclick="state.actions.filter(a=>a.project==='${esc(p)}').forEach(a=>{state.archived.push({...a,archivedAt:todayISO()})});state.actions=state.actions.filter(a=>a.project!=='${esc(p)}');delete state.subProjects['${esc(p)}'];saveState();this.closest('.modal-overlay').remove();render();toast('Project deleted and ${cnt} actions archived')"><b>Archive all actions</b><br><span style="font-size:10px;opacity:.8">Move actions to archive, delete project</span></button>
-      <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-    </div></div>`;
+  
+  // If project still has ACTIVE actions, force archive/move first
+  if(activeCnt>0){
+    m.innerHTML=`<div class="modal" style="max-width:420px">
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:8px">Project still has actions: ${esc(p)}</h3>
+      <p style="font-size:12px;color:var(--text-mid);margin-bottom:14px">This project has <b>${activeCnt} active action${activeCnt===1?'':'s'}</b>. To delete the project permanently, first archive all of them, or move them to another project.</p>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button class="btn btn-default" style="text-align:left;padding:10px 14px" onclick="state.actions.forEach(a=>{if(a.project==='${esc(p)}'){a.project='Untagged';a.subproject='';}});delete state.subProjects['${esc(p)}'];saveState();this.closest('.modal-overlay').remove();render();toast('Actions moved to Untagged, project deleted')"><b>Move ${activeCnt} action${activeCnt===1?'':'s'} to Untagged</b><br><span style="font-size:10px;color:var(--text-light)">Keep actions, remove project</span></button>
+        <button class="btn btn-default" style="text-align:left;padding:10px 14px" onclick="state.actions.filter(a=>a.project==='${esc(p)}').forEach(a=>{state.archived.push({...a,archivedAt:todayISO()})});state.actions=state.actions.filter(a=>a.project!=='${esc(p)}');saveState();this.closest('.modal-overlay').remove();deleteProject('${esc(p)}');toast('${activeCnt} archived')"><b>Archive ${activeCnt} action${activeCnt===1?'':'s'}</b><br><span style="font-size:10px;color:var(--text-light)">Then I'll ask again about deleting the project</span></button>
+        <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+      </div></div>`;
+  } else {
+    // No active actions — safe to offer permanent delete
+    m.innerHTML=`<div class="modal" style="max-width:380px">
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:8px">Delete project: ${esc(p)}</h3>
+      <p style="font-size:12px;color:var(--text-mid);margin-bottom:14px">No active actions remain.${archivedCnt>0?' '+archivedCnt+' archived action'+(archivedCnt===1?'':'s')+' will keep the project label.':''}</p>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button class="btn btn-danger" style="text-align:left;padding:10px 14px" onclick="delete state.subProjects['${esc(p)}'];saveState();this.closest('.modal-overlay').remove();render();toast('Project deleted')"><b>Delete project</b><br><span style="font-size:10px;opacity:.8">Removes project from list. Archived actions are preserved.</span></button>
+        ${archivedCnt>0?`<button class="btn btn-danger" style="text-align:left;padding:10px 14px" onclick="if(!confirm('Permanently delete project and ${archivedCnt} archived action${archivedCnt===1?'':'s'}? This CANNOT be undone.'))return;state.archived=state.archived.filter(a=>a.project!=='${esc(p)}');delete state.subProjects['${esc(p)}'];saveState();this.closest('.modal-overlay').remove();render();toast('Deleted permanently')"><b>Delete project + ${archivedCnt} archived action${archivedCnt===1?'':'s'} forever</b><br><span style="font-size:10px;opacity:.8">Wipes all traces. Cannot be undone.</span></button>`:''}
+        <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+      </div></div>`;
+  }
   document.body.appendChild(m);
 }
 function exportProjectCSV(){
@@ -3458,6 +3481,7 @@ function renderNav() {
 function render() {
   try {
     renderNav();
+    renderBulkBar();
     const main = document.getElementById("main");
     const s = getStats();
 
@@ -3523,7 +3547,9 @@ function renderToday(s) {
   if (focused.length) {
     h += `<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:500;color:var(--accent);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">\u25C9 Focus (${focused.length})</div>`;
     focused.forEach(a => {
-      h += `<div class="card card-hover" onclick="openEdit('${a.id}')" style="padding:10px 14px;margin-bottom:6px;cursor:pointer;display:flex;gap:8px;align-items:center;border-left:3px solid var(--accent)">
+      const sel = state.selected.has(a.id);
+      h += `<div class="card card-hover" onclick="if(event.ctrlKey||event.metaKey||event.shiftKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="padding:10px 14px;margin-bottom:6px;cursor:pointer;display:flex;gap:8px;align-items:center;border-left:3px solid var(--accent);${sel?'background:var(--accent-soft)':''}">
+        <input type="checkbox" ${sel?'checked':''} onclick="event.stopPropagation();toggleSelect('${a.id}')" style="flex-shrink:0">
         <div style="flex:1"><div style="display:flex;align-items:center;gap:6px">
           <span style="font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--text-mid)">${esc(a.num)}</span>
           <span style="font-size:13px;font-weight:500">${esc(a.action)}</span></div>
@@ -3536,7 +3562,9 @@ function renderToday(s) {
   if (dueToday.length) {
     h += `<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:500;color:var(--danger);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em"> Due today (${dueToday.length})</div>`;
     dueToday.forEach(a => {
-      h += `<div class="card card-hover" onclick="openEdit('${a.id}')" style="padding:10px 14px;margin-bottom:6px;cursor:pointer;display:flex;gap:8px;align-items:center;border-left:3px solid var(--danger)">
+      const sel = state.selected.has(a.id);
+      h += `<div class="card card-hover" onclick="if(event.ctrlKey||event.metaKey||event.shiftKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="padding:10px 14px;margin-bottom:6px;cursor:pointer;display:flex;gap:8px;align-items:center;border-left:3px solid var(--danger);${sel?'background:var(--accent-soft)':''}">
+        <input type="checkbox" ${sel?'checked':''} onclick="event.stopPropagation();toggleSelect('${a.id}')" style="flex-shrink:0">
         <div style="flex:1"><span style="font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--text-mid)">${esc(a.num)}</span> <span style="font-size:13px">${esc(a.action)}</span>
           <div style="display:flex;gap:6px;margin-top:3px"><span style="font-size:11px;color:var(--text-mid)">${esc(a.owner)}</span>${projTag(a.project)}</div>
         </div>${actionBtns(a)}</div>`;
@@ -3564,17 +3592,87 @@ function renderToday(s) {
 // INBOX TAB
 // ═══════════════════════════════════════
 function renderInbox(s) {
-  const inbox = state.actions.filter(a=>a.status!=="Done"&&a.status!=="Cancelled"&&(a.project==="Imported"||a.project==="Untagged"||!a.due||!a.measurable));
-  let h = quickAdd() + `<div class="fade-in"><div class="page-header"><div><h1>Inbox</h1><div class="subtitle">Actions needing annotation</div></div></div>`;
+  // Filter state
+  if(!state.inboxF) state.inboxF = {project:'All', owner:'All', reason:'All', search:''};
+  const F = state.inboxF;
+  
+  // Full inbox before any filtering
+  const inboxAll = state.actions.filter(a=>{
+    if(a.status==="Done"||a.status==="Cancelled") return false;
+    if(a.ongoing) return false;
+    if(a.recur) return false;
+    return (a.project==="Imported"||a.project==="Untagged"||!a.due||!a.measurable);
+  });
+  
+  // Apply user filters
+  const inbox = inboxAll.filter(a=>{
+    if(F.project!=='All' && a.project!==F.project) return false;
+    if(F.owner!=='All' && a.owner!==F.owner) return false;
+    if(F.reason==='no-project' && !(a.project==="Imported"||a.project==="Untagged")) return false;
+    if(F.reason==='no-due' && a.due) return false;
+    if(F.reason==='no-outcome' && a.measurable) return false;
+    if(F.search){
+      const q=F.search.toLowerCase();
+      if(!(a.action||'').toLowerCase().includes(q) && !(a.owner||'').toLowerCase().includes(q) && !(a.project||'').toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+  
+  // Get unique projects/owners present in the inbox for filter dropdowns
+  const inboxProjs = [...new Set(inboxAll.map(a=>a.project).filter(Boolean))].sort();
+  const inboxOwners = [...new Set(inboxAll.map(a=>a.owner).filter(Boolean))].sort();
+  
+  let h = quickAdd() + `<div class="fade-in"><div class="page-header"><div><h1>Inbox</h1><div class="subtitle">${inbox.length} of ${inboxAll.length} actions needing annotation</div></div></div>`;
+  
+  // Filter bar
+  if(inboxAll.length){
+    const hasFilter = F.project!=='All' || F.owner!=='All' || F.reason!=='All' || F.search;
+    h += `<div class="card" style="padding:10px 12px;margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input class="input" style="font-size:11px;padding:5px 8px;flex:1;min-width:140px" placeholder="Search inbox..." value="${esc(F.search)}" oninput="state.inboxF.search=this.value;renderDebounced()">
+      <select class="select" style="font-size:11px;padding:5px 8px" onchange="state.inboxF.project=this.value;render()">
+        <option value="All">All projects (${inboxProjs.length})</option>
+        ${inboxProjs.map(p=>{
+          const cnt=inboxAll.filter(a=>a.project===p).length;
+          return `<option value="${esc(p)}" ${F.project===p?'selected':''}>${esc(p)} (${cnt})</option>`;
+        }).join('')}
+      </select>
+      <select class="select" style="font-size:11px;padding:5px 8px" onchange="state.inboxF.owner=this.value;render()">
+        <option value="All">All owners</option>
+        ${inboxOwners.map(o=>`<option value="${esc(o)}" ${F.owner===o?'selected':''}>${esc(o)}</option>`).join('')}
+      </select>
+      <select class="select" style="font-size:11px;padding:5px 8px" onchange="state.inboxF.reason=this.value;render()">
+        <option value="All">All issues</option>
+        <option value="no-project" ${F.reason==='no-project'?'selected':''}>No project</option>
+        <option value="no-due" ${F.reason==='no-due'?'selected':''}>No due date</option>
+        <option value="no-outcome" ${F.reason==='no-outcome'?'selected':''}>No outcome</option>
+      </select>
+      ${hasFilter?`<button class="btn btn-ghost" style="font-size:10px;padding:4px 8px;color:var(--text-light)" onclick="state.inboxF={project:'All',owner:'All',reason:'All',search:''};render()">✕ Clear</button>`:''}
+    </div>`;
+  }
+  
   if (!inbox.length) {
-    h += `<div style="text-align:center;padding:60px 20px;color:var(--text-light)"><div style="font-size:15px;font-weight:600">Inbox empty</div></div>`;
+    if(inboxAll.length){
+      h += `<div style="text-align:center;padding:40px 20px;color:var(--text-light)"><div style="font-size:13px">No matches for current filter</div><div style="font-size:11px;margin-top:6px">Clear filter to see all ${inboxAll.length} inbox items</div></div>`;
+    } else {
+      h += `<div style="text-align:center;padding:60px 20px;color:var(--text-light)"><div style="font-size:15px;font-weight:600">Inbox empty</div></div>`;
+    }
+  }
+  if(inbox.length){
+    const allSelected = inbox.every(a=>state.selected.has(a.id));
+    h += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:6px 4px;font-size:11px;color:var(--text-light)">
+      <input type="checkbox" id="inbox-select-all" onchange="if(this.checked){window._filteredIds=${JSON.stringify(inbox.map(a=>a.id))};selectAllFiltered(true)}else{state.selected.clear();render()}" ${allSelected?'checked':''}>
+      <span>Select all ${inbox.length} ${inbox.length===1?'action':'actions'} shown</span>
+      <span style="margin-left:auto;font-size:10px;opacity:.7">tip: ctrl/cmd+click for multi-select</span>
+    </div>`;
   }
   inbox.forEach((a,i) => {
     const reasons = [];
     if (a.project==="Imported"||a.project==="Untagged") reasons.push("no project");
-    if (!a.due) reasons.push("no due date");
+    if (!a.due&&!a.ongoing&&!a.recur) reasons.push("no due date");
     if (!a.measurable) reasons.push("no outcome");
-    h += `<div class="card card-hover" onclick="openEdit('${a.id}')" style="padding:12px 16px;margin-bottom:6px;cursor:pointer;display:flex;gap:10px;align-items:flex-start;border-left:2px solid var(--accent);animation:smSlideUp .25s cubic-bezier(.16,1,.3,1) both;animation-delay:${i*30}ms">
+    const sel = state.selected.has(a.id);
+    h += `<div class="card card-hover" onclick="if(event.ctrlKey||event.metaKey||event.shiftKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="padding:12px 16px;margin-bottom:6px;cursor:pointer;display:flex;gap:10px;align-items:flex-start;border-left:2px solid ${sel?'var(--accent)':'var(--accent)'};${sel?'background:var(--accent-soft)':''};animation:smSlideUp .25s cubic-bezier(.16,1,.3,1) both;animation-delay:${i*30}ms">
+      <input type="checkbox" ${sel?'checked':''} onclick="event.stopPropagation();toggleSelect('${a.id}')" style="margin-top:3px;flex-shrink:0">
       <div style="flex:1"><div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
         <span style="font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text-mid)">${esc(a.num)}</span>
         <span style="font-size:13px;font-weight:600">${esc(a.action)}</span></div>
@@ -3583,10 +3681,17 @@ function renderInbox(s) {
         <div style="display:flex;gap:4px;margin-top:4px">${reasons.map(r=>`<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:rgba(255,69,58,.06);color:var(--danger);font-weight:500">${r}</span>`).join("")}</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0" onclick="event.stopPropagation()">
-        <select class="select" style="font-size:10px;width:130px" onchange="patch('${a.id}',{project:this.value})">
+        <select class="select" style="font-size:10px;width:130px" onchange="if(this.value==='__new__'){var n=prompt('New project name:');if(n&&n.trim()){patch('${a.id}',{project:n.trim()});}else{this.value='${esc(a.project)}';}return;}patch('${a.id}',{project:this.value})">
           ${getProjects().map(p=>`<option ${p===a.project?'selected':''}>${esc(p)}</option>`).join("")}
+          <option value="__new__">+ New project...</option>
         </select>
         <input type="date" class="input" style="font-size:10px;width:130px" value="${a.due||''}" onchange="patch('${a.id}',{due:this.value})">
+        <div style="display:flex;gap:3px;align-items:center;font-size:9px;color:var(--text-light);margin-top:1px">
+          <button class="btn btn-ghost" style="padding:2px 6px;font-size:9.5px;flex:1" onclick="event.stopPropagation();patch('${a.id}',{ongoing:true});toast('Marked ongoing — out of inbox')" title="No due date needed (ongoing/follow-up)">No due needed</button>
+          <select class="select" style="font-size:9.5px;padding:2px 4px;width:80px" onchange="patch('${a.id}',{recur:this.value});if(this.value)toast('Recurring — out of inbox')">
+            <option value="">Make recurring</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option>
+          </select>
+        </div>
         ${actionBtns(a)}
       </div></div>`;
   });
@@ -3926,14 +4031,25 @@ function renderActions(s) {
 
   // Archive
   if (state.archived.length) {
-    h += `<details style="margin-top:16px"><summary style="font-size:12px;color:var(--text-light);cursor:pointer;font-weight:600">Archive (${state.archived.length})</summary><div class="card" style="padding:12px;margin-top:6px">`;
+    h += `<details style="margin-top:16px"><summary style="font-size:12px;color:var(--text-light);cursor:pointer;font-weight:600">Archive (${state.archived.length})</summary>
+      <div class="card" style="padding:12px;margin-top:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+          <span style="font-size:11px;color:var(--text-light)">${state.archived.length} archived ${state.archived.length===1?'action':'actions'}</span>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-ghost" style="font-size:10px;padding:3px 8px" onclick="if(!confirm('Restore all '+state.archived.length+' archived actions?'))return;state.actions.push(...state.archived.map(a=>{const{archivedAt,...rest}=a;return rest;}));state.archived=[];saveState();render();toast('All restored')">Restore all</button>
+            <button class="btn btn-danger" style="font-size:10px;padding:3px 8px" onclick="if(!confirm('Delete all '+state.archived.length+' archived actions FOREVER? This cannot be undone.'))return;state.archived=[];saveState();render();toast('Archive cleared')">Empty archive</button>
+          </div>
+        </div>`;
     state.archived.forEach(a => {
-      h += `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">
+      const archDate=a.archivedAt?new Date(a.archivedAt+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
+      h += `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
         <span style="font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text-light);width:32px">${esc(a.num)}</span>
         <span style="flex:1;color:var(--text-light);text-decoration:line-through">${esc(a.action)}</span>
+        ${archDate?`<span style="font-size:9px;color:var(--text-light);font-style:italic">archived ${archDate}</span>`:''}
         ${projTag(a.project)}
-        <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;color:var(--accent)" onclick="restoreAction('${a.id}')">Restore</button>
-        <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;color:var(--danger)" onclick="state.archived=state.archived.filter(x=>x.id!=='${a.id}');saveState();render();toast('Deleted')">Delete</button></div>`;
+        <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;color:var(--accent)" onclick="restoreAction('${a.id}')" title="Move back to active">Restore</button>
+        <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;color:var(--danger)" onclick="if(!confirm('Delete this archived action FOREVER? This cannot be undone.'))return;state.archived=state.archived.filter(x=>x.id!=='${a.id}');saveState();render();toast('Deleted permanently')" title="Delete forever">Delete</button>
+      </div>`;
     });
     h += `</div></details>`;
   }
@@ -3976,6 +4092,71 @@ function doRenameSub(proj,oldFull,newLabel){
   saveState();document.querySelector('.modal-overlay')?.remove();render();toast('Renamed');
 }
 
+// ═══ FLOATING BULK ACTION BAR ═══
+function renderBulkBar(){
+  let bar = document.getElementById('bulk-bar');
+  const sel = state.selected;
+  if(!sel || sel.size === 0){
+    if(bar) bar.remove();
+    return;
+  }
+  if(!bar){
+    bar = document.createElement('div');
+    bar.id = 'bulk-bar';
+    bar.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--card-solid);border:1px solid var(--border-vis);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.18);padding:10px 14px;z-index:1500;display:flex;align-items:center;gap:8px;font-family:var(--font);animation:smSlideUp .2s cubic-bezier(.16,1,.3,1) both;flex-wrap:wrap;max-width:calc(100vw - 40px)';
+    document.body.appendChild(bar);
+  }
+  bar.innerHTML = `
+    <span style="font-size:12px;font-weight:700;color:var(--accent);padding:0 4px">${sel.size} selected</span>
+    <div style="width:1px;height:18px;background:var(--border-vis)"></div>
+    <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="bulkStatusMenuFromBar(event)">Status</button>
+    <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="bulkProjectMenuFromBar(event)">Move to project</button>
+    <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="state.selected.forEach(id=>patch(id,{priority:true}));toast(state.selected.size+' set to priority');state.selected.clear();render()">★ Priority</button>
+    <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="state.selected.forEach(id=>patch(id,{todayFocus:true}));toast(state.selected.size+' added to Today');state.selected.clear();render()">◉ Today</button>
+    <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="state.selected.forEach(id=>patch(id,{ongoing:true}));toast(state.selected.size+' marked ongoing');state.selected.clear();render()" title="No due date needed">∞ Ongoing</button>
+    <div style="width:1px;height:18px;background:var(--border-vis)"></div>
+    <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;color:var(--text-mid)" onclick="bulkArchiveConfirm()" title="Move to archive (recoverable)">Archive</button>
+    <button class="btn btn-danger" style="font-size:11px;padding:5px 10px" onclick="bulkDeleteForever()" title="Delete permanently">Delete forever</button>
+    <div style="width:1px;height:18px;background:var(--border-vis)"></div>
+    <button class="btn btn-ghost" style="font-size:11px;padding:5px 8px;color:var(--text-light)" onclick="state.selected.clear();render()" title="Clear selection">\u2715</button>`;
+}
+
+function bulkStatusMenuFromBar(event){
+  event.stopPropagation();
+  const r = event.target.getBoundingClientRect();
+  bulkStatusMenu(r.left, r.top - 200);
+}
+function bulkProjectMenuFromBar(event){
+  event.stopPropagation();
+  const r = event.target.getBoundingClientRect();
+  bulkProjectMenu(r.left, r.top - 300);
+}
+function bulkArchiveConfirm(){
+  const sel = state.selected;
+  if(sel.size === 0) return;
+  if(!confirm('Archive '+sel.size+' actions? (recoverable from archive)')) return;
+  sel.forEach(id => {
+    const a = state.actions.find(x => x.id === id);
+    if(a){ state.archived.push({...a, archivedAt: todayISO()}); }
+  });
+  state.actions = state.actions.filter(a => !sel.has(a.id));
+  sel.clear();
+  saveState();
+  render();
+  toast('Archived');
+}
+function bulkDeleteForever(){
+  const sel = state.selected;
+  if(sel.size === 0) return;
+  if(!confirm('Delete '+sel.size+' actions FOREVER? This cannot be undone.')) return;
+  state.actions = state.actions.filter(a => !sel.has(a.id));
+  state.archived = state.archived.filter(a => !sel.has(a.id));
+  sel.clear();
+  saveState();
+  render();
+  toast('Deleted permanently');
+}
+
 // ═══ BULK CONTEXT MENU ═══
 function showBulkMenu(event){
   event.preventDefault();
@@ -3992,7 +4173,8 @@ function showBulkMenu(event){
     {label:'Remove priority',action:()=>{sel.forEach(id=>patch(id,{priority:false}));sel.clear();render();}},
     {label:'Mark as Today Focus',action:()=>{sel.forEach(id=>patch(id,{todayFocus:true}));toast(sel.size+' added to Today');sel.clear();render();}},
     {sep:true},
-    {label:'Archive selected',danger:true,action:()=>{if(!confirm('Archive '+sel.size+' actions?'))return;sel.forEach(id=>{const a=state.actions.find(x=>x.id===id);if(a){state.archived.push({...a,archivedAt:todayISO()});}});state.actions=state.actions.filter(a=>!sel.has(a.id));sel.clear();saveState();render();toast('Archived');}},
+    {label:'Archive selected',danger:false,action:()=>{if(!confirm('Archive '+sel.size+' actions? (recoverable from archive)'))return;sel.forEach(id=>{const a=state.actions.find(x=>x.id===id);if(a){state.archived.push({...a,archivedAt:todayISO()});}});state.actions=state.actions.filter(a=>!sel.has(a.id));sel.clear();saveState();render();toast('Archived');}},
+    {label:'Delete forever',danger:true,action:()=>{if(!confirm('Delete '+sel.size+' actions FOREVER? This cannot be undone.'))return;state.actions=state.actions.filter(a=>!sel.has(a.id));state.archived=state.archived.filter(a=>!sel.has(a.id));sel.clear();saveState();render();toast('Deleted permanently');}},
     {label:'Delete selected',danger:true,action:()=>{if(!confirm('Permanently delete '+sel.size+' actions?'))return;state.actions=state.actions.filter(a=>!sel.has(a.id));sel.clear();saveState();render();toast('Deleted');}}
   ];
   items.forEach(it=>{
@@ -4056,14 +4238,16 @@ function renderProjects() {
   // Side panel (conditionally rendered)
   if(sideOpen) {
     h += `<div style="width:200px;flex-shrink:0;position:sticky;top:0;max-height:calc(100vh - 60px);overflow-y:auto">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <span style="font-size:13px;font-weight:700">Projects</span>
-      <div style="display:flex;gap:2px;flex-wrap:wrap">
-        <button class="btn btn-ghost" style="padding:2px 5px;font-size:8px" onclick="collapseAll(true)" title="Collapse all">\u25B2\u25B2</button>
-        <button class="btn btn-ghost" style="padding:2px 5px;font-size:8px" onclick="collapseSubsOnly(true)" title="Collapse subs">\u25B2</button>
-        <button class="btn btn-ghost" style="padding:2px 5px;font-size:8px" onclick="collapseSubsOnly(false)" title="Expand subs">\u25BC</button>
-        <button class="btn btn-ghost" style="padding:2px 5px;font-size:8px" onclick="collapseAll(false)" title="Expand all">\u25BC\u25BC</button>
-        <button class="btn btn-ghost" style="padding:2px 5px;font-size:8px" onclick="exportProjectCSV()">CSV</button>
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:13px;font-weight:700">Projects</span>
+        <button class="btn btn-primary" style="padding:3px 8px;font-size:10px" onclick="createProject()">+ New</button>
+      </div>
+      <div style="display:flex;gap:3px;flex-wrap:wrap">
+        <button class="btn btn-ghost" style="padding:3px 7px;font-size:9px" onclick="collapseAll(false)" title="Expand all projects and sub-projects">Expand all</button>
+        <button class="btn btn-ghost" style="padding:3px 7px;font-size:9px" onclick="collapseAll(true)" title="Collapse all projects">Collapse all</button>
+        <button class="btn btn-ghost" style="padding:3px 7px;font-size:9px" onclick="collapseSubsOnly(true)" title="Collapse only sub-projects, keep projects open">Hide subs</button>
+        <button class="btn btn-ghost" style="padding:3px 7px;font-size:9px;margin-left:auto" onclick="exportProjectCSV()" title="Export to CSV">CSV</button>
       </div>
     </div>`;
   projs.forEach(p => {
@@ -4220,7 +4404,8 @@ function openEdit(id) {
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
       <h3 style="font-size:15px;font-weight:700">Edit action</h3>
       <div style="display:flex;gap:5px">
-        <button class="btn btn-danger" style="font-size:11px;padding:5px 10px" onclick="archiveAction('${a.id}');this.closest('.modal-overlay').remove()">Archive</button>
+        <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;color:var(--text-mid)" onclick="archiveAction('${a.id}');this.closest('.modal-overlay').remove()" title="Move to archive (recoverable)">Archive</button>
+        <button class="btn btn-danger" style="font-size:11px;padding:5px 10px" onclick="deleteActionForever('${a.id}');this.closest('.modal-overlay').remove()" title="Delete permanently">Delete forever</button>
         <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="this.closest('.modal-overlay').remove()">\u2715</button>
       </div></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -4228,7 +4413,7 @@ function openEdit(id) {
       <label style="font-size:10.5px;font-weight:600;color:#5A6578">Owner <input class="input" style="width:100%;margin-top:2px" value="${esc(a.owner)}" onchange="patch('${a.id}',{owner:this.value})"></label>
       <label style="font-size:10.5px;font-weight:600;color:#5A6578">Status <select class="select" style="width:100%;margin-top:2px" onchange="patch('${a.id}',{status:this.value})">${STATUSES.map(s=>`<option ${s===a.status?'selected':''}>${s}</option>`).join("")}</select></label>
       <label style="font-size:10.5px;font-weight:600;color:#5A6578;grid-column:1/-1">Measurable outcome <input class="input" style="width:100%;margin-top:2px" value="${esc(a.measurable||'')}" onchange="patch('${a.id}',{measurable:this.value})"></label>
-      <label style="font-size:10.5px;font-weight:600;color:#5A6578">Project <select class="select" style="width:100%;margin-top:2px" onchange="patch('${a.id}',{project:this.value,subproject:''})">${projs.map(p=>`<option ${p===a.project?'selected':''}>${esc(p)}</option>`).join("")}</select></label>
+      <label style="font-size:10.5px;font-weight:600;color:#5A6578">Project <select class="select" style="width:100%;margin-top:2px" onchange="if(this.value==='__new__'){var n=prompt('New project name:');if(n&&n.trim()){addAction({action:'(placeholder \u2014 delete after adding real actions)',owner:'Me',project:n.trim(),status:'Open'});patch('${a.id}',{project:n.trim(),subproject:''});this.closest('.modal-overlay').remove();openEdit('${a.id}');}else{this.value='${esc(a.project)}';}return;}patch('${a.id}',{project:this.value,subproject:''})">${projs.map(p=>`<option ${p===a.project?'selected':''}>${esc(p)}</option>`).join("")}<option value="__new__">+ New project...</option></select></label>
       <label style="font-size:10.5px;font-weight:600;color:#5A6578">Sub-project
         <div style="display:flex;gap:4px;margin-top:2px">
           <select class="select" style="flex:1" onchange="if(this.value==='__new__'){var n=prompt('New sub-project name:');if(n){if(!state.subProjects[a.project])state.subProjects[a.project]=[];state.subProjects[a.project].push(n);patch('${a.id}',{subproject:n});this.closest('.modal-overlay').remove();openEdit('${a.id}');}else{this.value='${esc(a.subproject)}';}return;}patch('${a.id}',{subproject:this.value})">
@@ -4246,6 +4431,8 @@ function openEdit(id) {
             <input type="checkbox" ${a.priority?'checked':''} onchange="patch('${a.id}',{priority:this.checked})"> \u2605 Priority</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:${a.todayFocus?'var(--accent)':'var(--text-mid)'};cursor:pointer">
             <input type="checkbox" ${a.todayFocus?'checked':''} onchange="patch('${a.id}',{todayFocus:this.checked})"> \u25C9 Today</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:${a.ongoing?'#0EA5E9':'var(--text-mid)'};cursor:pointer" title="Action has no fixed due date - excluded from inbox nags">
+            <input type="checkbox" ${a.ongoing?'checked':''} onchange="patch('${a.id}',{ongoing:this.checked})"> \u221E Ongoing</label>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
           <label style="font-size:10.5px;font-weight:600;color:#5A6578">Start date <input type="date" class="input" style="width:100%;margin-top:2px" value="${a.startDate||''}" onchange="patch('${a.id}',{startDate:this.value})"></label>
