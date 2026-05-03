@@ -337,18 +337,43 @@ let syncDebounceTimer = null;
 // ═══════════════════════════════════════
 // GOOGLE AUTH
 // ═══════════════════════════════════════
+let _gisReady = false;
+window.onGisLoad = function() { _gisReady = true; };
+
 async function handleGoogleSignIn() {
   if (GDRIVE_CLIENT_ID === 'YOUR_CLIENT_ID_HERE.apps.googleusercontent.com') {
     alert('Setup required!\n\nYou need to configure Google Cloud credentials first.\n\nSee the setup guide:\n1. Go to console.cloud.google.com\n2. Create a project\n3. Enable Drive API\n4. Create OAuth credentials\n5. Paste the Client ID and API Key into this HTML file\n\nDetailed steps are in the README.');
     return;
   }
+
+  // Wait for GIS library to be ready (it loads async)
+  if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+    const btn = document.querySelector('.gauth-btn');
+    const orig = btn ? btn.textContent : '';
+    if (btn) { btn.textContent = 'Loading Google...'; btn.disabled = true; }
+    await new Promise((resolve, reject) => {
+      let tries = 0;
+      const poll = setInterval(() => {
+        tries++;
+        if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
+          clearInterval(poll);
+          if (btn) { btn.textContent = orig; btn.disabled = false; }
+          resolve();
+        } else if (tries > 40) {  // 4 seconds
+          clearInterval(poll);
+          if (btn) { btn.textContent = orig; btn.disabled = false; }
+          reject(new Error('Google Identity Services failed to load. Check your internet connection.'));
+        }
+      }, 100);
+    }).catch(e => { alert(e.message); throw e; });
+  }
+
   try {
-    // Use Google Identity Services (GIS) tokenClient
     const client = google.accounts.oauth2.initTokenClient({
       client_id: GDRIVE_CLIENT_ID,
       scope: GDRIVE_SCOPES,
       callback: async (response) => {
-        if (response.error) { console.error('Auth error:', response); return; }
+        if (response.error) { console.error('Auth error:', response); alert('Sign-in error: ' + response.error); return; }
         gdriveToken = response.access_token;
         gdriveEnabled = true;
         document.getElementById('auth-overlay').style.display = 'none';
@@ -361,7 +386,7 @@ async function handleGoogleSignIn() {
     client.requestAccessToken();
   } catch(e) {
     console.error('Sign-in failed:', e);
-    alert('Sign-in failed. Check console for details.');
+    alert('Sign-in failed: ' + e.message);
   }
 }
 
@@ -3792,7 +3817,7 @@ setTimeout(()=>{try{checkRecurring();}catch(e){}},2000);
 </script>
 
 <!-- Google Identity Services library -->
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://accounts.google.com/gsi/client" async defer onload="window.onGisLoad&&window.onGisLoad()"></script>
 
 <script>if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(e=>console.log("SW:",e));</script>
 </body>
