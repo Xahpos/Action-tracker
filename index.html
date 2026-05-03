@@ -1458,22 +1458,144 @@ function renderDiary(){
     h+='</div></div>';
   }
 
-  // ── SCORE TRENDS (click to expand per pillar) ──
+  // ── BIG MULTI-LINE TREND CHART ──
   const showTrends=!localStorage.getItem('sm-hide-trends');
+  // Per-pillar visibility (toggleable via legend)
+  if(!state.diary.pillarVis) state.diary.pillarVis={};
+  
   h+='<div style="margin-bottom:14px">';
-  h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:'+(showTrends?'10':'0')+'px"><button style="background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;font-family:var(--font);color:var(--text);padding:0;display:flex;align-items:center;gap:6px" onclick="localStorage.getItem(\'sm-hide-trends\')?localStorage.removeItem(\'sm-hide-trends\'):localStorage.setItem(\'sm-hide-trends\',\'1\');render()"><span style=\"font-size:10px;color:var(--text-light);transform:rotate('+(showTrends?'0':'-90')+'deg);transition:transform .15s\">\u25BE</span>Score Trends</button><span style="font-size:10px;color:var(--text-light);margin-left:auto">'+filled.length+' entries</span></div>';
-  if(showTrends){
-    // Show pillar summary cards - click one to see detail
-    h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">';
-    SM_PILLARS.forEach((pillar,pi)=>{
-      const trend=smPillarTrendChart(pillar.name);
-      const pavg=pillarAvg[pillar.name]||0;
-      h+='<div class="card card-hover" style="padding:10px;cursor:pointer" onclick="showPillarTrends('+pi+')">';
-      h+='<div style="font-size:10px;font-weight:600;color:'+pillar.color+';margin-bottom:4px">'+pillar.name.split('/')[0]+'</div>';
-      if(trend) h+=trend;
-      h+='<div style="font-size:9px;color:var(--text-light);margin-top:4px">'+pillar.areas.length+' areas · click to explore</div>';
-      h+='</div>';
+  h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px"><button style="background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;font-family:var(--font);color:var(--text);padding:0;display:flex;align-items:center;gap:6px" onclick="localStorage.getItem(\'sm-hide-trends\')?localStorage.removeItem(\'sm-hide-trends\'):localStorage.setItem(\'sm-hide-trends\',\'1\');render()"><span style="font-size:10px;color:var(--text-light);transform:rotate('+(showTrends?'0':'-90')+'deg);transition:transform .15s">\u25BE</span>Score Trends</button><span style="font-size:10px;color:var(--text-light);margin-left:auto">'+filled.length+' entries</span></div>';
+  
+  if(showTrends && filled.length>0){
+    // Build dataset: for each pillar, get sorted [date, avgScore] points
+    const pillars=getSmPillars();
+    const sortedDates=[...filled].sort();
+    const datasets=pillars.map(p=>{
+      const points=sortedDates.map(d=>{
+        const e=state.diary.entries[d]||{};
+        const scores=p.areas.map(a=>{const _n=typeof a==='object'?a.name:a;return e[_n]&&e[_n].score?e[_n].score:0;}).filter(s=>s>0);
+        return scores.length?{date:d,score:scores.reduce((a,b)=>a+b,0)/scores.length}:null;
+      }).filter(Boolean);
+      return {pillar:p, points};
     });
+    
+    // SVG dimensions
+    const cw=900, ch=380, padL=44, padR=20, padT=20, padB=56;
+    const plotW=cw-padL-padR, plotH=ch-padT-padB;
+    const minDate=new Date(sortedDates[0]+'T12:00:00');
+    const maxDate=new Date(sortedDates[sortedDates.length-1]+'T12:00:00');
+    const dateSpan=Math.max(maxDate-minDate,86400000);
+    const xFor=d=>padL+((new Date(d+'T12:00:00')-minDate)/dateSpan)*plotW;
+    const yFor=s=>padT+(1-s/10)*plotH;
+    
+    h+='<div class="card" style="padding:18px;margin-bottom:8px">';
+    h+='<svg viewBox="0 0 '+cw+' '+ch+'" style="width:100%;height:auto;display:block;font-family:var(--font)">';
+    
+    // Y axis gridlines (0,2,4,6,8,10)
+    for(let i=0;i<=10;i+=2){
+      const y=yFor(i);
+      h+='<line x1="'+padL+'" y1="'+y+'" x2="'+(cw-padR)+'" y2="'+y+'" stroke="var(--border)" stroke-width="1" '+(i===0?'':'stroke-dasharray="2,3"')+'/>';
+      h+='<text x="'+(padL-8)+'" y="'+(y+3)+'" text-anchor="end" font-size="10" fill="var(--text-light)">'+i+'</text>';
+    }
+    h+='<text x="14" y="'+(padT+plotH/2)+'" text-anchor="middle" font-size="10" fill="var(--text-mid)" transform="rotate(-90 14 '+(padT+plotH/2)+')" font-weight="600">Score</text>';
+    
+    // X axis date ticks (max 8)
+    const tickCount=Math.min(sortedDates.length,8);
+    for(let i=0;i<tickCount;i++){
+      const idx=Math.round(i*(sortedDates.length-1)/Math.max(tickCount-1,1));
+      const d=sortedDates[idx];
+      const x=xFor(d);
+      h+='<line x1="'+x+'" y1="'+(padT+plotH)+'" x2="'+x+'" y2="'+(padT+plotH+4)+'" stroke="var(--text-light)" stroke-width="1"/>';
+      const label=new Date(d+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'});
+      h+='<text x="'+x+'" y="'+(padT+plotH+18)+'" text-anchor="middle" font-size="10" fill="var(--text-mid)">'+label+'</text>';
+    }
+    
+    // Draw each pillar line
+    datasets.forEach(({pillar,points})=>{
+      const visible=state.diary.pillarVis[pillar.name]!==false;
+      if(!visible||points.length===0) return;
+      
+      let d='';
+      points.forEach((p,i)=>{
+        d+=(i===0?'M':' L')+xFor(p.date)+','+yFor(p.score);
+      });
+      h+='<path d="'+d+'" fill="none" stroke="'+pillar.color+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>';
+      // Dots
+      points.forEach(p=>{
+        h+='<circle cx="'+xFor(p.date)+'" cy="'+yFor(p.score)+'" r="3.5" fill="'+pillar.color+'" stroke="var(--card)" stroke-width="1.5"><title>'+pillar.name+' - '+new Date(p.date+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})+': '+p.score.toFixed(1)+'/10</title></circle>';
+      });
+    });
+    
+    h+='</svg>';
+    
+    // Legend (clickable to toggle)
+    h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;justify-content:center">';
+    datasets.forEach(({pillar,points})=>{
+      const visible=state.diary.pillarVis[pillar.name]!==false;
+      const avg=points.length?(points.reduce((s,p)=>s+p.score,0)/points.length).toFixed(1):'-';
+      h+='<button onclick="state.diary.pillarVis[\''+esc(pillar.name)+'\']='+(visible?'false':'true')+';saveState();render()" style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:1px solid '+(visible?pillar.color:'var(--border)')+';background:'+(visible?pillar.color+'15':'transparent')+';cursor:pointer;font-family:var(--font);font-size:11px;font-weight:600;color:'+(visible?pillar.color:'var(--text-light)')+';opacity:'+(visible?'1':'.45')+';transition:all .15s">';
+      h+='<span style="width:14px;height:3px;border-radius:2px;background:'+pillar.color+';display:inline-block"></span>';
+      h+=esc(pillar.name)+' <span style="font-weight:400;opacity:.7;font-size:10px">('+avg+')</span>';
+      h+='</button>';
+    });
+    h+='</div>';
+    h+='<div style="font-size:10px;color:var(--text-light);text-align:center;margin-top:6px;font-style:italic">Click a pillar to hide/show it</div>';
+    h+='</div>';
+    
+    // ── Self Map fill-rate timeline (Y/N per day) ──
+    h+='<div class="card" style="padding:14px;margin-bottom:14px">';
+    h+='<div style="font-size:11px;font-weight:700;color:var(--text-mid);margin-bottom:10px;display:flex;align-items:center;gap:6px">Self Map filled<span style="font-size:10px;color:var(--text-light);font-weight:400;margin-left:auto">last 60 days</span></div>';
+    
+    // Build set of filled dates for quick lookup
+    const filledSet=new Set(filled);
+    // Build last 60 days
+    const today60=new Date();
+    const days60=[];
+    for(let i=59;i>=0;i--){
+      const d=new Date(today60);
+      d.setDate(d.getDate()-i);
+      days60.push(d.toISOString().slice(0,10));
+    }
+    const filledCount=days60.filter(d=>filledSet.has(d)).length;
+    const fillRate=Math.round(filledCount/60*100);
+    
+    h+='<svg viewBox="0 0 900 80" style="width:100%;height:auto;display:block;font-family:var(--font)">';
+    
+    const barW=900/60;
+    days60.forEach((d,i)=>{
+      const isFilled=filledSet.has(d);
+      const dateObj=new Date(d+'T12:00:00');
+      const isToday=d===todayISO();
+      const isWeekend=dateObj.getDay()===0||dateObj.getDay()===6;
+      
+      h+='<rect x="'+(i*barW+1)+'" y="20" width="'+(barW-2)+'" height="40" rx="2" ';
+      h+='fill="'+(isFilled?'#5A9E7E':'var(--border)')+'" ';
+      h+='opacity="'+(isFilled?(isWeekend?'0.7':'1'):(isWeekend?'0.4':'0.6'))+'" ';
+      if(isToday) h+='stroke="var(--accent)" stroke-width="2" ';
+      h+='>';
+      h+='<title>'+dateObj.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})+(isFilled?' - filled':' - skipped')+'</title>';
+      h+='</rect>';
+    });
+    
+    // Month labels
+    const months=[];
+    let lastM=-1;
+    days60.forEach((d,i)=>{
+      const m=new Date(d+'T12:00:00').getMonth();
+      if(m!==lastM){
+        months.push({i,label:new Date(d+'T12:00:00').toLocaleDateString('en-GB',{month:'short'})});
+        lastM=m;
+      }
+    });
+    months.forEach(m=>{
+      h+='<text x="'+(m.i*barW+barW/2)+'" y="14" font-size="10" fill="var(--text-light)" text-anchor="start" font-weight="600">'+m.label+'</text>';
+    });
+    
+    // Stats text
+    h+='<text x="0" y="76" font-size="10" fill="var(--text-mid)" font-weight="600">'+filledCount+'/60 days filled ('+fillRate+'%)</text>';
+    h+='<text x="900" y="76" font-size="10" fill="var(--text-light)" text-anchor="end">\u2190 60 days ago&nbsp;&nbsp;today \u2192</text>';
+    
+    h+='</svg>';
     h+='</div>';
   }
   h+='</div>';
