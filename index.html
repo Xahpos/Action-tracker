@@ -194,6 +194,9 @@ body.dark .sm-hero{background:linear-gradient(135deg,#201D38 0%,#2A264A 50%,#1E1
 .sm-pillar-head{padding:14px 18px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:background .1s}
 .sm-pillar-head:hover{background:var(--accent-soft)}
 .sm-area{padding:14px 18px;border-top:1px solid var(--border);animation:smSlideUp .2s cubic-bezier(.16,1,.3,1) both}
+.sm-prev-hint{margin-top:5px;padding:5px 8px;font-size:10.5px;color:var(--text-light);background:rgba(0,0,0,.025);border-left:2px solid var(--border);border-radius:0 4px 4px 0;line-height:1.4;font-style:italic;opacity:.75}
+body.dark .sm-prev-hint{background:rgba(255,255,255,.03);color:rgba(255,255,255,.4)}
+.sm-prev-label{font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-mid);margin-right:4px;font-style:normal;opacity:.7}
 .sm-score-dot{width:22px;height:22px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;cursor:pointer;transition:all .1s}
 .sm-score-dot:hover{transform:scale(1.12)}
 .sm-score-dot.active{color:#fff}
@@ -1349,7 +1352,7 @@ function renderDiary(){
           <span style="font-size:20px;font-weight:800;letter-spacing:-.02em">Self Map</span>
           ${state.diary.pin?`<button style="background:rgba(255,255,255,.08);border:none;border-radius:4px;color:rgba(255,255,255,.5);font-size:9px;padding:2px 6px;cursor:pointer;font-family:inherit" onclick="smLock()">\u25CF</button>`:`<button style="background:rgba(255,255,255,.08);border:none;border-radius:4px;color:rgba(255,255,255,.5);font-size:9px;padding:2px 6px;cursor:pointer;font-family:inherit" onclick="smSetPin()">\u25CB Set PIN</button>`}
         </div>
-        <div style="font-size:11px;opacity:.5">${new Date(td+'T12:00:00').toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:2px"><div style="font-size:13px;opacity:.85;font-weight:600">${new Date(td+'T12:00:00').toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</div>${isToday?`<span style="background:rgba(90,158,126,.2);color:#5A9E7E;font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.05em">TODAY · ${new Date(td+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</span>`:`<span style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.05em">PAST DAY · ${new Date(td+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</span>`}</div>
       </div>
       <div style="display:flex;gap:4px;align-items:center">
         <button class="btn" style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);padding:5px 10px;font-size:10px;border:1px solid rgba(255,255,255,.08)" onclick="smQuickScore()">Quick score</button>
@@ -1493,35 +1496,136 @@ function renderDiary(){
       </div>`;
 
     if(!pCollapsed){
-      pillar.areas.forEach((areaObj,ai)=>{const area=typeof areaObj==='object'?areaObj.name:areaObj;
+      pillar.areas.forEach((areaObj,ai)=>{
+        const area=typeof areaObj==='object'?areaObj.name:areaObj;
         const ae=entry[area]||{repeat:"",improve:"",action:"",score:0};
-        const areaChart=''; // removed for cleaner UI
         const areaDef=smAreaDef(area);
-        h+=`<div class="sm-area" style="animation-delay:${ai*30}ms">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
-              <span style="font-size:12.5px;font-weight:600">${esc(area)}</span>
-              ${areaDef.question?`<span style="font-size:10px;color:var(--text-light);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1" title="${esc(areaDef.question)}">${esc(areaDef.question)}</span>`:''}
-            </div>
-            <div style="display:flex;gap:4px;align-items:center;flex-shrink:0">
-              ${areaDef.adhered?`<button onclick="event.stopPropagation();showAdherence('${esc(area)}')" style="font-size:9px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:rgba(90,158,126,.08);color:#5A9E7E;cursor:pointer;font-family:var(--font)">guide</button>`:''}
-            <div style="display:flex;gap:2px">`;
+        // Look up previous day's entry for reflection
+        const filledBefore=smFilledDates().filter(d=>d<td).sort();
+        const prevDate=filledBefore[filledBefore.length-1];
+        const prevEntry=prevDate?(state.diary.entries[prevDate]||{})[area]:null;
+        const prevHasContent=prevEntry&&(prevEntry.repeat||prevEntry.improve||prevEntry.action||prevEntry.score);
+        const prevDateLabel=prevDate?new Date(prevDate+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'';
+        
+        let scoreDots='';
         for(let s=1;s<=10;s++){
           const on=ae.score>=s;
           const dotCol=s<=3?'#CF6F6F':s<=6?'#D4A04A':'#5A9E7E';
-          h+=`<div class="sm-score-dot${on?' active':''}" style="background:${on?dotCol:'var(--border)'};color:${on?'#fff':'var(--text-light)'}" onclick="smSaveField('${td}','${esc(area)}','score',${ae.score===s?0:s});render()">${s}</div>`;
+          scoreDots+=`<div class="sm-score-dot${on?' active':''}" style="background:${on?dotCol:'var(--border)'};color:${on?'#fff':'var(--text-light)'}" onclick="smSaveField('${td}','${esc(area)}','score',${ae.score===s?0:s});render()">${s}</div>`;
         }
-        h+=`</div></div>
+        
+        h+=`<div class="sm-area" style="animation-delay:${ai*30}ms">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px;flex-wrap:wrap">
+            <div style="display:flex;flex-direction:column;flex:1;min-width:200px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:12.5px;font-weight:600">${esc(area)}</span>
+                ${areaDef.adhered?`<button onclick="event.stopPropagation();showAdherence('${esc(area)}')" style="font-size:9px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:rgba(90,158,126,.08);color:#5A9E7E;cursor:pointer;font-family:var(--font)">guide</button>`:''}
+              </div>
+              ${areaDef.question?`<span style="font-size:10.5px;color:var(--text-light);font-style:italic;margin-top:2px">${esc(areaDef.question)}</span>`:''}
+            </div>
+            <div style="display:flex;gap:2px;flex-shrink:0">${scoreDots}</div>
+          </div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
-            <div class="sm-field"><label style="color:#5A9E7E">\u2713 Repeat</label><textarea placeholder="What went well..." onblur="smSaveField('${td}','${esc(area)}','repeat',this.value)">${esc(ae.repeat)}</textarea></div>
-            <div class="sm-field"><label style="color:#D4A04A"> Improve</label><textarea placeholder="What needs work..." onblur="smSaveField('${td}','${esc(area)}','improve',this.value)">${esc(ae.improve)}</textarea></div>
-            <div class="sm-field"><label style="color:#5B8DEF">\u25B6 Action</label><textarea placeholder="Next step..." onblur="smSaveField('${td}','${esc(area)}','action',this.value)">${esc(ae.action)}</textarea></div>
+            <div class="sm-field">
+              <label style="color:#5A9E7E">\u2713 Repeat</label>
+              <textarea placeholder="What went well..." onblur="smSaveField('${td}','${esc(area)}','repeat',this.value)">${esc(ae.repeat)}</textarea>
+              ${prevHasContent&&prevEntry.repeat?`<div class="sm-prev-hint" title="From ${prevDateLabel}"><span class="sm-prev-label">${prevDateLabel}</span> ${esc(prevEntry.repeat)}</div>`:''}
+            </div>
+            <div class="sm-field">
+              <label style="color:#D4A04A">\u26A0 Improve</label>
+              <textarea placeholder="What needs work..." onblur="smSaveField('${td}','${esc(area)}','improve',this.value)">${esc(ae.improve)}</textarea>
+              ${prevHasContent&&prevEntry.improve?`<div class="sm-prev-hint" title="From ${prevDateLabel}"><span class="sm-prev-label">${prevDateLabel}</span> ${esc(prevEntry.improve)}</div>`:''}
+            </div>
+            <div class="sm-field">
+              <label style="color:#5B8DEF">\u25B6 Action</label>
+              <textarea placeholder="Next step..." onblur="smSaveField('${td}','${esc(area)}','action',this.value)">${esc(ae.action)}</textarea>
+              ${prevHasContent&&prevEntry.action?`<div class="sm-prev-hint" title="From ${prevDateLabel}"><span class="sm-prev-label">${prevDateLabel}</span> ${esc(prevEntry.action)}</div>`:''}
+            </div>
           </div>
         </div>`;
       });
     }
     h+=`</div>`;
   });
+
+  // ── HISTORY TABLE — all entries scrollable ──
+  if(filled.length>0){
+    const histHidden=localStorage.getItem('sm-hide-history')==='1';
+    if(histHidden){
+      h+='<div style="margin-bottom:6px"><button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-light);font-family:var(--font);opacity:.5" onclick="localStorage.removeItem(\'sm-hide-history\');render()">+ Show history</button></div>';
+    } else {
+      // Sort dates descending (most recent first)
+      const histDates=[...filled].sort().reverse();
+      // Get all areas in pillar order
+      const allAreas=getSmPillars().flatMap(p=>p.areas.map(a=>({pillar:p,area:typeof a==='object'?a.name:a})));
+      
+      h+='<div class="card" style="padding:14px;margin-bottom:12px">';
+      h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">';
+      h+='<div style="font-size:13px;font-weight:700">History</div>';
+      h+='<span style="font-size:10px;color:var(--text-light);margin-left:auto">'+filled.length+' entries · most recent first</span>';
+      h+='<button style="background:none;border:none;cursor:pointer;font-size:9px;color:var(--text-light);font-family:var(--font);opacity:.5" onclick="localStorage.setItem(\'sm-hide-history\',\'1\');render()">hide</button>';
+      h+='</div>';
+      
+      // Build the table
+      h+='<div style="overflow-x:auto;max-height:560px;overflow-y:auto;border:1px solid var(--border);border-radius:6px">';
+      h+='<table style="width:100%;border-collapse:separate;border-spacing:0;font-size:11px">';
+      
+      // Header row
+      h+='<thead style="position:sticky;top:0;background:var(--card);z-index:2"><tr>';
+      h+='<th style="text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);font-weight:700;color:var(--text-mid);white-space:nowrap;position:sticky;left:0;background:var(--card);z-index:3">Date</th>';
+      allAreas.forEach(({pillar,area})=>{
+        h+='<th style="text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);border-left:1px solid var(--border);font-weight:600;color:'+pillar.color+';white-space:nowrap;font-size:10px">'+esc(area)+'</th>';
+      });
+      h+='</tr></thead>';
+      
+      // Body rows — limit to last 90 days for performance
+      h+='<tbody>';
+      histDates.slice(0,90).forEach((d,di)=>{
+        const e=state.diary.entries[d]||{};
+        const isCurrentRow=d===td;
+        const dateLabel=new Date(d+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'});
+        const dayLabel=new Date(d+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short'});
+        const rowBg=isCurrentRow?'rgba(91,141,239,.06)':(di%2===0?'transparent':'rgba(0,0,0,.012)');
+        
+        h+='<tr style="background:'+rowBg+';cursor:pointer" onmouseover="this.style.background=\'var(--accent-soft)\'" onmouseout="this.style.background=\''+rowBg+'\'" onclick="state.diary.viewDate=\''+d+'\';render()">';
+        h+='<td style="padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;left:0;background:'+rowBg+';font-weight:600"><div>'+dateLabel+'</div><div style="font-size:9px;color:var(--text-light);font-weight:400;text-transform:uppercase;letter-spacing:.05em">'+dayLabel+'</div></td>';
+        
+        allAreas.forEach(({pillar,area})=>{
+          const ae=e[area]||{};
+          const s=ae.score||0;
+          const dotC=s===0?'var(--border-vis)':s<=3?'#CF6F6F':s<=6?'#D4A04A':'#5A9E7E';
+          const tip=[ae.repeat?'✓ '+ae.repeat:'',ae.improve?'⚠ '+ae.improve:'',ae.action?'▶ '+ae.action:''].filter(x=>x).join('\n');
+          
+          // Show score dot + tiny preview of repeat/action text
+          let preview='';
+          if(ae.repeat) preview=ae.repeat;
+          else if(ae.action) preview=ae.action;
+          else if(ae.improve) preview=ae.improve;
+          const truncated=preview.length>40?preview.slice(0,40)+'…':preview;
+          
+          h+='<td style="padding:6px 10px;border-bottom:1px solid var(--border);border-left:1px solid var(--border);vertical-align:top;min-width:120px;max-width:200px" title="'+esc(tip||'No entry')+'">';
+          if(s>0||preview){
+            h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:'+(preview?'3px':'0')+'">';
+            if(s>0) h+='<span style="width:7px;height:7px;border-radius:50%;background:'+dotC+';flex-shrink:0"></span><span style="font-weight:700;font-size:11px;color:var(--text)">'+s+'</span>';
+            h+='</div>';
+            if(truncated) h+='<div style="font-size:10px;color:var(--text-light);line-height:1.4">'+esc(truncated)+'</div>';
+          } else {
+            h+='<span style="color:var(--text-light);opacity:.3">·</span>';
+          }
+          h+='</td>';
+        });
+        h+='</tr>';
+      });
+      h+='</tbody></table></div>';
+      
+      if(histDates.length>90){
+        h+='<div style="font-size:10px;color:var(--text-light);margin-top:6px;text-align:center">Showing 90 most recent entries of '+histDates.length+'. Use Year/Month buttons above for older entries.</div>';
+      } else {
+        h+='<div style="font-size:10px;color:var(--text-light);margin-top:6px;text-align:center">Click any row to view/edit that day.</div>';
+      }
+      h+='</div>';
+    }
+  }
 
   // ── INSIGHTS ──
     // Contribution graph
@@ -1553,25 +1657,43 @@ function renderDiary(){
   ];
   if(hideMap['sm-7habits']){h+=smSectionToggle('sm-7habits','7 Habits Lens');}
   else{
-  h+='<div class="card" style="padding:14px;margin-bottom:12px">';
-  h+='<div style="display:flex;align-items:center;font-size:12px;font-weight:600;margin-bottom:10px;color:var(--text-mid)">7 Habits Lens'+smHideBtn('sm-7habits')+'</div>';
-  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">';
-  habits7map.forEach(hb=>{
+  // Habits content (always visible, inline)
+  const habits7content=[
+    {idea:'Between stimulus and response, there is a space. In that space lies your freedom to choose. Proactive people focus energy on things they can control — not what they\'re worried about.',outcome:'You stop blaming. Reactive language ("I have to") becomes proactive ("I choose to").',action:'When frustrated, pause 5 seconds. Replace "I can\'t" with "I choose not to."'},
+    {idea:'All things are created twice — first mentally, then physically. Without a clear vision, you default to other people\'s agendas.',outcome:'Daily actions align with long-term values. You stop drifting.',action:'Before any project, write the desired outcome first. Define what "a good week" looks like in 3 sentences.'},
+    {idea:'Urgent things demand attention. Important things build your future. Q2 (important, not urgent) is where growth happens.',outcome:'Less firefighting, more deep work, relationships, health, planning.',action:'Block 1 hour for important-not-urgent work daily. Say no to one urgent-but-unimportant thing today.'},
+    {idea:'Win-Win is not a technique — it\'s character built on integrity, maturity, and abundance. If Win-Win isn\'t possible, No Deal is better than Win-Lose.',outcome:'Relationships deepen because people trust you. Negotiations become collaborative.',action:'In your next disagreement, ask "What would work for both of us?"'},
+    {idea:'Most people listen autobiographically — filtering everything through their own experience. Empathic listening means entering the other person\'s frame.',outcome:'People feel heard. Conflicts de-escalate. Trust accelerates.',action:'In your next conversation, don\'t offer advice — just reflect back what you heard.'},
+    {idea:'Synergy means 1+1 can equal 3 or more. It requires valuing differences rather than tolerating them.',outcome:'Better solutions. Relationships become creative rather than defensive.',action:'Ask someone with a different view: "Help me see what I\'m missing."'},
+    {idea:'You can\'t saw wood with a dull blade. The four dimensions — Physical, Mental, Spiritual, Social/Emotional — must all be maintained.',outcome:'Sustained energy. You avoid burnout. Every other habit becomes easier.',action:'Physical: 20min exercise. Spiritual: 5 prayers. Mental: 10 pages. Social: one real conversation.'}
+  ];
+  
+  h+='<div class="card" style="padding:16px;margin-bottom:12px">';
+  h+='<div style="display:flex;align-items:center;font-size:12px;font-weight:600;margin-bottom:12px;color:var(--text-mid)">7 Habits Lens<span style="font-size:10px;color:var(--text-light);margin-left:auto;font-weight:400;font-style:italic">today\'s scores per habit</span>'+smHideBtn('sm-7habits')+'</div>';
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+  habits7map.forEach((hb,hi)=>{
     const scores=hb.areas.map(a=>{const ae=entry[a];return ae?ae.score||0:0;}).filter(s=>s>0);
-    const avg=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):'-';
-    const pct=avg!=='-'?parseFloat(avg)*10:0;
-    h+=`<div style="padding:8px 10px;border-radius:var(--radius-xs);background:var(--accent-soft);cursor:pointer;transition:all .12s" onclick="show7HabitDetail(${habits7map.indexOf(hb)})">
+    const avg=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):'—';
+    const pct=avg!=='—'?parseFloat(avg)*10:0;
+    const c=habits7content[hi]||{};
+    const borderColor=pct>60?'#5A9E7E':pct>30?'#D4A04A':'var(--border-vis)';
+    h+=`<div style="padding:12px;border-radius:8px;background:var(--accent-soft);border-left:3px solid ${borderColor};display:flex;flex-direction:column;gap:6px">
       <div style="display:flex;align-items:center;gap:8px">
-        <div style="width:28px;height:28px;border-radius:14px;background:var(--card);border:2px solid ${pct>60?'var(--success)':pct>30?'var(--warning)':'var(--border-vis)'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;color:var(--text-mid)">${avg}</div>
-        <div style="flex:1">
-          <div style="font-size:10px;font-weight:600;color:var(--text)">${hb.habit}</div>
-          <div style="font-size:8.5px;color:var(--text-light)">${hb.principle}</div>
+        <div style="width:28px;height:28px;border-radius:14px;background:var(--card);border:2px solid ${borderColor};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;color:var(--text)">${avg}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11.5px;font-weight:700;color:var(--text)">${hb.habit}</div>
+          <div style="font-size:9.5px;color:var(--text-mid);font-style:italic">${hb.principle}</div>
         </div>
-        <span style="font-size:9px;color:var(--text-light)">details</span>
+      </div>
+      <div style="font-size:10.5px;color:var(--text-mid);line-height:1.55;border-top:1px solid var(--border);padding-top:6px;margin-top:2px">${c.idea||''}</div>
+      ${c.outcome?`<div style="font-size:10px;color:var(--text-light);line-height:1.5"><span style="color:#5A9E7E;font-weight:700">→</span> ${c.outcome}</div>`:''}
+      ${c.action?`<div style="font-size:10px;color:#5B8DEF;background:rgba(91,141,239,.06);padding:5px 7px;border-radius:4px;line-height:1.5"><b>Today:</b> ${c.action}</div>`:''}
+      <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:2px">
+        ${hb.areas.map(a=>{const ae=entry[a]||{};const s=ae.score||0;const dotC=s===0?'var(--border-vis)':s<=3?'#CF6F6F':s<=6?'#D4A04A':'#5A9E7E';return `<span style="font-size:8.5px;background:var(--card);color:var(--text-mid);padding:2px 5px;border-radius:3px;border:1px solid var(--border);display:inline-flex;align-items:center;gap:3px"><span style="width:6px;height:6px;border-radius:50%;background:${dotC};display:inline-block"></span>${a}${s?` ${s}`:''}</span>`}).join('')}
       </div>
     </div>`;
   });
-  h+=`</div></div>`;
+  h+='</div></div>';
   } // end 7 habits else
 
   const daysSinceLast=filled.length?Math.round((new Date()-new Date(filled[filled.length-1]))/864e5):999;
