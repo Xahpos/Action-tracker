@@ -1142,7 +1142,7 @@ function smPillarTrendChart(pillarName, days){
   filled.forEach(d=>{
     const e=state.diary.entries[d];
     if(!e)return;
-    const scores=pillar.areas.map(a=>{const _n=typeof a==='object'?a.name:a;return e[_n]?.score||0).filter(s=>s>0);
+    const scores=pillar.areas.map(a=>{const _n=typeof a==='object'?a.name:a;return e[_n]?.score||0;}).filter(s=>s>0);
     if(scores.length) data.push({date:d,avg:Math.round(scores.reduce((a,b)=>a+b,0)/scores.length*10)/10});
   });
   if(data.length<2) return '';
