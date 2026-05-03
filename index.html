@@ -1467,28 +1467,53 @@ function renderDiary(){
   h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px"><button style="background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;font-family:var(--font);color:var(--text);padding:0;display:flex;align-items:center;gap:6px" onclick="localStorage.getItem(\'sm-hide-trends\')?localStorage.removeItem(\'sm-hide-trends\'):localStorage.setItem(\'sm-hide-trends\',\'1\');render()"><span style="font-size:10px;color:var(--text-light);transform:rotate('+(showTrends?'0':'-90')+'deg);transition:transform .15s">\u25BE</span>Score Trends</button><span style="font-size:10px;color:var(--text-light);margin-left:auto">'+filled.length+' entries</span></div>';
   
   if(showTrends && filled.length>0){
-    // Build dataset: for each pillar, get sorted [date, avgScore] points
+    // Range filter (persisted)
+    const range=state.diary.trendRange||'90d';
+    const allSorted=[...filled].sort();
+    const todayD=new Date(); todayD.setHours(0,0,0,0);
+    let cutoff=null;
+    if(range==='30d'){cutoff=new Date(todayD);cutoff.setDate(cutoff.getDate()-30);}
+    else if(range==='90d'){cutoff=new Date(todayD);cutoff.setDate(cutoff.getDate()-90);}
+    else if(range==='1y'){cutoff=new Date(todayD);cutoff.setFullYear(cutoff.getFullYear()-1);}
+    const sortedDates = cutoff ? allSorted.filter(d=>new Date(d+'T12:00:00')>=cutoff) : allSorted;
+    
+    // Range buttons
+    h+='<div style="display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap;align-items:center">';
+    h+='<span style="font-size:10px;color:var(--text-light);font-weight:500;margin-right:4px">Range:</span>';
+    [['30d','30 days'],['90d','90 days'],['1y','1 year'],['all','All time']].forEach(([k,l])=>{
+      const active=range===k;
+      h+='<button onclick="state.diary.trendRange=\''+k+'\';saveState();render()" style="padding:3px 10px;border-radius:12px;border:1px solid '+(active?'var(--accent)':'var(--border-vis)')+';background:'+(active?'var(--accent)':'var(--card)')+';color:'+(active?'#fff':'var(--text-mid)')+';font-size:10px;cursor:pointer;font-family:var(--font);font-weight:'+(active?'600':'400')+'">'+l+'</button>';
+    });
+    h+='<span style="font-size:10px;color:var(--text-light);margin-left:auto">'+sortedDates.length+' data points</span>';
+    h+='</div>';
+    
+    if(sortedDates.length===0){
+      h+='<div class="card" style="padding:30px;text-align:center;color:var(--text-light);font-size:12px">No entries in this range. Try a wider range.</div></div>';
+      return h;
+    }
+    
+    // Build dataset using equal x-spacing (one tick per entry date)
     const pillars=getSmPillars();
-    const sortedDates=[...filled].sort();
     const datasets=pillars.map(p=>{
-      const points=sortedDates.map(d=>{
+      const points=sortedDates.map((d,i)=>{
         const e=state.diary.entries[d]||{};
         const scores=p.areas.map(a=>{const _n=typeof a==='object'?a.name:a;return e[_n]&&e[_n].score?e[_n].score:0;}).filter(s=>s>0);
-        return scores.length?{date:d,score:scores.reduce((a,b)=>a+b,0)/scores.length}:null;
+        return scores.length?{date:d,score:scores.reduce((a,b)=>a+b,0)/scores.length,xIdx:i}:null;
       }).filter(Boolean);
       return {pillar:p, points};
     });
     
     // SVG dimensions
-    const cw=900, ch=380, padL=44, padR=20, padT=20, padB=56;
+    const cw=900, ch=380, padL=44, padR=20, padT=20, padB=68;
     const plotW=cw-padL-padR, plotH=ch-padT-padB;
-    const minDate=new Date(sortedDates[0]+'T12:00:00');
-    const maxDate=new Date(sortedDates[sortedDates.length-1]+'T12:00:00');
-    const dateSpan=Math.max(maxDate-minDate,86400000);
-    const xFor=d=>padL+((new Date(d+'T12:00:00')-minDate)/dateSpan)*plotW;
+    // Equal spacing: position by index, not by date
+    const xFor=idx=>sortedDates.length<=1 ? padL+plotW/2 : padL+(idx/(sortedDates.length-1))*plotW;
     const yFor=s=>padT+(1-s/10)*plotH;
     
+    const showLine=!localStorage.getItem('sm-hide-line');
     h+='<div class="card" style="padding:18px;margin-bottom:8px">';
+    h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:'+(showLine?'12':'0')+'px"><button style="background:none;border:none;cursor:pointer;font-size:11px;font-weight:600;font-family:var(--font);color:var(--text-mid);padding:0;display:flex;align-items:center;gap:6px" onclick="localStorage.getItem(\'sm-hide-line\')?localStorage.removeItem(\'sm-hide-line\'):localStorage.setItem(\'sm-hide-line\',\'1\');render()"><span style="font-size:9px;color:var(--text-light);transform:rotate('+(showLine?'0':'-90')+'deg);transition:transform .15s">\u25BE</span>Pillar score lines</button></div>';
+    if(showLine){
     h+='<svg viewBox="0 0 '+cw+' '+ch+'" style="width:100%;height:auto;display:block;font-family:var(--font)">';
     
     // Y axis gridlines (0,2,4,6,8,10)
@@ -1499,15 +1524,15 @@ function renderDiary(){
     }
     h+='<text x="14" y="'+(padT+plotH/2)+'" text-anchor="middle" font-size="10" fill="var(--text-mid)" transform="rotate(-90 14 '+(padT+plotH/2)+')" font-weight="600">Score</text>';
     
-    // X axis date ticks (max 8)
+    // X axis date ticks - max 8, equally spaced over data, rotated to avoid overlap
     const tickCount=Math.min(sortedDates.length,8);
     for(let i=0;i<tickCount;i++){
       const idx=Math.round(i*(sortedDates.length-1)/Math.max(tickCount-1,1));
       const d=sortedDates[idx];
-      const x=xFor(d);
+      const x=xFor(idx);
       h+='<line x1="'+x+'" y1="'+(padT+plotH)+'" x2="'+x+'" y2="'+(padT+plotH+4)+'" stroke="var(--text-light)" stroke-width="1"/>';
       const label=new Date(d+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'});
-      h+='<text x="'+x+'" y="'+(padT+plotH+18)+'" text-anchor="middle" font-size="10" fill="var(--text-mid)">'+label+'</text>';
+      h+='<text x="'+x+'" y="'+(padT+plotH+16)+'" text-anchor="end" font-size="10" fill="var(--text-mid)" transform="rotate(-35 '+x+' '+(padT+plotH+16)+')">'+label+'</text>';
     }
     
     // Draw each pillar line
@@ -1517,12 +1542,11 @@ function renderDiary(){
       
       let d='';
       points.forEach((p,i)=>{
-        d+=(i===0?'M':' L')+xFor(p.date)+','+yFor(p.score);
+        d+=(i===0?'M':' L')+xFor(p.xIdx)+','+yFor(p.score);
       });
       h+='<path d="'+d+'" fill="none" stroke="'+pillar.color+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>';
-      // Dots
       points.forEach(p=>{
-        h+='<circle cx="'+xFor(p.date)+'" cy="'+yFor(p.score)+'" r="3.5" fill="'+pillar.color+'" stroke="var(--card)" stroke-width="1.5"><title>'+pillar.name+' - '+new Date(p.date+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})+': '+p.score.toFixed(1)+'/10</title></circle>';
+        h+='<circle cx="'+xFor(p.xIdx)+'" cy="'+yFor(p.score)+'" r="3.5" fill="'+pillar.color+'" stroke="var(--card)" stroke-width="1.5"><title>'+pillar.name+' - '+new Date(p.date+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})+': '+p.score.toFixed(1)+'/10</title></circle>';
       });
     });
     
@@ -1540,62 +1564,81 @@ function renderDiary(){
     });
     h+='</div>';
     h+='<div style="font-size:10px;color:var(--text-light);text-align:center;margin-top:6px;font-style:italic">Click a pillar to hide/show it</div>';
+    } // end if(showLine)
     h+='</div>';
     
-    // ── Self Map fill-rate timeline (Y/N per day) ──
-    h+='<div class="card" style="padding:14px;margin-bottom:14px">';
-    h+='<div style="font-size:11px;font-weight:700;color:var(--text-mid);margin-bottom:10px;display:flex;align-items:center;gap:6px">Self Map filled<span style="font-size:10px;color:var(--text-light);font-weight:400;margin-left:auto">last 60 days</span></div>';
-    
-    // Build set of filled dates for quick lookup
+    // ── Self Map fill-rate timeline — respects the range selector ──
+    const fillDayCount = range==='30d'?30 : range==='90d'?90 : range==='1y'?365 : Math.max(60, sortedDates.length>0?Math.ceil((todayD-new Date(sortedDates[0]+'T12:00:00'))/86400000)+1:60);
     const filledSet=new Set(filled);
-    // Build last 60 days
-    const today60=new Date();
-    const days60=[];
-    for(let i=59;i>=0;i--){
-      const d=new Date(today60);
+    const todayBase=new Date(); todayBase.setHours(0,0,0,0);
+    const fillDays=[];
+    for(let i=fillDayCount-1;i>=0;i--){
+      const d=new Date(todayBase);
       d.setDate(d.getDate()-i);
-      days60.push(d.toISOString().slice(0,10));
+      fillDays.push(d.toISOString().slice(0,10));
     }
-    const filledCount=days60.filter(d=>filledSet.has(d)).length;
-    const fillRate=Math.round(filledCount/60*100);
+    const fillCount=fillDays.filter(d=>filledSet.has(d)).length;
+    const fillPct=fillDayCount>0?Math.round(fillCount/fillDayCount*100):0;
     
-    h+='<svg viewBox="0 0 900 80" style="width:100%;height:auto;display:block;font-family:var(--font)">';
+    // SVG dims
+    const fcw=900, fch=120, fpadT=24, fpadB=28, barH=fch-fpadT-fpadB;
+    const fbarW=fcw/fillDayCount;
     
-    const barW=900/60;
-    days60.forEach((d,i)=>{
+    const showFill=!localStorage.getItem('sm-hide-fill');
+    h+='<div class="card" style="padding:16px;margin-bottom:14px">';
+    h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:'+(showFill?'12':'0')+'px">';
+    h+='<button style="background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;gap:6px;font-family:var(--font)" onclick="localStorage.getItem(\'sm-hide-fill\')?localStorage.removeItem(\'sm-hide-fill\'):localStorage.setItem(\'sm-hide-fill\',\'1\');render()"><span style="font-size:9px;color:var(--text-light);transform:rotate('+(showFill?'0':'-90')+'deg);transition:transform .15s">\u25BE</span><span style="font-size:13px;font-weight:700;color:var(--text)">Self Map filled</span></button>';
+    h+='<span style="font-size:11px;color:var(--text-mid);font-weight:600">'+fillCount+'/'+fillDayCount+' days <span style="color:var(--text-light);font-weight:400">('+fillPct+'%)</span></span>';
+    if(showFill) h+='<span style="font-size:10px;color:var(--text-light);margin-left:auto">last '+fillDayCount+' days · today on the right</span>';
+    h+='</div>';
+    if(showFill){
+    h+='<svg viewBox="0 0 '+fcw+' '+fch+'" style="width:100%;height:auto;display:block;font-family:var(--font)" preserveAspectRatio="none">';
+    
+    // Month labels
+    let lastM=-1;
+    fillDays.forEach((d,i)=>{
+      const dateObj=new Date(d+'T12:00:00');
+      const m=dateObj.getMonth();
+      const isFirstOfMonth=dateObj.getDate()===1;
+      const showLabel = m!==lastM || isFirstOfMonth;
+      if(showLabel && i!==fillDays.length-1){
+        const label=dateObj.toLocaleDateString('en-GB',{month:'short'})+ (m===0?' \u2018'+String(dateObj.getFullYear()).slice(-2):'');
+        h+='<text x="'+(i*fbarW+2)+'" y="14" font-size="10" fill="var(--text-light)" font-weight="600">'+label+'</text>';
+        h+='<line x1="'+(i*fbarW)+'" y1="'+fpadT+'" x2="'+(i*fbarW)+'" y2="'+(fpadT+barH)+'" stroke="var(--border)" stroke-width="1" stroke-dasharray="2,2"/>';
+        lastM=m;
+      }
+    });
+    
+    // Bars
+    fillDays.forEach((d,i)=>{
       const isFilled=filledSet.has(d);
       const dateObj=new Date(d+'T12:00:00');
       const isToday=d===todayISO();
       const isWeekend=dateObj.getDay()===0||dateObj.getDay()===6;
-      
-      h+='<rect x="'+(i*barW+1)+'" y="20" width="'+(barW-2)+'" height="40" rx="2" ';
-      h+='fill="'+(isFilled?'#5A9E7E':'var(--border)')+'" ';
-      h+='opacity="'+(isFilled?(isWeekend?'0.7':'1'):(isWeekend?'0.4':'0.6'))+'" ';
-      if(isToday) h+='stroke="var(--accent)" stroke-width="2" ';
-      h+='>';
-      h+='<title>'+dateObj.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})+(isFilled?' - filled':' - skipped')+'</title>';
-      h+='</rect>';
+      const fill=isFilled?'#5A9E7E':'var(--border)';
+      const op=isFilled?(isWeekend?0.65:0.95):(isWeekend?0.35:0.55);
+      h+='<rect x="'+(i*fbarW+0.5)+'" y="'+fpadT+'" width="'+Math.max(fbarW-1,1)+'" height="'+barH+'" ';
+      h+='fill="'+fill+'" opacity="'+op+'"';
+      if(isToday) h+=' stroke="var(--accent)" stroke-width="2"';
+      h+='><title>'+dateObj.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'})+(isFilled?' \u2014 filled':' \u2014 skipped')+'</title></rect>';
     });
     
-    // Month labels
-    const months=[];
-    let lastM=-1;
-    days60.forEach((d,i)=>{
-      const m=new Date(d+'T12:00:00').getMonth();
-      if(m!==lastM){
-        months.push({i,label:new Date(d+'T12:00:00').toLocaleDateString('en-GB',{month:'short'})});
-        lastM=m;
-      }
-    });
-    months.forEach(m=>{
-      h+='<text x="'+(m.i*barW+barW/2)+'" y="14" font-size="10" fill="var(--text-light)" text-anchor="start" font-weight="600">'+m.label+'</text>';
-    });
+    // Bottom edge labels
+    h+='<text x="0" y="'+(fch-6)+'" font-size="10" fill="var(--text-light)">'+new Date(fillDays[0]+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'})+'</text>';
+    h+='<text x="'+fcw+'" y="'+(fch-6)+'" font-size="10" fill="var(--text-light)" text-anchor="end">today</text>';
     
-    // Stats text
-    h+='<text x="0" y="76" font-size="10" fill="var(--text-mid)" font-weight="600">'+filledCount+'/60 days filled ('+fillRate+'%)</text>';
-    h+='<text x="900" y="76" font-size="10" fill="var(--text-light)" text-anchor="end">\u2190 60 days ago&nbsp;&nbsp;today \u2192</text>';
+    // Legend
+    h+='<g transform="translate('+(fcw/2-100)+' '+(fch-12)+')">';
+    h+='<rect x="0" y="-8" width="10" height="10" fill="#5A9E7E" rx="1"/>';
+    h+='<text x="14" y="1" font-size="10" fill="var(--text-mid)">filled</text>';
+    h+='<rect x="60" y="-8" width="10" height="10" fill="var(--border)" opacity="0.55" rx="1"/>';
+    h+='<text x="74" y="1" font-size="10" fill="var(--text-mid)">skipped</text>';
+    h+='<rect x="130" y="-8" width="10" height="10" fill="#5A9E7E" opacity="0.65" rx="1"/>';
+    h+='<text x="144" y="1" font-size="10" fill="var(--text-mid)">weekend</text>';
+    h+='</g>';
     
     h+='</svg>';
+    } // end if(showFill)
     h+='</div>';
   }
   h+='</div>';
