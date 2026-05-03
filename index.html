@@ -512,22 +512,23 @@ const isOverdue = (due, st) => { if (!due||st==="Done"||st==="Cancelled") return
 let state = {
   actions: [], meetings: [], archived: [], subProjects: {}, milestones: [],
   tab: "today", editId: null, dark: false, search: "", fStatus: "Active", fProj: "All", fOwner: "All", fPrio: false, fDate: "",
-  projCollapsed: {}, subCollapsed: {}, diary: {areas:[],entries:{},habits:{}}, toast: null, selected: new Set(), dragId: null, projOrder: [], dragProj: null, kanbanProj: 'All', projSideOpen: true
+  projCollapsed: {}, subCollapsed: {}, diary: {areas:[],entries:{},habits:{}}, toast: null, selected: new Set(), dragId: null, projOrder: [], dragProj: null, kanbanProj: 'All', projSideOpen: true, colVis: {action:true,owner:true,added:true,due:true,status:true,project:true}
 };
 
 // ═══════════════════════════════════════
 // PERSISTENCE (localStorage)
 // ═══════════════════════════════════════
 const STORE_KEY = "at-standalone-v1";
+function savePrefs(){localStorage.setItem('at-prefs', JSON.stringify({projCollapsed:state.projCollapsed, subCollapsed:state.subCollapsed, projOrder:state.projOrder, projSideOpen:state.projSideOpen, colVis:state.colVis}));}
 function saveState() {
   const d = { actions: state.actions, meetings: state.meetings, archived: state.archived, subProjects: state.subProjects, milestones: state.milestones, diary: state.diary };
   localStorage.setItem(STORE_KEY, JSON.stringify(d));
   // Save UI prefs separately (not synced to Drive — device-local)
-  localStorage.setItem('at-prefs', JSON.stringify({projCollapsed:state.projCollapsed, subCollapsed:state.subCollapsed, projOrder:state.projOrder, projSideOpen:state.projSideOpen}));
+  localStorage.setItem('at-prefs', JSON.stringify({projCollapsed:state.projCollapsed, subCollapsed:state.subCollapsed, projOrder:state.projOrder, projSideOpen:state.projSideOpen, colVis:state.colVis}));
   debouncedDriveSync();
 }
 function loadPrefs() {
-  try { const p=JSON.parse(localStorage.getItem('at-prefs')||'{}'); state.projCollapsed=p.projCollapsed||{}; state.subCollapsed=p.subCollapsed||{}; state.projOrder=p.projOrder||[]; state.projSideOpen=p.projSideOpen!==undefined?p.projSideOpen:true; } catch(e) {}
+  try { const p=JSON.parse(localStorage.getItem('at-prefs')||'{}'); state.projCollapsed=p.projCollapsed||{}; state.subCollapsed=p.subCollapsed||{}; state.projOrder=p.projOrder||[]; state.projSideOpen=p.projSideOpen!==undefined?p.projSideOpen:true; state.colVis=Object.assign({action:true,owner:true,added:true,due:true,status:true,project:true},p.colVis||{}); } catch(e) {}
 }
 function loadState() {
   loadPrefs();
@@ -818,18 +819,78 @@ function openAddInProject(proj){
 // ═══════════════════════════════════════
 // Password-locked personal development diary with Repeat/Improve/Action/Score per area
 
-const SM_PILLARS = [
-  {name:"Self Discipline/Grit",color:"#CF6F6F",areas:["Effort","Consistency","Self respect (delayed gratification)"]},
-  {name:"Core Competencies",color:"#5B8DEF",areas:["Focus/Attention","Communication","Planning & Productivity","Structured problem solving","Emotional Stability/Stoicism","Learning how to learn"]},
-  {name:"Habits",color:"#5A9E7E",areas:["Prayer","Weightlifting","Cardio","Intermittent fasting","Self Map"]},
-  {name:"Circle of influence",color:"#9B8ADE",areas:["Wife","Family","Friends"]},
+const DEFAULT_SM_PILLARS = [
+  {name:"Mindset",color:"#CF6F6F",layer:"Mindset",areas:[
+    {name:"Proactivity",question:"Did I act from values or from circumstances today?",adhered:"Chose my response in a difficult moment. Did the hard task without waiting to feel ready. No blame when things went wrong.",notAdhered:"Mood drove my decisions. Waited to feel motivated. Complained about something I can't control."},
+    {name:"Process Commitment",question:"Did I show up the same way regardless of how the orange line looked?",adhered:"Ran my routines even when yesterday felt bad or good. Didn't coast after a win or quit after a setback.",notAdhered:"Skipped the gym because work was rough. Eased off after a good meeting. Let a result change my effort level."},
+    {name:"Impulse Control",question:"Did I choose the long-term option over the short-term one when they conflicted?",adhered:"Fasted when food was available. Chose focused work over phone. Waited before reacting to a charged message.",notAdhered:"Broke fast without real reason. Opened social media out of boredom. Reacted immediately when I should have paused."},
+  ]},
+  {name:"Frameworks",color:"#5B8DEF",layer:"Frameworks",areas:[
+    {name:"Focus/Attention",question:"Did I protect deep work time and spend most of the day in Q2?",adhered:"At least one uninterrupted block of meaningful work. Didn't switch tasks reactively. Closed notifications during deep work.",notAdhered:"Jumped between tasks all day. Attended meetings that weren't mine. Never got into a real working state."},
+    {name:"Communication",question:"Did I listen fully before speaking, and seek mutual benefit in every significant interaction?",adhered:"Let the other person finish. Repeated back before responding. Left at least one conversation with both sides better off.",notAdhered:"Interrupted. Agreed just to end the conversation. Won an argument at the cost of the relationship."},
+    {name:"Planning & Productivity",question:"What did I plan to do today, and what did I actually do — and do I know why there's a gap?",adhered:"Reviewed the plan at start of day. Can name the gap between planned and done. Closed at least one planned action.",notAdhered:"No plan reviewed. Worked reactively all day. Can't say what I achieved vs what I intended."},
+    {name:"Problem Solving Approach",question:"Did I diagnose before I prescribed — and did I look for the third alternative?",adhered:"Asked 'what's actually happening here?' before proposing a fix. Considered both sides. Asked whether a better solution exists.",notAdhered:"Jumped to solution before understanding the problem. Pushed my answer without testing it."},
+    {name:"Emotional Stability",question:"Did I stay regulated when things were difficult, uncomfortable, or unfair?",adhered:"Noticed the emotional charge and didn't act from it immediately. Responded calmly. Kept working when things felt uncertain.",notAdhered:"Said or sent something in frustration I later regretted. Shutdown when challenged. Let someone else's mood set mine."},
+  ]},
+  {name:"Habits",color:"#5A9E7E",layer:"Daily Practice",areas:[
+    {name:"Prayer",question:"Did I take deliberate time to connect spiritually before the day took over?",adhered:"All five prayers on time, or Fajr done before any screen. Present during prayer, not running through a checklist.",notAdhered:"Missed or delayed Fajr. Prayed while distracted or rushed. Prayer felt like a box to tick."},
+    {name:"Weightlifting",question:"Did I train today, and did I push or just show up?",adhered:"Session completed. At least one set pushed to real effort. Left feeling like something was built.",notAdhered:"Skipped without a genuine physical reason. Went through the motions without effort."},
+    {name:"Cardio",question:"Did I move enough to serve my long-term physical capacity?",adhered:"Dedicated cardio session, or meaningful active movement (30+ min walk with intent). Heart rate elevated.",notAdhered:"Sedentary day. Movement was incidental, not intentional."},
+    {name:"Intermittent Fasting",question:"Did I hold the fast window I committed to?",adhered:"Ate within the planned window. No impulsive eating outside it.",notAdhered:"Broke the fast early without a real reason. Ate out of boredom or social pressure."},
+    {name:"Self Map",question:"Did I reflect honestly today — or did I skip it?",adhered:"Filled in at least one area with a real score, a real Repeat and a real Action.",notAdhered:"Skipped entirely. Gave scores without writing anything. Scored everything 7 without thinking."},
+  ]},
+  {name:"Circle of Influence",color:"#9B8ADE",layer:"Mindset",areas:[
+    {name:"Wife",question:"Did I show up as a partner today — present, generous, and listening?",adhered:"Had at least one real conversation (not logistical). Did something for her without being asked. Listened without planning my reply.",notAdhered:"Interactions were purely transactional. Distracted when she was talking. Let work energy bleed into home."},
+    {name:"Family",question:"Did I invest in at least one family relationship today?",adhered:"Called a parent or sibling with real attention. Was present during family time, not just physically there.",notAdhered:"Interactions were obligatory. Phone was present during family time."},
+    {name:"Friends",question:"Did I maintain or deepen at least one friendship this week?",adhered:"Reached out proactively. Showed genuine interest in what someone else is going through.",notAdhered:"Only responded when contacted. Friendships running purely on autopilot."},
+  ]},
+  {name:"Learning Process",color:"#E0A458",layer:"Learning",areas:[
+    {name:"Notes & Reading",question:"Did I take in something new and actually capture it in a usable form?",adhered:"Read or listened to something substantive. Wrote at least one note in my own words — not a highlight, a synthesis.",notAdhered:"Consumed content passively with nothing captured. Highlighted without processing. Read for the feeling of learning."},
+    {name:"Pattern Extraction",question:"This week — what actually repeated, and what does it mean?",adhered:"Named one recurring theme from the week's diary entries. Connected it to a behaviour, not just an observation.",notAdhered:"Week passed without any reflection on what it contained. Patterns go unnamed and therefore unchanged."},
+    {name:"Experiment Design",question:"Did I approach something this week as a deliberate test rather than just doing it?",adhered:"Named one thing I'm testing, what I expect to happen, and how I'll know. Treated the outcome as data, not a verdict.",notAdhered:"Tried things without intention. Changed multiple variables at once. Drew conclusions from a single data point."},
+    {name:"Feedback Loops",question:"Did I close a loop — check a result against an expectation and update accordingly?",adhered:"Compared what happened to what I expected. Changed something concrete based on the comparison.",notAdhered:"Results came in but nothing updated. Feedback received but not acted on. Same approach repeated."},
+  ]},
 ];
-const SM_ALL_AREAS = SM_PILLARS.flatMap(p=>p.areas);
-function smPillarOf(area){return SM_PILLARS.find(p=>p.areas.includes(area));}
+
+// Dynamic getter — always reads from state (falls back to defaults)
+function getSmPillars(){
+  if(state.diary&&state.diary.pillars&&state.diary.pillars.length) return state.diary.pillars;
+  return DEFAULT_SM_PILLARS;
+}
+// For backward-compat: keep SM_PILLARS as a live reference (updated after state loads)
+function SM_PILLARS_LIVE(){return getSmPillars();}
+const SM_PILLARS = new Proxy([],{
+  get(t,p){const arr=getSmPillars();if(p==='length')return arr.length;if(typeof p==='string'&&!isNaN(p))return arr[+p];if(typeof arr[p]==='function')return arr[p].bind(arr);return arr[p];},
+  [Symbol.iterator](){return getSmPillars()[Symbol.iterator]();}
+});
+function getSMAllAreas(){return getSmPillars().flatMap(p=>p.areas.map(a=>typeof a==='string'?a:a.name));}
+const SM_ALL_AREAS = new Proxy([],{
+  get(t,p){const arr=getSMAllAreas();if(p==='length')return arr.length;if(typeof p==='string'&&!isNaN(p))return arr[+p];if(typeof arr[p]==='function')return arr[p].bind(arr);return arr[p];},
+  [Symbol.iterator](){return getSMAllAreas()[Symbol.iterator]();}
+});
+function smPillarOf(area){return getSmPillars().find(p=>p.areas.some(a=>(typeof a==='string'?a:a.name)===area));}
+function smAreaDef(areaName){
+  for(const p of getSmPillars()){for(const a of p.areas){if(typeof a==='object'&&a.name===areaName)return a;}}
+  return {name:areaName,question:'',adhered:'',notAdhered:''};
+}
 
 function smInit(){
   if(!state.diary)state.diary={pin:"",entries:{},habits:{},unlocked:false,viewDate:null};
   if(!state.diary.entries)state.diary.entries={};
+  // Migrate old string-only areas to object form if needed
+  if(state.diary.pillars){
+    state.diary.pillars=state.diary.pillars.map(p=>({
+      ...p,
+      areas:p.areas.map(a=>typeof a==='string'?{name:a,question:'',adhered:'',notAdhered:''}:a)
+    }));
+  }
+  // Migrate old area names to new names
+  const MIGRATIONS={'Self respect (delayed gratification)':'Impulse Control','Effort':'Proactivity','Consistency':'Process Commitment','Focus/Attention':'Focus/Attention','Structured problem solving':'Problem Solving Approach','Emotional Stability/Stoicism':'Emotional Stability','Learning how to learn':'Notes & Reading','Circle of influence':'Circle of Influence'};
+  Object.values(state.diary.entries||{}).forEach(day=>{
+    Object.entries(MIGRATIONS).forEach(([oldK,newK])=>{
+      if(day[oldK]!==undefined&&day[newK]===undefined){day[newK]=day[oldK];delete day[oldK];}
+    });
+  });
 }
 
 function smCheckPin(){
@@ -917,7 +978,7 @@ function smAvgScores(date){
   if(!e)return{};
   const byPillar={};
   SM_PILLARS.forEach(p=>{
-    const scores=p.areas.map(a=>e[a]?.score||0).filter(s=>s>0);
+    const scores=p.areas.map(a=>{const n=typeof a==='object'?a.name:a;return e[n]?.score||0;}).filter(s=>s>0);
     byPillar[p.name]=scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length*10)/10:0;
   });
   return byPillar;
@@ -1056,7 +1117,7 @@ function smPillarTrendChart(pillarName, days){
   filled.forEach(d=>{
     const e=state.diary.entries[d];
     if(!e)return;
-    const scores=pillar.areas.map(a=>e[a]?.score||0).filter(s=>s>0);
+    const scores=pillar.areas.map(a=>{const _n=typeof a==='object'?a.name:a;return e[_n]?.score||0).filter(s=>s>0);
     if(scores.length) data.push({date:d,avg:Math.round(scores.reduce((a,b)=>a+b,0)/scores.length*10)/10});
   });
   if(data.length<2) return '';
@@ -1104,6 +1165,121 @@ function smQuickScore(){
   document.body.appendChild(m);
 }
 
+function showAdherence(areaName){
+  const def=smAreaDef(areaName);
+  const m=document.createElement('div');m.className='modal-overlay';m.onclick=e=>{if(e.target===m)m.remove();};
+  m.innerHTML=`<div class="modal" style="max-width:480px">
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:4px">${esc(areaName)}</h3>
+    ${def.question?`<p style="font-size:12px;color:var(--text-mid);font-style:italic;margin-bottom:14px;padding:8px 12px;background:var(--accent-soft);border-radius:6px">${esc(def.question)}</p>`:''}
+    ${def.adhered?`<div style="margin-bottom:10px"><div style="font-size:10px;font-weight:700;color:#5A9E7E;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">✓ Adhered</div><div style="font-size:12px;color:var(--text-mid);line-height:1.6">${esc(def.adhered)}</div></div>`:''}
+    ${def.notAdhered?`<div style="margin-bottom:14px"><div style="font-size:10px;font-weight:700;color:#CF6F6F;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">✗ Not adhered</div><div style="font-size:12px;color:var(--text-mid);line-height:1.6">${esc(def.notAdhered)}</div></div>`:''}
+    <div style="display:flex;justify-content:space-between">
+      <button class="btn btn-ghost" style="font-size:10px" onclick="editAreaDef('${esc(areaName)}');this.closest('.modal-overlay').remove()">Edit guide</button>
+      <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Close</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+}
+
+function editAreaDef(areaName){
+  const def=smAreaDef(areaName);
+  const m=document.createElement('div');m.className='modal-overlay';m.onclick=e=>{if(e.target===m)m.remove();};
+  m.innerHTML=`<div class="modal" style="max-width:540px">
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:12px">Edit — ${esc(areaName)}</h3>
+    <label style="font-size:10px;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.05em">Key question</label>
+    <input class="input" id="ead-q" style="width:100%;margin:4px 0 10px;font-size:12px" value="${esc(def.question)}">
+    <label style="font-size:10px;font-weight:600;color:#5A9E7E;text-transform:uppercase;letter-spacing:.05em">✓ Adhered (concrete examples)</label>
+    <textarea class="input" id="ead-a" style="width:100%;margin:4px 0 10px;min-height:70px;font-size:12px;line-height:1.5">${esc(def.adhered)}</textarea>
+    <label style="font-size:10px;font-weight:600;color:#CF6F6F;text-transform:uppercase;letter-spacing:.05em">✗ Not adhered (concrete examples)</label>
+    <textarea class="input" id="ead-n" style="width:100%;margin:4px 0 14px;min-height:70px;font-size:12px;line-height:1.5">${esc(def.notAdhered)}</textarea>
+    <div style="display:flex;justify-content:flex-end;gap:6px">
+      <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAreaDef('${esc(areaName)}',document.getElementById('ead-q').value,document.getElementById('ead-a').value,document.getElementById('ead-n').value);this.closest('.modal-overlay').remove();render()">Save</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+}
+
+function saveAreaDef(areaName,question,adhered,notAdhered){
+  const pillars=getSmPillars();
+  let found=false;
+  pillars.forEach(p=>{p.areas.forEach(a=>{if(typeof a==='object'&&a.name===areaName){a.question=question;a.adhered=adhered;a.notAdhered=notAdhered;found=true;}});});
+  if(found){state.diary.pillars=pillars;saveState();}
+}
+
+function editSmPillars(){
+  const pillars=JSON.parse(JSON.stringify(getSmPillars())); // deep copy to edit
+  function renderPillarEditor(){
+    const m=document.getElementById('sm-pillar-modal');
+    if(!m)return;
+    m.innerHTML=`<div class="modal" style="max-width:660px;max-height:85vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <h3 style="font-size:15px;font-weight:700">Edit Self Map Structure</h3>
+        <button class="btn btn-ghost" style="font-size:10px" onclick="document.getElementById('sm-pillar-modal').remove()">✕ Close</button>
+      </div>
+      ${pillars.map((p,pi)=>`
+        <div style="border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:${p.color}12;border-bottom:1px solid var(--border)">
+            <input type="color" value="${p.color}" style="width:28px;height:28px;border:none;border-radius:4px;cursor:pointer;padding:0" onchange="pillars[${pi}].color=this.value;renderPillarEditor()">
+            <input class="input" style="flex:1;font-size:13px;font-weight:600" value="${esc(p.name)}" onblur="pillars[${pi}].name=this.value">
+            <select class="select" style="font-size:10px" onchange="pillars[${pi}].layer=this.value">
+              ${['Mindset','Frameworks','Daily Practice','Learning'].map(l=>`<option ${p.layer===l?'selected':''}>${l}</option>`).join('')}
+            </select>
+            <button style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-light)" onclick="pillars.splice(${pi},1);renderPillarEditor()" title="Remove pillar">✕</button>
+            ${pi>0?`<button style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-light)" onclick="[pillars[${pi-1}],pillars[${pi}]]=[pillars[${pi}],pillars[${pi-1}]];renderPillarEditor()" title="Move up">↑</button>`:''}
+          </div>
+          <div style="padding:8px 12px">
+            ${p.areas.map((a,ai)=>{const an=typeof a==='object'?a.name:a;return `
+              <div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--border)">
+                <input class="input" style="flex:1;font-size:12px" value="${esc(an)}" onblur="pillars[${pi}].areas[${ai}]=Object.assign(typeof pillars[${pi}].areas[${ai}]==='object'?pillars[${pi}].areas[${ai}]:{name:''},{name:this.value})">
+                <button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--accent)" onclick="openAreaDefEdit(${pi},${ai})">guide</button>
+                <button style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--text-light)" onclick="pillars[${pi}].areas.splice(${ai},1);renderPillarEditor()" title="Remove area">✕</button>
+                ${ai>0?`<button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-light)" onclick="[pillars[${pi}].areas[${ai-1}],pillars[${pi}].areas[${ai}]]=[pillars[${pi}].areas[${ai}],pillars[${pi}].areas[${ai-1}]];renderPillarEditor()">↑</button>`:''}
+              </div>`;}).join('')}
+            <button class="btn btn-ghost" style="font-size:10px;margin-top:6px;padding:4px 8px" onclick="pillars[${pi}].areas.push({name:'New area',question:'',adhered:'',notAdhered:''});renderPillarEditor()">+ Add area</button>
+          </div>
+        </div>`).join('')}
+      <div style="display:flex;gap:6px;margin-top:4px">
+        <button class="btn btn-ghost" style="font-size:10px" onclick="pillars.push({name:'New pillar',color:'#94A3B8',layer:'Frameworks',areas:[]});renderPillarEditor()">+ Add pillar</button>
+        <div style="flex:1"></div>
+        <button class="btn btn-ghost" onclick="document.getElementById('sm-pillar-modal').remove()">Cancel</button>
+        <button class="btn btn-primary" onclick="state.diary.pillars=JSON.parse(JSON.stringify(pillars));saveState();document.getElementById('sm-pillar-modal').remove();render();toast('Structure saved')">Save structure</button>
+      </div>
+    </div>`;
+
+    // wire openAreaDefEdit inside modal context
+    window.openAreaDefEdit=function(pi,ai){
+      const a=typeof pillars[pi].areas[ai]==='object'?pillars[pi].areas[ai]:{name:pillars[pi].areas[ai],question:'',adhered:'',notAdhered:''};
+      const sub=document.createElement('div');sub.className='modal-overlay';sub.style.zIndex='1001';sub.onclick=e=>{if(e.target===sub)sub.remove();};
+      sub.innerHTML=`<div class="modal" style="max-width:520px">
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:10px">Guide — ${esc(a.name)}</h3>
+        <label style="font-size:10px;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.05em">Key question</label>
+        <input class="input" id="oad-q" style="width:100%;margin:4px 0 8px;font-size:12px" value="${esc(a.question||'')}">
+        <label style="font-size:10px;font-weight:600;color:#5A9E7E;text-transform:uppercase;letter-spacing:.05em">✓ Adhered</label>
+        <textarea class="input" id="oad-a" style="width:100%;margin:4px 0 8px;min-height:60px;font-size:12px;line-height:1.5">${esc(a.adhered||'')}</textarea>
+        <label style="font-size:10px;font-weight:600;color:#CF6F6F;text-transform:uppercase;letter-spacing:.05em">✗ Not adhered</label>
+        <textarea class="input" id="oad-n" style="width:100%;margin:4px 0 12px;min-height:60px;font-size:12px;line-height:1.5">${esc(a.notAdhered||'')}</textarea>
+        <div style="display:flex;justify-content:flex-end;gap:6px">
+          <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+          <button class="btn btn-primary" onclick="
+            pillars[${pi}].areas[${ai}]=Object.assign(typeof pillars[${pi}].areas[${ai}]==='object'?pillars[${pi}].areas[${ai}]:{},
+              {name:pillars[${pi}].areas[${ai}].name||pillars[${pi}].areas[${ai}],
+               question:document.getElementById('oad-q').value,
+               adhered:document.getElementById('oad-a').value,
+               notAdhered:document.getElementById('oad-n').value});
+            this.closest('.modal-overlay').remove();renderPillarEditor()">Save</button>
+        </div>
+      </div>`;
+      document.body.appendChild(sub);
+    };
+  }
+
+  const overlay=document.createElement('div');overlay.className='modal-overlay';overlay.id='sm-pillar-modal';
+  overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};
+  document.body.appendChild(overlay);
+  renderPillarEditor();
+}
+
 function renderDiary(){
   smInit();
   const td=state.diary.viewDate||todayISO();
@@ -1126,8 +1302,8 @@ function renderDiary(){
   const isToday=td===todayISO();
   const pillarAvg=smAvgScores(td);
   const hasScores=Object.values(pillarAvg).some(v=>v>0);
-  const totalAreas=SM_ALL_AREAS.length;
-  const filledAreas=SM_ALL_AREAS.filter(a=>entry[a]&&(entry[a].repeat||entry[a].improve||entry[a].action||entry[a].score)).length;
+  const totalAreas=getSMAllAreas().length;
+  const filledAreas=getSMAllAreas().filter(a=>entry[a]&&(entry[a].repeat||entry[a].improve||entry[a].action||entry[a].score)).length;
   const todayPct=totalAreas?Math.round(filledAreas/totalAreas*100):0;
 
   // Hideable sections
@@ -1292,15 +1468,18 @@ function renderDiary(){
       </div>`;
 
     if(!pCollapsed){
-      pillar.areas.forEach((area,ai)=>{
+      pillar.areas.forEach((areaObj,ai)=>{const area=typeof areaObj==='object'?areaObj.name:areaObj;
         const ae=entry[area]||{repeat:"",improve:"",action:"",score:0};
         const areaChart=''; // removed for cleaner UI
+        const areaDef=smAreaDef(area);
         h+=`<div class="sm-area" style="animation-delay:${ai*30}ms">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <div style="display:flex;align-items:center;gap:8px">
+            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
               <span style="font-size:12.5px;font-weight:600">${esc(area)}</span>
-              
+              ${areaDef.question?`<span style="font-size:10px;color:var(--text-light);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1" title="${esc(areaDef.question)}">${esc(areaDef.question)}</span>`:''}
             </div>
+            <div style="display:flex;gap:4px;align-items:center;flex-shrink:0">
+              ${areaDef.adhered?`<button onclick="event.stopPropagation();showAdherence('${esc(area)}')" style="font-size:9px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:rgba(90,158,126,.08);color:#5A9E7E;cursor:pointer;font-family:var(--font)">guide</button>`:''}
             <div style="display:flex;gap:2px">`;
         for(let s=1;s<=10;s++){
           const on=ae.score>=s;
@@ -1339,13 +1518,13 @@ function renderDiary(){
 
   // 7 Habits lens
   const habits7map=[
-    {habit:'1. Be Proactive',areas:['Effort','Consistency','Self respect (delayed gratification)'],principle:'Focus on what you can control'},
-    {habit:'2. End in Mind',areas:['Planning & Productivity','Self Map'],principle:'Define your mission'},
-    {habit:'3. First Things First',areas:['Focus/Attention','Planning & Productivity'],principle:'Do what matters, not what\'s urgent'},
-    {habit:'4. Win-Win',areas:['Communication','Wife','Family','Friends'],principle:'Mutual benefit in all relationships'},
-    {habit:'5. Understand First',areas:['Communication','Emotional Stability/Stoicism'],principle:'Listen before you speak'},
-    {habit:'6. Synergize',areas:['Wife','Family','Friends'],principle:'The whole is greater than parts'},
-    {habit:'7. Sharpen the Saw',areas:['Prayer','Weightlifting','Cardio','Intermittent fasting','Learning how to learn'],principle:'Renew: body, mind, spirit, social'}
+    {habit:'1. Be Proactive',areas:['Proactivity','Process Commitment','Impulse Control'],principle:'Find the gap between stimulus and response, then choose'},
+    {habit:'2. End in Mind',areas:['Planning & Productivity','Self Map'],principle:'Author the vision before you build the life'},
+    {habit:'3. First Things First',areas:['Focus/Attention','Planning & Productivity'],principle:'Schedule the priorities — live in Q2'},
+    {habit:'4. Win-Win',areas:['Communication','Wife','Family','Friends'],principle:'Mutual win or no deal'},
+    {habit:'5. Understand First',areas:['Communication','Emotional Stability'],principle:'Diagnose before you prescribe'},
+    {habit:'6. Synergize',areas:['Wife','Family','Friends'],principle:'The whole is greater than the sum of its parts'},
+    {habit:'7. Sharpen the Saw',areas:['Prayer','Weightlifting','Cardio','Intermittent Fasting','Notes & Reading'],principle:'Renew: body, mind, spirit, social'}
   ];
   if(hideMap['sm-7habits']){h+=smSectionToggle('sm-7habits','7 Habits Lens');}
   else{
@@ -1413,13 +1592,13 @@ function coachAnalyze(type){
   
   // 7 Habits mapping
   const habits7={
-    'Be Proactive':['Effort','Consistency','Self respect (delayed gratification)'],
+    'Be Proactive':['Proactivity','Process Commitment','Impulse Control'],
     'Begin with End in Mind':['Planning & Productivity','Self Map'],
     'Put First Things First':['Focus/Attention','Planning & Productivity'],
     'Think Win-Win':['Communication','Wife','Family','Friends'],
-    'Seek to Understand':['Communication','Emotional Stability/Stoicism'],
+    'Seek to Understand':['Communication','Emotional Stability'],
     'Synergize':['Wife','Family','Friends','Communication'],
-    'Sharpen the Saw':['Prayer','Weightlifting','Cardio','Intermittent fasting','Learning how to learn']
+    'Sharpen the Saw':['Prayer','Weightlifting','Cardio','Intermittent Fasting','Notes & Reading']
   };
   
   let msg='';
@@ -2227,7 +2406,7 @@ function generateMonthlyReport(){
       const scores=[];
       filled.forEach(d=>{
         const e=state.diary.entries[d];if(!e)return;
-        pillar.areas.forEach(a=>{if(e[a]?.score)scores.push(e[a].score);});
+        pillar.areas.forEach(a=>{const _n=typeof a==='object'?a.name:a;if(e[_n]?.score)scores.push(e[_n].score);});
       });
       const avg=scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length*10)/10:0;
       md+=`- **${pillar.name}**: ${avg}/10\n`;
@@ -2265,7 +2444,7 @@ function generateDigestContent(){
     body+=`Pillar scores this week:\n`;
     SM_PILLARS.forEach(p=>{
       const scores=[];
-      thisWeek.forEach(d=>{const e=state.diary.entries[d];if(!e)return;p.areas.forEach(a=>{if(e[a]?.score)scores.push(e[a].score);});});
+      thisWeek.forEach(d=>{const e=state.diary.entries[d];if(!e)return;p.areas.forEach(a=>{const _n=typeof a==='object'?a.name:a;if(e[_n]?.score)scores.push(e[_n].score);});});
       const avg=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):'-';
       body+=`- ${p.name}: ${avg}/10\n`;
     });
@@ -2648,11 +2827,11 @@ function renderToday(s) {
   if (upcoming.length) {
     h += `<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:12px"><div style="font-size:11px;font-weight:500;color:var(--text-light);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">Upcoming</div>`;
     upcoming.forEach(a => {
-      h += `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">
+      h += `<div onclick="openEdit('${a.id}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer;border-radius:6px;transition:background .08s" onmouseover="this.style.background='var(--accent-soft)'" onmouseout="this.style.background=''">
         <span style="font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text-mid);width:32px">${esc(a.num)}</span>
         <span style="flex:1">${esc(a.action)}</span>
         <span style="color:${isOverdue(a.due,a.status)?'var(--danger)':'var(--text-mid)'};font-size:10.5px;font-weight:600">${fmtDate(a.due)}</span>
-        ${projTag(a.project)}${actionBtns(a)}</div>`;
+        ${projTag(a.project)}<div onclick="event.stopPropagation()">${actionBtns(a)}</div></div>`;
     });
     h += `</div>`;
   }
@@ -2794,7 +2973,7 @@ function renderStatsTab(s) {
   const relationAreas = ["Wife","Family","Friends","Communication"];
   function areaAvgStat(areas, entries, dates){
     const scores=[];
-    dates.forEach(d=>{const e=entries[d];if(!e)return;areas.forEach(a=>{if(e[a]&&e[a].score)scores.push(e[a].score);});});
+    dates.forEach(d=>{const e=entries[d];if(!e)return;areas.forEach(a=>{const _n=typeof a==='object'?a.name:a;if(e[_n]&&e[_n].score)scores.push(e[_n].score);});});
     return scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length):0;
   }
   const entries = (state.diary&&state.diary.entries)||{};
@@ -2991,7 +3170,22 @@ function renderActions(s) {
   if (!filtered.length) {
     h += `<div style="text-align:center;padding:40px;color:var(--text-light)">No actions match filters</div>`;
   } else {
-    h += `<div class="card" style="overflow:auto;border-radius:8px"><table><thead><tr><th style="width:28px"><input type="checkbox" onchange="selectAllFiltered(this.checked)"></th>${["Action","Owner","Due","Status","Project",""].map(c=>`<th>${c}</th>`).join("")}</tr></thead><tbody>`;
+    const cv=state.colVis||{};
+    const colToggleBtn=`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px;align-items:center">
+      <span style="font-size:10px;color:var(--text-light);margin-right:4px">Columns:</span>
+      ${[['owner','Owner'],['added','Added'],['due','Due'],['status','Status'],['project','Project']].map(([k,l])=>`<button onclick="state.colVis['${k}']=!state.colVis['${k}'];savePrefs();render()" style="padding:2px 8px;border-radius:12px;border:1px solid var(--border-vis);background:${cv[k]!==false?'var(--accent)':'var(--card)'};color:${cv[k]!==false?'#fff':'var(--text-mid)'};font-size:10px;cursor:pointer;font-family:var(--font)">${l}</button>`).join('')}
+    </div>`;
+    h += colToggleBtn;
+    h += `<div class="card" style="overflow:auto;border-radius:8px"><table><thead><tr>
+      <th style="width:28px"><input type="checkbox" onchange="selectAllFiltered(this.checked)"></th>
+      <th>Action</th>
+      ${cv.owner!==false?'<th>Owner</th>':''}
+      ${cv.added!==false?'<th>Added</th>':''}
+      ${cv.due!==false?'<th>Due</th>':''}
+      ${cv.status!==false?'<th>Status</th>':''}
+      ${cv.project!==false?'<th>Project</th>':''}
+      <th></th>
+    </tr></thead><tbody>`;
     // Save filtered IDs globally for select-all
     window._filteredIds = fids;
     filtered.forEach(a => {
@@ -3000,9 +3194,11 @@ function renderActions(s) {
       h += `<tr onclick="if(event.ctrlKey||event.metaKey||event.shiftKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" oncontextmenu="if(state.selected.size>0){showBulkMenu(event);}else{event.preventDefault();toggleSelect('${a.id}');showBulkMenu(event);}" style="cursor:pointer;background:${sel?'var(--accent-soft)':od?'rgba(255,69,58,.03)':'transparent'}">
         <td onclick="event.stopPropagation()"><input type="checkbox" ${sel?'checked':''} onchange="toggleSelect('${a.id}')"></td>
         <td style="max-width:280px"><div style="font-weight:${a.priority?600:500}">${a.priority?'<span style="color:#D946EF;margin-right:4px">\u2605</span>':''}${esc(a.action)}</div></td>
-        <td><span style="font-weight:600;font-size:12px">${esc(a.owner)}</span></td>
-        <td>${a.due?`<span style="color:${dueColor(a.due,a.status)};font-weight:${isOverdue(a.due,a.status)?700:500}">${fmtDate(a.due)}</span>`:(a.dueRaw||"\u2014")}</td>
-        <td>${statusBadge(a.status)}</td><td>${projTag(a.project,a.subproject)}</td>
+        ${cv.owner!==false?`<td><span style="font-weight:600;font-size:12px">${esc(a.owner)}</span></td>`:''}
+        ${cv.added!==false?`<td><span style="font-size:11px;color:var(--text-light)">${a.createdAt?fmtDate(a.createdAt):'—'}</span></td>`:''}
+        ${cv.due!==false?`<td>${a.due?`<span style="color:${dueColor(a.due,a.status)};font-weight:${isOverdue(a.due,a.status)?700:500}">${fmtDate(a.due)}</span>`:''}</td>`:''}
+        ${cv.status!==false?`<td>${statusBadge(a.status)}</td>`:''}
+        ${cv.project!==false?`<td>${projTag(a.project,a.subproject)}</td>`:''}
         <td onclick="event.stopPropagation()">${actionBtns(a)}</td></tr>`;
     });
     h += `</tbody></table></div>`;
@@ -3541,7 +3737,12 @@ function applyTheme() {
 // KEYBOARD SHORTCUTS
 // ═══════════════════════════════════════
 document.addEventListener('keydown',e=>{
-  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT')return;
+  // Guard: don't fire shortcuts when user is typing in any input/textarea/select
+  const tag=e.target.tagName;
+  if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
+  if(e.target.isContentEditable)return;
+  if(e.isComposing)return;
+  if(e.metaKey||e.ctrlKey||e.altKey)return;
   if(e.key==='n'){e.preventDefault();openAddModal();}
   if(e.key==='t'){e.preventDefault();state.tab='today';render();}
   if(e.key==='i'){e.preventDefault();state.tab='inbox';render();}
