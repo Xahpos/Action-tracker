@@ -932,6 +932,11 @@ function smAreaDef(areaName){
 function smInit(){
   if(!state.diary)state.diary={pin:"",entries:{},habits:{},unlocked:false,viewDate:null};
   if(!state.diary.entries)state.diary.entries={};
+  // Always reset viewDate to today on first init in this session — user starts fresh on today.
+  if(!state.diary._sessionStarted){
+    state.diary.viewDate=null;
+    state.diary._sessionStarted=true;
+  }
   // Migrate old string-only areas to object form if needed
   if(state.diary.pillars){
     state.diary.pillars=state.diary.pillars.map(p=>({
@@ -1008,6 +1013,12 @@ function smEntry(date){
 
 function smSaveField(date,area,field,val){
   const e=smEntry(date);
+  // Special case: top-level free-write field
+  if(area==='_freewrite'){
+    e._freewrite=val;
+    saveState();
+    return;
+  }
   if(!e[area])e[area]={repeat:"",improve:"",action:"",score:0};
   e[area][field]=val;
   saveState();
@@ -1232,6 +1243,62 @@ function smQuickScore(){
   });
   body+=`<button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="this.closest('.modal-overlay').remove();render();toast('Scores saved!')">Done</button></div>`;
   m.innerHTML=body;
+  document.body.appendChild(m);
+}
+
+function showHistoryDay(date){
+  const e=state.diary.entries[date]||{};
+  const dObj=new Date(date+'T12:00:00');
+  const dLabel=dObj.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const m=document.createElement('div');m.className='modal-overlay';m.onclick=ev=>{if(ev.target===m)m.remove();};
+  
+  let inner=`<div class="modal" style="max-width:680px;max-height:85vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <h3 style="font-size:15px;font-weight:700;flex:1">${dLabel}</h3>
+      <span style="font-size:10px;color:var(--text-light);background:var(--accent-soft);padding:3px 8px;border-radius:4px;letter-spacing:.04em;font-weight:600">READ ONLY</span>
+      <button class="btn btn-ghost" style="font-size:11px" onclick="state.diary.viewDate='${date}';this.closest('.modal-overlay').remove();render();window.scrollTo(0,0)" title="Switch the Self Map to this day for editing">Open in editor</button>
+      <button class="btn btn-ghost" style="font-size:11px" onclick="this.closest('.modal-overlay').remove()">Close</button>
+    </div>`;
+  
+  // Free-write
+  if(e._freewrite){
+    inner+=`<div style="margin-bottom:14px;padding:10px 12px;background:rgba(91,141,239,.04);border-radius:8px;border:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Free-write</div>
+      <div style="font-size:12px;line-height:1.6;white-space:pre-wrap;color:var(--text)">${esc(e._freewrite)}</div>
+    </div>`;
+  }
+  
+  // Each pillar
+  getSmPillars().forEach(pillar=>{
+    let pillarHasContent=false;
+    let pillarHtml='';
+    pillar.areas.forEach(a=>{
+      const aName=typeof a==='object'?a.name:a;
+      const ae=e[aName];
+      if(!ae||(!ae.score&&!ae.repeat&&!ae.improve&&!ae.action))return;
+      pillarHasContent=true;
+      const s=ae.score||0;
+      const sCol=s===0?'var(--text-light)':s<=3?'#CF6F6F':s<=6?'#D4A04A':'#5A9E7E';
+      pillarHtml+=`<div style="margin-bottom:10px;padding:8px 10px;background:var(--card);border-radius:6px;border:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span style="font-size:11.5px;font-weight:600">${esc(aName)}</span>
+          ${s?`<span style="font-size:11px;font-weight:700;color:${sCol};margin-left:auto">${s}/10</span>`:'<span style="margin-left:auto"></span>'}
+        </div>
+        ${ae.repeat?`<div style="font-size:11px;color:var(--text-mid);margin-bottom:4px;line-height:1.5"><span style="color:#5A9E7E;font-weight:700">✓</span> ${esc(ae.repeat)}</div>`:''}
+        ${ae.improve?`<div style="font-size:11px;color:var(--text-mid);margin-bottom:4px;line-height:1.5"><span style="color:#D4A04A;font-weight:700">⚠</span> ${esc(ae.improve)}</div>`:''}
+        ${ae.action?`<div style="font-size:11px;color:var(--text-mid);line-height:1.5"><span style="color:#5B8DEF;font-weight:700">▶</span> ${esc(ae.action)}</div>`:''}
+      </div>`;
+    });
+    if(pillarHasContent){
+      inner+=`<div style="margin-bottom:14px">
+        <div style="font-size:11px;font-weight:700;color:${pillar.color};text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">${esc(pillar.name)}</div>
+        ${pillarHtml}
+      </div>`;
+    }
+  });
+  
+  inner+=`</div>`;
+  m.innerHTML=inner;
   document.body.appendChild(m);
 }
 
@@ -1770,7 +1837,7 @@ function renderDiary(){
         <button class="btn" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);padding:5px 8px;font-size:10px;border:1px solid rgba(255,255,255,.05)" onclick="SM_PILLARS.forEach(function(p,i){state.diary['sm-p-'+i]='closed'});saveState();render()">Collapse</button>
         <button class="btn" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);padding:5px 8px;font-size:10px;border:1px solid rgba(255,255,255,.05)" onclick="SM_PILLARS.forEach(function(p,i){state.diary['sm-p-'+i]='open'});saveState();render()">Expand</button>
         <button class="btn" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);padding:5px 8px;font-size:10px;border:1px solid rgba(255,255,255,.05)" onclick="editSmPillars()">Edit</button>
-        <button class="btn" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);padding:4px 10px;font-size:10px;border:1px solid rgba(255,255,255,.1)" onclick="state.diary.viewDate=null;render()">\u25C9 Today</button>
+        <button class="btn" style="background:${isToday?'rgba(90,158,126,.2)':'rgba(245,158,11,.25)'};color:${isToday?'rgba(255,255,255,.6)':'#FBBF24'};padding:4px 10px;font-size:10px;border:1px solid ${isToday?'rgba(255,255,255,.1)':'rgba(245,158,11,.4)'};font-weight:${isToday?'400':'600'}" onclick="state.diary.viewDate=null;render()" title="${isToday?'Already on today':'Jump back to today'}">\u25C9 Today</button>
         <input type="date" class="input" style="font-size:10px;padding:4px 6px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.85)" value="${td}" onchange="state.diary.viewDate=this.value;render()">
       </div>
     </div>
@@ -1869,6 +1936,25 @@ function renderDiary(){
     h+='</div></div>';
   }
 
+  // ── FREE-WRITE / DAILY REFLECTION ──
+  // From "I'm begging you to start writing" — free writing rewires the mind.
+  // Sit, let it flow, no rules. Stored per day under entry._freewrite.
+  const fwHidden=localStorage.getItem('sm-hide-fw')==='1';
+  const fwText=(state.diary.entries[td]||{})._freewrite||'';
+  
+  if(fwHidden){
+    h+=`<div style="margin-bottom:10px"><button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-light);font-family:var(--font);opacity:.55;padding:0" onclick="localStorage.removeItem('sm-hide-fw');render()">+ Show free-write</button></div>`;
+  } else {
+    h+=`<div class="card" style="padding:18px 20px;margin-bottom:14px;background:linear-gradient(135deg,rgba(91,141,239,.04),rgba(155,138,222,.06));border:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="font-size:13px;font-weight:700">Free-write</div>
+        <span style="font-size:10px;color:var(--text-light);font-style:italic;flex:1">whatever's on your mind, no filter, no rules · 5 minutes</span>
+        <button style="background:none;border:none;cursor:pointer;font-size:9px;color:var(--text-light);font-family:var(--font);opacity:.5" onclick="localStorage.setItem('sm-hide-fw','1');render()">hide</button>
+      </div>
+      <textarea id="sm-freewrite" placeholder="Sit, write, let it flow. Quantity over quality. Make stuff up if nothing comes. The act itself does the work..." onblur="smSaveField('${td}','_freewrite','text',this.value)" style="width:100%;min-height:72px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);font-size:12.5px;line-height:1.55;font-family:var(--font);resize:vertical;color:var(--text)">${esc(fwText)}</textarea>
+    </div>`;
+  }
+  
   // ── BIG MULTI-LINE TREND CHART ──
   const showTrends=!localStorage.getItem('sm-hide-trends');
   // Per-pillar visibility (toggleable via legend)
@@ -2086,12 +2172,21 @@ function renderDiary(){
         const userClosedA=state.diary[aKey]==='closed';
         const aCollapsed = userOpenA ? false : userClosedA ? true : !hasContent;
         
-        // Look up previous day's entry for reflection
+        // Walk back through prior days chronologically; skip days that have no entry FOR THIS AREA.
+        // Show the most recent prior day where this specific area was actually filled.
         const filledBefore=smFilledDates().filter(d=>d<td).sort();
-        const prevDate=filledBefore[filledBefore.length-1];
-        const prevEntry=prevDate?(state.diary.entries[prevDate]||{})[area]:null;
-        const prevHasContent=prevEntry&&(prevEntry.repeat||prevEntry.improve||prevEntry.action||prevEntry.score);
-        const prevDateLabel=prevDate?new Date(prevDate+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'';
+        let prevDate=null, prevEntry=null;
+        for(let i=filledBefore.length-1;i>=0;i--){
+          const candidate=filledBefore[i];
+          const candEntry=(state.diary.entries[candidate]||{})[area];
+          if(candEntry&&(candEntry.repeat||candEntry.improve||candEntry.action||candEntry.score)){
+            prevDate=candidate;
+            prevEntry=candEntry;
+            break;
+          }
+        }
+        const prevHasContent=!!prevEntry;
+        const prevDateLabel=prevDate?new Date(prevDate+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'}):'';
         const scoreCol=ae.score?(ae.score<=3?'#CF6F6F':ae.score<=6?'#D4A04A':'#5A9E7E'):'var(--text-light)';
         
         if(aCollapsed){
@@ -2149,15 +2244,46 @@ function renderDiary(){
       h+='<div style="margin-bottom:6px"><button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-light);font-family:var(--font);opacity:.5" onclick="localStorage.removeItem(\'sm-hide-history\');render()">+ Show history</button></div>';
     } else {
       // Sort dates descending (most recent first)
-      const histDates=[...filled].sort().reverse();
+      let histDates=[...filled].sort().reverse();
+      if(HF.from) histDates=histDates.filter(d=>d>=HF.from);
+      if(HF.to) histDates=histDates.filter(d=>d<=HF.to);
+      if(HF.search){
+        const q=HF.search.toLowerCase();
+        histDates=histDates.filter(d=>{
+          const e=state.diary.entries[d]||{};
+          if((e._freewrite||'').toLowerCase().includes(q)) return true;
+          for(const k of Object.keys(e)){
+            const ae=e[k];
+            if(typeof ae!=='object'||!ae) continue;
+            if((ae.repeat||'').toLowerCase().includes(q)) return true;
+            if((ae.improve||'').toLowerCase().includes(q)) return true;
+            if((ae.action||'').toLowerCase().includes(q)) return true;
+          }
+          return false;
+        });
+      }
       // Get all areas in pillar order
       const allAreas=getSmPillars().flatMap(p=>p.areas.map(a=>({pillar:p,area:typeof a==='object'?a.name:a})));
       
       h+='<div class="card" style="padding:14px;margin-bottom:12px">';
-      h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">';
+      // History filter state
+      if(!state.diary.histF) state.diary.histF={search:'',from:'',to:''};
+      const HF=state.diary.histF;
+      
+      h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">';
       h+='<div style="font-size:13px;font-weight:700">History</div>';
-      h+='<span style="font-size:10px;color:var(--text-light);margin-left:auto">'+filled.length+' entries · most recent first</span>';
-      h+='<button style="background:none;border:none;cursor:pointer;font-size:9px;color:var(--text-light);font-family:var(--font);opacity:.5" onclick="localStorage.setItem(\'sm-hide-history\',\'1\');render()">hide</button>';
+      h+='<span style="font-size:10px;color:var(--text-light)">'+filled.length+' entries · click row to view'+(HF.search||HF.from||HF.to?' · filtered':'')+'</span>';
+      h+='<button style="background:none;border:none;cursor:pointer;font-size:9px;color:var(--text-light);font-family:var(--font);opacity:.5;margin-left:auto" onclick="localStorage.setItem(\'sm-hide-history\',\'1\');render()">hide</button>';
+      h+='</div>';
+      
+      // Filter row
+      h+='<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center;font-size:10px">';
+      h+='<input class="input" style="font-size:11px;padding:4px 8px;flex:1;min-width:160px" placeholder="Search content..." value="'+esc(HF.search)+'" oninput="state.diary.histF.search=this.value;renderDebounced()">';
+      h+='<span style="color:var(--text-light)">From</span><input type="date" class="input" style="font-size:11px;padding:4px 6px" value="'+(HF.from||'')+'" onchange="state.diary.histF.from=this.value;render()">';
+      h+='<span style="color:var(--text-light)">To</span><input type="date" class="input" style="font-size:11px;padding:4px 6px" value="'+(HF.to||'')+'" onchange="state.diary.histF.to=this.value;render()">';
+      if(HF.search||HF.from||HF.to){
+        h+='<button class="btn btn-ghost" style="font-size:10px;padding:3px 8px" onclick="state.diary.histF={search:\'\',from:\'\',to:\'\'};render()">\u2715 Clear</button>';
+      }
       h+='</div>';
       
       // Build the table
@@ -2181,7 +2307,7 @@ function renderDiary(){
         const dayLabel=new Date(d+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short'});
         const rowBg=isCurrentRow?'rgba(91,141,239,.06)':(di%2===0?'transparent':'rgba(0,0,0,.012)');
         
-        h+='<tr style="background:'+rowBg+';cursor:pointer" onmouseover="this.style.background=\'var(--accent-soft)\'" onmouseout="this.style.background=\''+rowBg+'\'" onclick="state.diary.viewDate=\''+d+'\';render()">';
+        h+='<tr style="background:'+rowBg+';cursor:pointer" onmouseover="this.style.background=\'var(--accent-soft)\'" onmouseout="this.style.background=\''+rowBg+'\'" onclick="showHistoryDay(\''+d+'\')">';
         h+='<td style="padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;left:0;background:'+rowBg+';font-weight:600"><div>'+dateLabel+'</div><div style="font-size:9px;color:var(--text-light);font-weight:400;text-transform:uppercase;letter-spacing:.05em">'+dayLabel+'</div></td>';
         
         allAreas.forEach(({pillar,area})=>{
