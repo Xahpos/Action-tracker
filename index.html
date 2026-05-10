@@ -2243,6 +2243,10 @@ function renderDiary(){
     if(histHidden){
       h+='<div style="margin-bottom:6px"><button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-light);font-family:var(--font);opacity:.5" onclick="localStorage.removeItem(\'sm-hide-history\');render()">+ Show history</button></div>';
     } else {
+      // History filter state — declared up front so we can apply it to histDates
+      if(!state.diary.histF) state.diary.histF={search:'',from:'',to:''};
+      const HF=state.diary.histF;
+      
       // Sort dates descending (most recent first)
       let histDates=[...filled].sort().reverse();
       if(HF.from) histDates=histDates.filter(d=>d>=HF.from);
@@ -2266,10 +2270,6 @@ function renderDiary(){
       const allAreas=getSmPillars().flatMap(p=>p.areas.map(a=>({pillar:p,area:typeof a==='object'?a.name:a})));
       
       h+='<div class="card" style="padding:14px;margin-bottom:12px">';
-      // History filter state
-      if(!state.diary.histF) state.diary.histF={search:'',from:'',to:''};
-      const HF=state.diary.histF;
-      
       h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">';
       h+='<div style="font-size:13px;font-weight:700">History</div>';
       h+='<span style="font-size:10px;color:var(--text-light)">'+filled.length+' entries · click row to view'+(HF.search||HF.from||HF.to?' · filtered':'')+'</span>';
