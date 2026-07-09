@@ -2013,190 +2013,7 @@ function renderDiary(){
     </div>`;
   }
   
-  // ── BIG MULTI-LINE TREND CHART ──
-  const showTrends=!localStorage.getItem('sm-hide-trends');
-  // Per-pillar visibility (toggleable via legend)
-  if(!state.diary.pillarVis) state.diary.pillarVis={};
-  
-  h+='<div style="margin-bottom:14px">';
-  h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px"><button style="background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;font-family:var(--font);color:var(--text);padding:0;display:flex;align-items:center;gap:6px" onclick="localStorage.getItem(\'sm-hide-trends\')?localStorage.removeItem(\'sm-hide-trends\'):localStorage.setItem(\'sm-hide-trends\',\'1\');render()"><span style="font-size:10px;color:var(--text-light);transform:rotate('+(showTrends?'0':'-90')+'deg);transition:transform .15s">\u25BE</span>Score Trends</button><span style="font-size:10px;color:var(--text-light);margin-left:auto">'+filled.length+' entries</span></div>';
-  
-  if(showTrends && filled.length>0){
-    // Range filter (persisted)
-    const range=state.diary.trendRange||'90d';
-    const allSorted=[...filled].sort();
-    const todayD=new Date(); todayD.setHours(0,0,0,0);
-    let cutoff=null;
-    if(range==='30d'){cutoff=new Date(todayD);cutoff.setDate(cutoff.getDate()-30);}
-    else if(range==='90d'){cutoff=new Date(todayD);cutoff.setDate(cutoff.getDate()-90);}
-    else if(range==='1y'){cutoff=new Date(todayD);cutoff.setFullYear(cutoff.getFullYear()-1);}
-    const sortedDates = cutoff ? allSorted.filter(d=>new Date(d+'T12:00:00')>=cutoff) : allSorted;
-    
-    // Range buttons
-    h+='<div style="display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap;align-items:center">';
-    h+='<span style="font-size:10px;color:var(--text-light);font-weight:500;margin-right:4px">Range:</span>';
-    [['30d','30 days'],['90d','90 days'],['1y','1 year'],['all','All time']].forEach(([k,l])=>{
-      const active=range===k;
-      h+='<button onclick="state.diary.trendRange=\''+k+'\';saveState();render()" style="padding:3px 10px;border-radius:12px;border:1px solid '+(active?'var(--accent)':'var(--border-vis)')+';background:'+(active?'var(--accent)':'var(--card)')+';color:'+(active?'#fff':'var(--text-mid)')+';font-size:10px;cursor:pointer;font-family:var(--font);font-weight:'+(active?'600':'400')+'">'+l+'</button>';
-    });
-    h+='<span style="font-size:10px;color:var(--text-light);margin-left:auto">'+sortedDates.length+' data points</span>';
-    h+='</div>';
-    
-    if(sortedDates.length===0){
-      h+='<div class="card" style="padding:30px;text-align:center;color:var(--text-light);font-size:12px">No entries in this range. Try a wider range.</div></div>';
-      return h;
-    }
-    
-    // Build dataset using equal x-spacing (one tick per entry date)
-    const pillars=getSmPillars();
-    const datasets=pillars.map(p=>{
-      const points=sortedDates.map((d,i)=>{
-        const e=state.diary.entries[d]||{};
-        const scores=p.areas.map(a=>{const _n=typeof a==='object'?a.name:a;return e[_n]&&e[_n].score?e[_n].score:0;}).filter(s=>s>0);
-        return scores.length?{date:d,score:scores.reduce((a,b)=>a+b,0)/scores.length,xIdx:i}:null;
-      }).filter(Boolean);
-      return {pillar:p, points};
-    });
-    
-    // SVG dimensions
-    const cw=900, ch=380, padL=44, padR=20, padT=20, padB=68;
-    const plotW=cw-padL-padR, plotH=ch-padT-padB;
-    // Equal spacing: position by index, not by date
-    const xFor=idx=>sortedDates.length<=1 ? padL+plotW/2 : padL+(idx/(sortedDates.length-1))*plotW;
-    const yFor=s=>padT+(1-s/10)*plotH;
-    
-    const showLine=!localStorage.getItem('sm-hide-line');
-    h+='<div class="card" style="padding:18px;margin-bottom:8px">';
-    h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:'+(showLine?'12':'0')+'px"><button style="background:none;border:none;cursor:pointer;font-size:11px;font-weight:600;font-family:var(--font);color:var(--text-mid);padding:0;display:flex;align-items:center;gap:6px" onclick="localStorage.getItem(\'sm-hide-line\')?localStorage.removeItem(\'sm-hide-line\'):localStorage.setItem(\'sm-hide-line\',\'1\');render()"><span style="font-size:9px;color:var(--text-light);transform:rotate('+(showLine?'0':'-90')+'deg);transition:transform .15s">\u25BE</span>Pillar score lines</button></div>';
-    if(showLine){
-    h+='<svg viewBox="0 0 '+cw+' '+ch+'" style="width:100%;height:auto;display:block;font-family:var(--font)">';
-    
-    // Y axis gridlines (0,2,4,6,8,10)
-    for(let i=0;i<=10;i+=2){
-      const y=yFor(i);
-      h+='<line x1="'+padL+'" y1="'+y+'" x2="'+(cw-padR)+'" y2="'+y+'" stroke="var(--border)" stroke-width="1" '+(i===0?'':'stroke-dasharray="2,3"')+'/>';
-      h+='<text x="'+(padL-8)+'" y="'+(y+3)+'" text-anchor="end" font-size="10" fill="var(--text-light)">'+i+'</text>';
-    }
-    h+='<text x="14" y="'+(padT+plotH/2)+'" text-anchor="middle" font-size="10" fill="var(--text-mid)" transform="rotate(-90 14 '+(padT+plotH/2)+')" font-weight="600">Score</text>';
-    
-    // X axis date ticks - max 8, equally spaced over data, rotated to avoid overlap
-    const tickCount=Math.min(sortedDates.length,8);
-    for(let i=0;i<tickCount;i++){
-      const idx=Math.round(i*(sortedDates.length-1)/Math.max(tickCount-1,1));
-      const d=sortedDates[idx];
-      const x=xFor(idx);
-      h+='<line x1="'+x+'" y1="'+(padT+plotH)+'" x2="'+x+'" y2="'+(padT+plotH+4)+'" stroke="var(--text-light)" stroke-width="1"/>';
-      const label=new Date(d+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'});
-      h+='<text x="'+x+'" y="'+(padT+plotH+16)+'" text-anchor="end" font-size="10" fill="var(--text-mid)" transform="rotate(-35 '+x+' '+(padT+plotH+16)+')">'+label+'</text>';
-    }
-    
-    // Draw each pillar line
-    datasets.forEach(({pillar,points})=>{
-      const visible=state.diary.pillarVis[pillar.name]!==false;
-      if(!visible||points.length===0) return;
-      
-      let d='';
-      points.forEach((p,i)=>{
-        d+=(i===0?'M':' L')+xFor(p.xIdx)+','+yFor(p.score);
-      });
-      h+='<path d="'+d+'" fill="none" stroke="'+pillar.color+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>';
-      points.forEach(p=>{
-        h+='<circle cx="'+xFor(p.xIdx)+'" cy="'+yFor(p.score)+'" r="3.5" fill="'+pillar.color+'" stroke="var(--card)" stroke-width="1.5"><title>'+pillar.name+' - '+new Date(p.date+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})+': '+p.score.toFixed(1)+'/10</title></circle>';
-      });
-    });
-    
-    h+='</svg>';
-    
-    // Legend (clickable to toggle)
-    h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;justify-content:center">';
-    datasets.forEach(({pillar,points})=>{
-      const visible=state.diary.pillarVis[pillar.name]!==false;
-      const avg=points.length?(points.reduce((s,p)=>s+p.score,0)/points.length).toFixed(1):'-';
-      h+='<button onclick="state.diary.pillarVis[\''+esc(pillar.name)+'\']='+(visible?'false':'true')+';saveState();render()" style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:1px solid '+(visible?pillar.color:'var(--border)')+';background:'+(visible?pillar.color+'15':'transparent')+';cursor:pointer;font-family:var(--font);font-size:11px;font-weight:600;color:'+(visible?pillar.color:'var(--text-light)')+';opacity:'+(visible?'1':'.45')+';transition:all .15s">';
-      h+='<span style="width:14px;height:3px;border-radius:2px;background:'+pillar.color+';display:inline-block"></span>';
-      h+=esc(pillar.name)+' <span style="font-weight:400;opacity:.7;font-size:10px">('+avg+')</span>';
-      h+='</button>';
-    });
-    h+='</div>';
-    h+='<div style="font-size:10px;color:var(--text-light);text-align:center;margin-top:6px;font-style:italic">Click a pillar to hide/show it</div>';
-    } // end if(showLine)
-    h+='</div>';
-    
-    // ── Self Map fill-rate timeline — respects the range selector ──
-    const fillDayCount = range==='30d'?30 : range==='90d'?90 : range==='1y'?365 : Math.max(60, sortedDates.length>0?Math.ceil((todayD-new Date(sortedDates[0]+'T12:00:00'))/86400000)+1:60);
-    const filledSet=new Set(filled);
-    const todayBase=new Date(); todayBase.setHours(0,0,0,0);
-    const fillDays=[];
-    for(let i=fillDayCount-1;i>=0;i--){
-      const d=new Date(todayBase);
-      d.setDate(d.getDate()-i);
-      fillDays.push(d.toISOString().slice(0,10));
-    }
-    const fillCount=fillDays.filter(d=>filledSet.has(d)).length;
-    const fillPct=fillDayCount>0?Math.round(fillCount/fillDayCount*100):0;
-    
-    // SVG dims
-    const fcw=900, fch=120, fpadT=24, fpadB=28, barH=fch-fpadT-fpadB;
-    const fbarW=fcw/fillDayCount;
-    
-    const showFill=!localStorage.getItem('sm-hide-fill');
-    h+='<div class="card" style="padding:16px;margin-bottom:14px">';
-    h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:'+(showFill?'12':'0')+'px">';
-    h+='<button style="background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;gap:6px;font-family:var(--font)" onclick="localStorage.getItem(\'sm-hide-fill\')?localStorage.removeItem(\'sm-hide-fill\'):localStorage.setItem(\'sm-hide-fill\',\'1\');render()"><span style="font-size:9px;color:var(--text-light);transform:rotate('+(showFill?'0':'-90')+'deg);transition:transform .15s">\u25BE</span><span style="font-size:13px;font-weight:700;color:var(--text)">Self Map filled</span></button>';
-    h+='<span style="font-size:11px;color:var(--text-mid);font-weight:600">'+fillCount+'/'+fillDayCount+' days <span style="color:var(--text-light);font-weight:400">('+fillPct+'%)</span></span>';
-    if(showFill) h+='<span style="font-size:10px;color:var(--text-light);margin-left:auto">last '+fillDayCount+' days · today on the right</span>';
-    h+='</div>';
-    if(showFill){
-    h+='<svg viewBox="0 0 '+fcw+' '+fch+'" style="width:100%;height:auto;display:block;font-family:var(--font)" preserveAspectRatio="none">';
-    
-    // Month labels
-    let lastM=-1;
-    fillDays.forEach((d,i)=>{
-      const dateObj=new Date(d+'T12:00:00');
-      const m=dateObj.getMonth();
-      const isFirstOfMonth=dateObj.getDate()===1;
-      const showLabel = m!==lastM || isFirstOfMonth;
-      if(showLabel && i!==fillDays.length-1){
-        const label=dateObj.toLocaleDateString('en-GB',{month:'short'})+ (m===0?' \u2018'+String(dateObj.getFullYear()).slice(-2):'');
-        h+='<text x="'+(i*fbarW+2)+'" y="14" font-size="10" fill="var(--text-light)" font-weight="600">'+label+'</text>';
-        h+='<line x1="'+(i*fbarW)+'" y1="'+fpadT+'" x2="'+(i*fbarW)+'" y2="'+(fpadT+barH)+'" stroke="var(--border)" stroke-width="1" stroke-dasharray="2,2"/>';
-        lastM=m;
-      }
-    });
-    
-    // Bars
-    fillDays.forEach((d,i)=>{
-      const isFilled=filledSet.has(d);
-      const dateObj=new Date(d+'T12:00:00');
-      const isToday=d===todayISO();
-      const isWeekend=dateObj.getDay()===0||dateObj.getDay()===6;
-      const fill=isFilled?'#5A9E7E':'var(--border)';
-      const op=isFilled?(isWeekend?0.65:0.95):(isWeekend?0.35:0.55);
-      h+='<rect x="'+(i*fbarW+0.5)+'" y="'+fpadT+'" width="'+Math.max(fbarW-1,1)+'" height="'+barH+'" ';
-      h+='fill="'+fill+'" opacity="'+op+'"';
-      if(isToday) h+=' stroke="var(--accent)" stroke-width="2"';
-      h+='><title>'+dateObj.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'})+(isFilled?' \u2014 filled':' \u2014 skipped')+'</title></rect>';
-    });
-    
-    // Bottom edge labels
-    h+='<text x="0" y="'+(fch-6)+'" font-size="10" fill="var(--text-light)">'+new Date(fillDays[0]+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'})+'</text>';
-    h+='<text x="'+fcw+'" y="'+(fch-6)+'" font-size="10" fill="var(--text-light)" text-anchor="end">today</text>';
-    
-    // Legend
-    h+='<g transform="translate('+(fcw/2-100)+' '+(fch-12)+')">';
-    h+='<rect x="0" y="-8" width="10" height="10" fill="#5A9E7E" rx="1"/>';
-    h+='<text x="14" y="1" font-size="10" fill="var(--text-mid)">filled</text>';
-    h+='<rect x="60" y="-8" width="10" height="10" fill="var(--border)" opacity="0.55" rx="1"/>';
-    h+='<text x="74" y="1" font-size="10" fill="var(--text-mid)">skipped</text>';
-    h+='<rect x="130" y="-8" width="10" height="10" fill="#5A9E7E" opacity="0.65" rx="1"/>';
-    h+='<text x="144" y="1" font-size="10" fill="var(--text-mid)">weekend</text>';
-    h+='</g>';
-    
-    h+='</svg>';
-    } // end if(showFill)
-    h+='</div>';
-  }
-  h+='</div>';
+  // (Score Trends and fill-rate charts removed per user request)
 
   SM_PILLARS.forEach((pillar,pi)=>{
     const pavg=pillarAvg[pillar.name]||0;
@@ -3868,11 +3685,9 @@ function renderInbox(s) {
           <option value="__new__">+ New project...</option>
         </select>
         <input type="date" class="input" style="font-size:10px;width:130px" value="${a.due||''}" onchange="patch('${a.id}',{due:this.value})">
-        <div style="display:flex;gap:3px;align-items:center;font-size:9px;color:var(--text-light);margin-top:1px">
-          <button class="btn btn-ghost" style="padding:2px 6px;font-size:9.5px;flex:1" onclick="event.stopPropagation();patch('${a.id}',{ongoing:true});toast('Marked ongoing — out of inbox')" title="No due date needed (ongoing/follow-up)">No due needed</button>
-          <select class="select" style="font-size:9.5px;padding:2px 4px;width:80px" onchange="patch('${a.id}',{recur:this.value});if(this.value)toast('Recurring — out of inbox')">
-            <option value="">Make recurring</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option>
-          </select>
+        <div style="display:flex;gap:5px;align-items:center;margin-top:1px">
+          <button style="padding:3px 9px;font-size:10px;border-radius:6px;border:1px solid var(--border-vis);background:var(--card);color:var(--text-mid);cursor:pointer;font-family:var(--font);white-space:nowrap;transition:all .1s" onmouseover="this.style.borderColor='#0EA5E9';this.style.color='#0EA5E9'" onmouseout="this.style.borderColor='var(--border-vis)';this.style.color='var(--text-mid)'" onclick="event.stopPropagation();patch('${a.id}',{ongoing:true});toast('Marked ongoing — out of inbox')" title="No due date needed (ongoing / follow-up)">\u221E No due needed</button>
+          <button style="padding:3px 9px;font-size:10px;border-radius:6px;border:1px solid var(--border-vis);background:var(--card);color:var(--text-mid);cursor:pointer;font-family:var(--font);white-space:nowrap;transition:all .1s" onmouseover="this.style.borderColor='#8B5CF6';this.style.color='#8B5CF6'" onmouseout="this.style.borderColor='var(--border-vis)';this.style.color='var(--text-mid)'" onclick="event.stopPropagation();showRecurMenu(event,'${a.id}')" title="Set a recurring schedule">\u21BB Recurring</button>
         </div>
         ${actionBtns(a)}
       </div></div>`;
@@ -4275,6 +4090,28 @@ function doRenameSub(proj,oldFull,newLabel){
 }
 
 // ═══ FLOATING BULK ACTION BAR ═══
+function showRecurMenu(event, actionId){
+  event.stopPropagation();
+  document.querySelectorAll('.recur-popup').forEach(p=>p.remove());
+  const btn=event.currentTarget||event.target;
+  const r=btn.getBoundingClientRect();
+  const pop=document.createElement('div');
+  pop.className='recur-popup';
+  pop.style.cssText='position:fixed;z-index:2000;background:var(--card-solid,#fff);border:1px solid var(--border-vis);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.16);padding:6px;display:flex;flex-direction:column;gap:2px;min-width:140px;left:'+Math.min(r.left,window.innerWidth-160)+'px;top:'+(r.bottom+4)+'px';
+  const opts=[['','None'],['daily','Daily'],['weekly','Weekly'],['monthly','Monthly']];
+  opts.forEach(([val,label])=>{
+    const b=document.createElement('button');
+    b.style.cssText='padding:7px 12px;border:none;background:none;text-align:left;cursor:pointer;font-family:var(--font);font-size:12px;color:var(--text);border-radius:6px;transition:background .08s';
+    b.textContent=label;
+    b.onmouseover=()=>b.style.background='var(--accent-soft)';
+    b.onmouseout=()=>b.style.background='none';
+    b.onclick=(e)=>{e.stopPropagation();patch(actionId,{recur:val});if(val)toast('Recurring '+label.toLowerCase()+' — out of inbox');else toast('Recurring removed');pop.remove();render();};
+    pop.appendChild(b);
+  });
+  document.body.appendChild(pop);
+  setTimeout(()=>{const close=(e)=>{if(!pop.contains(e.target)){pop.remove();document.removeEventListener('click',close);}};document.addEventListener('click',close);},50);
+}
+
 function renderBulkBar(){
   let bar = document.getElementById('bulk-bar');
   const sel = state.selected;
@@ -4487,31 +4324,54 @@ function renderProjects() {
       const pct = items.length?Math.round(done.length/items.length*100):0;
       const subs = getSubs(proj);
       
-      h += `<div class="card card-hover" onclick="state.projView='list';state.projCollapsed['${esc(proj)}']=false;saveState();render();setTimeout(()=>document.getElementById('proj-${proj.replace(/\s/g,'')}')?.scrollIntoView({behavior:'smooth',block:'start'}),50)" style="padding:0;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;min-height:150px">
-        <div style="height:6px;background:${col}"></div>
-        <div style="padding:16px;flex:1;display:flex;flex-direction:column">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:12px">
-            <div style="font-size:15px;font-weight:700;line-height:1.3;flex:1">${esc(proj)}</div>
-            <button class="btn btn-ghost" style="padding:2px 6px;font-size:11px;color:var(--text-light);flex-shrink:0" onclick="event.stopPropagation();deleteProject('${esc(proj)}')" title="Delete">\u2715</button>
-          </div>
-          <div style="display:flex;gap:14px;margin-bottom:14px">
-            <div><div style="font-size:22px;font-weight:700;color:${col};line-height:1">${open.length}</div><div style="font-size:9px;color:var(--text-light);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Open</div></div>
-            ${inProg.length?`<div><div style="font-size:22px;font-weight:700;color:#3B82F6;line-height:1">${inProg.length}</div><div style="font-size:9px;color:var(--text-light);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Active</div></div>`:''}
-            ${od.length?`<div><div style="font-size:22px;font-weight:700;color:var(--danger);line-height:1">${od.length}</div><div style="font-size:9px;color:var(--text-light);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Overdue</div></div>`:''}
-            <div style="margin-left:auto;text-align:right"><div style="font-size:22px;font-weight:700;color:var(--text-mid);line-height:1">${done.length}</div><div style="font-size:9px;color:var(--text-light);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Done</div></div>
-          </div>
-          <div style="margin-top:auto">
-            <div style="height:5px;background:var(--border-vis);border-radius:3px;overflow:hidden;margin-bottom:8px"><div style="height:100%;background:${col};border-radius:3px;width:${pct}%;transition:width .4s"></div></div>
-            <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text-light)">
-              <span>${pct}% complete</span>
-              ${subs.length?`<span>\u00B7 ${subs.length} sub-project${subs.length>1?'s':''}</span>`:''}
-              <span style="margin-left:auto;display:flex;gap:4px" onclick="event.stopPropagation()">
-                <button style="background:none;border:none;cursor:pointer;font-size:10px;color:${col};font-weight:600;font-family:inherit" onclick="openAddInProject('${esc(proj)}')">+ action</button>
-              </span>
+      const cardExpanded = state.projCardExpanded===proj;
+      h += `<div class="card" style="padding:0;overflow:hidden;display:flex;flex-direction:column;${cardExpanded?'grid-column:1/-1;':''}transition:all .2s">
+        <div class="card-hover" onclick="state.projCardExpanded=state.projCardExpanded==='${esc(proj)}'?null:'${esc(proj)}';render()" style="cursor:pointer;display:flex;flex-direction:column">
+          <div style="height:5px;background:${col}"></div>
+          <div style="padding:18px 18px ${cardExpanded?'14':'18'}px;flex:1;display:flex;flex-direction:column">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:14px">
+              <div style="font-size:15px;font-weight:600;line-height:1.3;flex:1;letter-spacing:-.01em">${esc(proj)}</div>
+              <span style="font-size:11px;color:var(--text-light);transform:rotate(${cardExpanded?'180deg':'0'});transition:transform .2s;flex-shrink:0;margin-top:2px">\u25BE</span>
+            </div>
+            <div style="display:flex;gap:16px;margin-bottom:16px">
+              <div><div style="font-size:24px;font-weight:600;color:${col};line-height:1">${open.length}</div><div style="font-size:9px;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;margin-top:3px">Open</div></div>
+              ${inProg.length?`<div><div style="font-size:24px;font-weight:600;color:#3B82F6;line-height:1">${inProg.length}</div><div style="font-size:9px;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;margin-top:3px">Active</div></div>`:''}
+              ${od.length?`<div><div style="font-size:24px;font-weight:600;color:var(--danger);line-height:1">${od.length}</div><div style="font-size:9px;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;margin-top:3px">Overdue</div></div>`:''}
+              <div style="margin-left:auto;text-align:right"><div style="font-size:24px;font-weight:600;color:var(--text-mid);line-height:1">${done.length}</div><div style="font-size:9px;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;margin-top:3px">Done</div></div>
+            </div>
+            <div>
+              <div style="height:5px;background:var(--border-vis);border-radius:3px;overflow:hidden;margin-bottom:9px"><div style="height:100%;background:${col};border-radius:3px;width:${pct}%;transition:width .4s"></div></div>
+              <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text-light)">
+                <span>${pct}% complete</span>
+                ${subs.length?`<span>\u00B7 ${subs.length} sub-project${subs.length>1?'s':''}</span>`:''}
+                <span style="margin-left:auto;display:flex;gap:8px" onclick="event.stopPropagation()">
+                  <button style="background:none;border:none;cursor:pointer;font-size:10px;color:${col};font-weight:600;font-family:inherit" onclick="openAddInProject('${esc(proj)}')">+ action</button>
+                  <button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-light);font-family:inherit" onclick="deleteProject('${esc(proj)}')" title="Delete">delete</button>
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-      </div>`;
+        </div>`;
+      
+      // Expanded content — show actions inline, still in cards view
+      if(cardExpanded){
+        h += `<div style="border-top:1px solid var(--border);background:var(--bg-subtle,rgba(0,0,0,.01))">`;
+        const sorted=[...subs].sort();
+        sorted.forEach(sub=>{
+          if(isSubHiddenByAncestor(proj,sub))return;
+          const depth=subDepth(sub);
+          const subItems=open.filter(a=>a.subproject===sub);
+          if(subItems.length===0 && !subs.some(o=>o!==sub&&o.startsWith(sub+' / ')))return;
+          h+=`<div style="padding:8px 18px 4px ${18+depth*16}px;font-size:11px;font-weight:700;color:${col};opacity:.8">${subLabel(sub)} <span style="font-weight:400;color:var(--text-light)">${subItems.length}</span></div>`;
+          subItems.forEach(a=>h+=projRowCompact(a,col));
+        });
+        const unassigned=open.filter(a=>!a.subproject);
+        if(unassigned.length&&subs.length)h+=`<div style="padding:8px 18px 4px;font-size:10px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.05em">Unassigned</div>`;
+        unassigned.forEach(a=>h+=projRowCompact(a,col));
+        if(open.length===0)h+=`<div style="padding:16px 18px;font-size:11px;color:var(--text-light);text-align:center">No open actions</div>`;
+        h+=`</div>`;
+      }
+      h += `</div>`;
     });
     h += `<div class="card" onclick="createProject()" style="padding:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px dashed var(--border-vis);background:transparent;min-height:150px;color:var(--text-light)"><div style="text-align:center"><div style="font-size:24px;margin-bottom:4px">+</div><div style="font-size:12px;font-weight:600">New project</div></div></div>`;
     h += `</div></div></div>`;
@@ -4529,20 +4389,20 @@ function renderProjects() {
     const subs = getSubs(proj);
 
     h += `<div id="proj-${proj.replace(/\s/g,'')}" style="margin-bottom:16px">
-      <div onclick="state.projCollapsed[this.dataset.p]=!state.projCollapsed[this.dataset.p];render()" oncontextmenu="event.preventDefault();event.stopPropagation();renameProject('${esc(proj)}')" data-p="${esc(proj)}" ondragover="event.preventDefault();this.style.background=state.dark?'rgba(90,100,180,.1)':'rgba(90,100,180,.06)'" ondragleave="this.style.background=''" ondrop="event.preventDefault();this.style.background='';handleDropToProject('${esc(proj)}','')" style="display:flex;align-items:center;gap:10px;padding:10px 0 10px 12px;cursor:pointer;border-bottom:2px solid ${col};transition:background .1s;position:relative">
-        <div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:${col};border-radius:2px"></div>
-        <span style="font-size:15px;font-weight:700;flex:1">${esc(proj)}</span>
+      <div onclick="state.projCollapsed[this.dataset.p]=!state.projCollapsed[this.dataset.p];render()" oncontextmenu="event.preventDefault();event.stopPropagation();renameProject('${esc(proj)}')" data-p="${esc(proj)}" ondragover="event.preventDefault();this.style.background=state.dark?'rgba(90,100,180,.08)':'rgba(90,100,180,.05)'" ondragleave="this.style.background='${col}0A'" ondrop="event.preventDefault();this.style.background='${col}0A';handleDropToProject('${esc(proj)}','')" style="display:flex;align-items:center;gap:11px;padding:12px 14px;cursor:pointer;background:${col}0A;border-radius:${collapsed?'10px':'10px 10px 0 0'};transition:background .12s;border:1px solid var(--border)">
+        <div style="width:8px;height:8px;border-radius:3px;background:${col};flex-shrink:0"></div>
+        <span style="font-size:14.5px;font-weight:600;flex:1;letter-spacing:-.01em">${esc(proj)}</span>
         <span style="font-size:11px;color:var(--text-light)">${open.length} open</span>
-        ${od.length?`<span style="font-size:10px;color:var(--danger);font-weight:700">${od.length} overdue</span>`:""}
-        <div style="display:flex;gap:6px" onclick="event.stopPropagation()">
+        ${od.length?`<span style="font-size:10px;color:var(--danger);font-weight:600;background:rgba(255,69,58,.08);padding:2px 7px;border-radius:8px">${od.length} overdue</span>`:""}
+        <div style="display:flex;gap:8px" onclick="event.stopPropagation()">
           <button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-mid);font-weight:600;font-family:inherit" onclick="openAddInProject(this.dataset.p)" data-p="${esc(proj)}">+ action</button>
           <button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-mid);font-family:inherit" onclick="promptSub(this.dataset.p)" data-p="${esc(proj)}">+ sub</button>
         </div>
-        <span style="font-size:11px;color:var(--text-light);transform:rotate(${collapsed?'-90deg':'0'});transition:transform .15s">\u25BE</span>
+        <span style="font-size:10px;color:var(--text-light);transform:rotate(${collapsed?'-90deg':'0'});transition:transform .15s">\u25BE</span>
       </div>`;
 
     if (!collapsed) {
-      h += `<div class="card" style="border-radius:0 0 8px 8px;overflow:hidden">`;
+      h += `<div class="card" style="border-radius:0 0 10px 10px;overflow:hidden;border-top:none">`;
       const dk=state.dark; const depthColors = dk?['rgba(60,60,100,.15)','rgba(80,65,40,.15)','rgba(40,80,60,.15)','rgba(70,50,80,.15)','rgba(80,50,55,.15)']:['rgba(90,100,180,.06)','rgba(180,140,60,.06)','rgba(60,150,100,.06)','rgba(130,70,160,.06)','rgba(180,60,80,.06)'];
       const depthAccents = [col,'#B8934A','#5A9E7E','#8B72C4','#C57B98'];
       const sorted = [...subs].sort();
@@ -4585,6 +4445,17 @@ function renderProjects() {
 
   h += `</div></div>`;
   return h;
+}
+function projRowCompact(a, col){
+  const sel = state.selected.has(a.id);
+  const st = ST[a.status]||ST.Open;
+  return `<div onclick="if(event.shiftKey||event.ctrlKey||event.metaKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="display:flex;align-items:center;gap:8px;padding:7px 18px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12px;transition:background .08s;background:${sel?'var(--accent-soft)':''}" onmouseover="this.style.background='var(--accent-soft)'" onmouseout="this.style.background='${sel?'var(--accent-soft)':''}'">
+    ${a.priority?'<span style="color:#D946EF;font-size:10px;flex-shrink:0">\u2605</span>':''}
+    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${a.status==='Done'?'text-decoration:line-through;opacity:.5':''}">${esc(a.action)}</span>
+    ${a.owner?`<span style="font-size:10.5px;color:var(--text-light);flex-shrink:0">${esc(a.owner)}</span>`:''}
+    ${a.due?`<span style="font-size:10px;color:${isOverdue(a.due,a.status)?'var(--danger)':'var(--text-light)'};flex-shrink:0;font-weight:${isOverdue(a.due,a.status)?600:400}">${fmtDate(a.due)}</span>`:''}
+    <span style="font-size:9.5px;padding:2px 7px;border-radius:10px;background:${st.bg};color:${st.fg};flex-shrink:0;font-weight:600">${a.status}</span>
+  </div>`;
 }
 function projRow(a, col, depth) {
   const sel = state.selected.has(a.id);
@@ -4673,7 +4544,7 @@ function openEdit(id) {
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
           <label style="font-size:10.5px;font-weight:600;color:#5A6578">Start date <input type="date" class="input" style="width:100%;margin-top:2px" value="${a.startDate||''}" onchange="patch('${a.id}',{startDate:this.value})"></label>
-          <label style="font-size:10.5px;font-weight:600;color:#5A6578">Recur <select class="select" style="width:100%;margin-top:2px" onchange="patch('${a.id}',{recur:this.value})"><option value="">None</option><option ${a.recur==='daily'?'selected':''} value="daily">Daily</option><option ${a.recur==='weekly'?'selected':''} value="weekly">Weekly</option><option ${a.recur==='monthly'?'selected':''} value="monthly">Monthly</option></select></label>
+          <label style="font-size:10.5px;font-weight:600;color:#5A6578">Recur <span style="font-weight:400;color:var(--text-light)">(skips inbox)</span><select class="select" style="width:100%;margin-top:2px" onchange="patch('${a.id}',{recur:this.value})"><option value="">Not recurring</option><option ${a.recur==='daily'?'selected':''} value="daily">Repeats daily</option><option ${a.recur==='weekly'?'selected':''} value="weekly">Repeats weekly</option><option ${a.recur==='monthly'?'selected':''} value="monthly">Repeats monthly</option></select></label>
           <label style="font-size:10.5px;font-weight:600;color:#5A6578">Due date <input type="date" class="input" style="width:100%;margin-top:2px" value="${a.due||''}" onchange="patch('${a.id}',{due:this.value})"></label>
         </div>
       </div>
