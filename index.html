@@ -536,7 +536,7 @@ function debouncedDriveSync() {
   if (!gdriveEnabled) return;
   clearTimeout(syncDebounceTimer);
   updateSyncStatus('local', 'Saving...');
-  syncDebounceTimer = setTimeout(() => saveToDrive(), 1500);
+  syncDebounceTimer = setTimeout(() => saveToDrive(), 800);
 }
 
 async function forceSyncToDrive() {
@@ -587,16 +587,16 @@ let state = {
 // PERSISTENCE (localStorage)
 // ═══════════════════════════════════════
 const STORE_KEY = "at-standalone-v1";
-function savePrefs(){localStorage.setItem('at-prefs', JSON.stringify({projCollapsed:state.projCollapsed, subCollapsed:state.subCollapsed, projOrder:state.projOrder, projSideOpen:state.projSideOpen, colVis:state.colVis}));}
+function savePrefs(){localStorage.setItem('at-prefs', JSON.stringify({projCollapsed:state.projCollapsed, subCollapsed:state.subCollapsed, projOrder:state.projOrder, projSideOpen:state.projSideOpen, projView:state.projView, colVis:state.colVis}));}
 function saveState() {
   const d = { actions: state.actions, meetings: state.meetings, archived: state.archived, subProjects: state.subProjects, milestones: state.milestones, diary: state.diary };
   localStorage.setItem(STORE_KEY, JSON.stringify(d));
   // Save UI prefs separately (not synced to Drive — device-local)
-  localStorage.setItem('at-prefs', JSON.stringify({projCollapsed:state.projCollapsed, subCollapsed:state.subCollapsed, projOrder:state.projOrder, projSideOpen:state.projSideOpen, colVis:state.colVis}));
+  localStorage.setItem('at-prefs', JSON.stringify({projCollapsed:state.projCollapsed, subCollapsed:state.subCollapsed, projOrder:state.projOrder, projSideOpen:state.projSideOpen, projView:state.projView, colVis:state.colVis}));
   debouncedDriveSync();
 }
 function loadPrefs() {
-  try { const p=JSON.parse(localStorage.getItem('at-prefs')||'{}'); state.projCollapsed=p.projCollapsed||{}; state.subCollapsed=p.subCollapsed||{}; state.projOrder=p.projOrder||[]; state.projSideOpen=p.projSideOpen!==undefined?p.projSideOpen:true; state.colVis=Object.assign({action:true,owner:true,added:true,due:true,status:true,project:true},p.colVis||{}); } catch(e) {}
+  try { const p=JSON.parse(localStorage.getItem('at-prefs')||'{}'); state.projCollapsed=p.projCollapsed||{}; state.subCollapsed=p.subCollapsed||{}; state.projOrder=p.projOrder||[]; state.projSideOpen=p.projSideOpen!==undefined?p.projSideOpen:true; state.projView=p.projView||'list'; state.colVis=Object.assign({action:true,owner:true,added:true,due:true,status:true,project:true},p.colVis||{}); } catch(e) {}
 }
 function loadState() {
   loadPrefs();
@@ -814,7 +814,17 @@ function subAncestors(s){
   return out;
 }
 function isSubHiddenByAncestor(proj,sub){
-  // Hidden if ANY ancestor sub is collapsed
+  // Hidden if ANY ancestor sub (by path prefix) is collapsed.
+  // Robust: check every OTHER sub that is a proper prefix of this one AND is collapsed.
+  const allSubs=getSubs(proj);
+  for(const other of allSubs){
+    if(other===sub) continue;
+    // "other" is an ancestor of "sub" if sub starts with "other / "
+    if(sub.startsWith(other+' / ') && state.subCollapsed[proj+'//'+other]){
+      return true;
+    }
+  }
+  // Also honor explicit path-parsed ancestors (belt and suspenders)
   return subAncestors(sub).some(anc=>state.subCollapsed[proj+'//'+anc]);
 }
 function toggleSelect(id){if(state.selected.has(id))state.selected.delete(id);else state.selected.add(id);render();}
@@ -3627,8 +3637,6 @@ const TABS = [
   {id:"projects",icon:'<svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 3h3l1.5 1.5H13v8H2z"/></svg>',label:"Projects"},
   {g:"Reflect"},
   {id:"reflect",icon:'<svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M3 3h3v3H3zM9 3h3v3H9zM3 9h3v3H3zM9 9h3v3H9z"/><path d="M5 5l1 1M11 5l-1 1M5 10l1 1M11 10l-1 1"/></svg>',label:"Habits"},
-  {id:"dashboard",icon:'<svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2" y="2" width="4.5" height="4.5" rx="1"/><rect x="8.5" y="2" width="4.5" height="4.5" rx="1"/><rect x="2" y="8.5" width="4.5" height="4.5" rx="1"/><rect x="8.5" y="8.5" width="4.5" height="4.5" rx="1"/></svg>',label:"Dashboard"},
-  {id:"stats",icon:'<svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 12.5h11M4 9v3.5M7 6v6.5M10 3v9.5"/></svg>',label:"Stats"},
   {id:"diary",icon:'<svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M3 2.5h9a1 1 0 011 1v8a1 1 0 01-1 1H3a1 1 0 01-1-1v-8a1 1 0 011-1z"/><path d="M5 2.5v10M8 5.5h3M8 8h2"/></svg>',label:"Self Map"},
   {g:"AI"},
   {id:"coach",icon:'<svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="7.5" cy="7.5" r="5.5"/><path d="M5.5 6.5a2 2 0 014 0c0 1-1.5 1.2-1.5 2.5M7.5 11v.5"/></svg>',label:"AI Coach"},
@@ -3654,6 +3662,8 @@ function renderNav() {
 
 function render() {
   try {
+    // Removed tabs — redirect to today
+    if(state.tab==='dashboard'||state.tab==='stats'){state.tab='today';}
     renderNav();
     renderBulkBar();
     const main = document.getElementById("main");
@@ -3663,8 +3673,6 @@ function render() {
       case "today": main.innerHTML = renderToday(s); break;
       case "reflect": main.innerHTML = renderReflect(); break;
       case "inbox": main.innerHTML = renderInbox(s); break;
-      case "dashboard": main.innerHTML = renderDashboard(s); break;
-      case "stats": main.innerHTML = renderStatsTab(s); break;
       case "actions": main.innerHTML = renderActions(s); break;
       case "kanban": main.innerHTML = renderKanban(); break;
       case "projects": main.innerHTML = renderProjects(); break;
@@ -4548,12 +4556,15 @@ function renderProjects() {
         const subKey = proj+'//'+sub;
         const subColl = state.subCollapsed[subKey];
         // Does this sub have nested children?
-        const hasChildren = subs.some(other=>other!==sub && other.startsWith(sub+' / '));
+        const childSubs = subs.filter(other=>other!==sub && other.startsWith(sub+' / '));
+        const hasChildren = childSubs.length>0;
+        // Count direct children (one level deeper only)
+        const directChildren = childSubs.filter(c=>subDepth(c)===subDepth(sub)+1).length;
         h += `<div onclick="toggleSubCollapse('${esc(proj)}','${esc(sub)}')" oncontextmenu="event.preventDefault();event.stopPropagation();renameSubProject('${esc(proj)}','${esc(sub)}')" ondragover="event.preventDefault();this.style.background=state.dark?'rgba(90,100,180,.1)':'rgba(90,100,180,.06)'" ondragleave="this.style.background='${dBg}'" ondrop="event.preventDefault();this.style.background='${dBg}';handleDropToProject('${esc(proj)}','${esc(sub)}')" style="display:flex;align-items:center;gap:6px;padding:7px ${16+depth*20}px;background:${dBg};border-bottom:1px solid var(--border);border-left:2px solid ${dCol};transition:background .1s;cursor:pointer">
           ${depth>0?'<span style="color:var(--text-light);font-size:10px">\u2514</span>':''}
           <span style="font-size:10px;color:${dCol};transform:rotate(${subColl?'-90deg':'0'});transition:transform .15s;${(hasChildren||subItems.length)?'':'opacity:.3'}">\u25BE</span>
           <span style="font-size:${depth>0?'11.5':'12.5'}px;font-weight:700;color:${dCol}">${subLabel(sub)}</span>
-          <span style="font-size:10px;color:var(--text-light)">${subItems.length||'<i style="opacity:.5">empty</i>'}</span>
+          <span style="font-size:10px;color:var(--text-light)">${subItems.length?subItems.length+(directChildren?' + '+directChildren+' sub':''):(directChildren?directChildren+' sub'+(directChildren>1?'s':''):'<i style="opacity:.5">empty</i>')}</span>
           <button onclick="event.stopPropagation();promptSub(this.dataset.p,this.dataset.s)" data-p="${esc(proj)}" data-s="${esc(sub)}" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:9px;color:${dCol};font-weight:600;font-family:inherit">+ sub</button>
           <button onclick="event.stopPropagation();deleteSub('${esc(proj)}','${esc(sub)}')" style="background:none;border:none;cursor:pointer;font-size:9px;color:var(--text-light);font-family:inherit">\u2715</button>
         </div>`;
@@ -4869,6 +4880,21 @@ function applyTheme() {
 // ═══════════════════════════════════════
 // KEYBOARD SHORTCUTS
 // ═══════════════════════════════════════
+// Flush any pending Drive sync when the tab is about to close
+window.addEventListener('beforeunload',()=>{
+  if(gdriveEnabled && syncDebounceTimer){
+    clearTimeout(syncDebounceTimer);
+    // Fire a synchronous-ish save (best effort; browsers may not await async here)
+    try{ saveToDrive(); }catch(e){}
+  }
+});
+window.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden' && gdriveEnabled && syncDebounceTimer){
+    clearTimeout(syncDebounceTimer);
+    try{ saveToDrive(); }catch(e){}
+  }
+});
+
 document.addEventListener('keydown',e=>{
   // Guard: don't fire shortcuts when user is typing in any input/textarea/select
   const tag=e.target.tagName;
