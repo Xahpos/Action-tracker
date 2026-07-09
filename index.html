@@ -244,21 +244,57 @@ body.dark .coach-msg.ai{background:rgba(255,255,255,.04)}
 .page-header .subtitle{font-size:12px;color:var(--text-mid);margin-top:2px;font-weight:400}
 .page-header .actions{display:flex;gap:6px;align-items:center}
 .section-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--text-light);margin-bottom:8px}
-/* ═ MOBILE ═ */
-@media(max-width:768px){
-  body{flex-direction:column;height:auto;overflow:auto}
-  .sidebar{width:100%;height:auto;flex-direction:row;flex-wrap:wrap;padding:8px}
-  .sidebar .logo{padding:8px 12px}
+/* ═ MOBILE / TABLET ═ */
+@media(max-width:900px){
+  body{flex-direction:column;height:auto;overflow-x:hidden;overflow-y:auto;-webkit-text-size-adjust:100%}
+  .sidebar{
+    width:100%;height:auto;flex-direction:row;flex-wrap:nowrap;padding:6px 8px;
+    position:sticky;top:0;z-index:900;overflow-x:auto;overflow-y:hidden;
+    border-right:none;border-bottom:1px solid rgba(0,0,0,.06);align-items:center;
+  }
+  .sidebar .logo{padding:6px 10px;flex-shrink:0}
+  .sidebar .logo h2{font-size:13px}
   .sidebar .logo p{display:none}
-  .sidebar nav{display:flex;flex-wrap:wrap;gap:2px;padding:4px;flex:1}
-  .sidebar nav button{padding:6px 8px;font-size:11px;gap:4px;margin:0}
+  .sidebar nav{display:flex;flex-wrap:nowrap;gap:2px;padding:2px 4px;flex:1;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .sidebar nav button{padding:8px 10px;font-size:12px;gap:5px;margin:0;white-space:nowrap;flex-shrink:0;min-height:38px}
   .sidebar nav div[style*="uppercase"]{display:none}
-  main{padding:16px}
-  h1{font-size:20px}
-  .modal{width:95%;padding:18px;border-radius:14px}
+  .sidebar nav button .badge{min-width:16px;height:16px;font-size:9px}
+  /* Hide the dark-mode row and sync bars on mobile — accessible via nav scroll instead */
+  .sidebar > div[style*="border-top"]{display:none}
+  .sync-bar{display:none}
+  main{padding:14px 12px;width:100%;box-sizing:border-box}
+  h1{font-size:19px}
+  .page-header{margin-bottom:10px}
+  .modal{width:calc(100vw - 24px);max-width:none;padding:16px;border-radius:14px;max-height:88vh}
+  .modal-overlay{padding:12px;align-items:flex-start;padding-top:24px}
+  /* Self map — stack the 3 fields */
   .sm-area > div:last-child{grid-template-columns:1fr!important}
-  .sm-score-dot{width:28px;height:28px;font-size:10px}
-  .sync-bar{padding:4px 8px}
+  .sm-score-dot{width:26px;height:26px;font-size:10px}
+  /* Cards and tables scroll horizontally where needed */
+  .card{border-radius:10px}
+  table{font-size:11px}
+  /* Bulk bar wraps on small screens */
+  #bulk-bar{bottom:12px;padding:8px 10px;gap:5px;font-size:10px;flex-wrap:wrap;justify-content:center}
+  #bulk-bar button{padding:5px 8px!important;font-size:10px!important}
+  /* Inputs bigger tap targets */
+  input,select,textarea,button{font-size:16px} /* 16px prevents iOS zoom-on-focus */
+  .btn{min-height:34px}
+  /* Projects side panel becomes full-width above the list on mobile */
+  .proj-layout{flex-direction:column!important}
+  .proj-sidepanel{width:100%!important;position:static!important;max-height:none!important;margin-bottom:12px}
+}
+@media(max-width:480px){
+  main{padding:12px 10px}
+  h1{font-size:18px}
+  .sidebar nav button span:not(.badge){font-size:0} /* icon-only nav on very small screens... */
+  .sidebar nav button svg{width:18px;height:18px}
+  /* ...but keep the active tab's label visible */
+  .sidebar nav button.active span:not(.badge){font-size:12px}
+}
+/* Larger tap targets & no hover-stuck states on touch devices */
+@media(hover:none){
+  .card-hover:hover{background:inherit}
+  button,.btn,select{touch-action:manipulation}
 }
 </style>
 </head>
@@ -280,7 +316,7 @@ body.dark .coach-msg.ai{background:rgba(255,255,255,.04)}
   <div class="logo">
     <h2>Action Tracker</h2>
     <p id="action-count">149 actions</p>
-    <p style="font-size:8px;color:#4A7BF7;opacity:.6;margin-top:1px;font-family:var(--mono)">v7.0</p>
+    <p style="font-size:8px;color:#4A7BF7;opacity:.6;margin-top:1px;font-family:var(--mono)">v7.1</p>
   </div>
   <nav id="nav"></nav>
   <div style="padding:6px 12px;border-top:1px solid rgba(255,255,255,.06)">
@@ -308,7 +344,7 @@ body.dark .coach-msg.ai{background:rgba(255,255,255,.04)}
 // ═══════════════════════════════════════
 // *** REPLACE THESE WITH YOUR OWN VALUES ***
 // See setup guide at the bottom of this file
-const APP_VERSION = 'v6.3';
+const APP_VERSION = 'v7.1';
 console.log('%c Action Tracker ' + APP_VERSION, 'background:#4A7BF7;color:#fff;padding:4px 8px;border-radius:4px;font-weight:bold');
 
 // ═══ MINIMAL SVG ICONS ═══
@@ -544,7 +580,7 @@ const isOverdue = (due, st) => { if (!due||st==="Done"||st==="Cancelled") return
 let state = {
   actions: [], meetings: [], archived: [], subProjects: {}, milestones: [],
   tab: "today", editId: null, dark: false, search: "", fStatus: "Active", fProj: "All", fOwner: "All", fPrio: false, fDate: "",
-  projCollapsed: {}, subCollapsed: {}, diary: {areas:[],entries:{},habits:{}}, toast: null, selected: new Set(), dragId: null, projOrder: [], dragProj: null, kanbanProj: 'All', projSideOpen: true, colVis: {action:true,owner:true,added:true,due:true,status:true,project:true}
+  projCollapsed: {}, subCollapsed: {}, diary: {areas:[],entries:{},habits:{}}, toast: null, selected: new Set(), dragId: null, projOrder: [], dragProj: null, kanbanProj: 'All', projSideOpen: true, projView: 'list', colVis: {action:true,owner:true,added:true,due:true,status:true,project:true}
 };
 
 // ═══════════════════════════════════════
@@ -769,6 +805,18 @@ function deleteSub(proj,sub){
 }
 function subDepth(s){return s?s.split(" / ").length-1:0;}
 function subLabel(s){return s?s.split(" / ").pop():s;}
+function subAncestors(s){
+  // Return list of ancestor paths for a sub like "A / B / C" -> ["A","A / B"]
+  if(!s) return [];
+  const parts=s.split(" / ");
+  const out=[];
+  for(let i=1;i<parts.length;i++){out.push(parts.slice(0,i).join(" / "));}
+  return out;
+}
+function isSubHiddenByAncestor(proj,sub){
+  // Hidden if ANY ancestor sub is collapsed
+  return subAncestors(sub).some(anc=>state.subCollapsed[proj+'//'+anc]);
+}
 function toggleSelect(id){if(state.selected.has(id))state.selected.delete(id);else state.selected.add(id);render();}
 function selectAllFiltered(checked){if(checked&&window._filteredIds){window._filteredIds.forEach(id=>state.selected.add(id));}else{state.selected.clear();}render();}
 function bulkPatch(upd){state.selected.forEach(id=>{state.actions=state.actions.map(a=>a.id===id?{...a,...upd}:a);});state.selected=new Set();saveState();render();toast("Updated");}
@@ -4357,13 +4405,14 @@ function bulkProjectMenu(x,y){
 
 function renderProjects() {
   const projs = getProjects();
-  const anyExpanded = projs.some(p=>!state.projCollapsed[p]);
   const sideOpen = state.projSideOpen;
-  let h = `<div class="fade-in" style="display:flex;gap:16px">`;
+  const view = state.projView || 'list';
+  
+  let h = `<div class="fade-in proj-layout" style="display:flex;gap:16px">`;
 
-  // Side panel (conditionally rendered)
-  if(sideOpen) {
-    h += `<div style="width:200px;flex-shrink:0;position:sticky;top:0;max-height:calc(100vh - 60px);overflow-y:auto">
+  // ── Side panel (list of projects for quick nav + reorder) ──
+  if(sideOpen && view==='list') {
+    h += `<div class="proj-sidepanel" style="width:200px;flex-shrink:0;position:sticky;top:0;max-height:calc(100vh - 60px);overflow-y:auto">
     <div style="margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <span style="font-size:13px;font-weight:700">Projects</span>
@@ -4376,42 +4425,92 @@ function renderProjects() {
         <button class="btn btn-ghost" style="padding:3px 7px;font-size:9px;margin-left:auto" onclick="exportProjectCSV()" title="Export to CSV">CSV</button>
       </div>
     </div>`;
-  projs.forEach(p => {
-    const items = state.actions.filter(a=>a.project===p);
-    const open = items.filter(a=>a.status!=="Done"&&a.status!=="Cancelled").length;
-    const done = items.filter(a=>a.status==="Done").length;
-    const col = WS_COLORS[p]||"#94A3B8";
-    const pct = items.length?Math.round(done/items.length*100):0;
-    h += `<div draggable="true"
-      ondragstart="state.dragProj='${esc(p)}';this.style.opacity='.4'"
-      ondragend="state.dragProj=null;this.style.opacity='1'"
-      ondragover="event.preventDefault();if(state.dragProj)this.style.background='${col}20'"
-      ondragleave="this.style.background='${col}08'"
-      ondrop="event.preventDefault();this.style.background='${col}08';reorderProj('${esc(p)}')"
-      onclick="document.getElementById('proj-${p.replace(/\s/g,'')}')?.scrollIntoView({behavior:'smooth',block:'start'})"
-      style="display:flex;align-items:center;gap:6px;padding:7px 10px;margin-bottom:3px;border-radius:6px;cursor:grab;background:${col}08;border-left:3px solid ${col};transition:all 0.1s">
-      <div style="flex:1;min-width:0">
-        <div style="font-size:11px;font-weight:600;color:${col};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p)}</div>
-        <div style="display:flex;align-items:center;gap:4px;margin-top:2px">
-          <span style="font-size:9px;color:var(--text-light)">${open} open</span>
-          <div style="flex:1;height:2px;background:var(--border);border-radius:1px"><div style="height:2px;background:${col};border-radius:1px;width:${pct}%"></div></div>
+    projs.forEach(p => {
+      const items = state.actions.filter(a=>a.project===p);
+      const open = items.filter(a=>a.status!=="Done"&&a.status!=="Cancelled").length;
+      const done = items.filter(a=>a.status==="Done").length;
+      const col = WS_COLORS[p]||"#94A3B8";
+      const pct = items.length?Math.round(done/items.length*100):0;
+      h += `<div draggable="true"
+        ondragstart="state.dragProj='${esc(p)}';this.style.opacity='.4'"
+        ondragend="state.dragProj=null;this.style.opacity='1'"
+        ondragover="event.preventDefault();if(state.dragProj)this.style.background='${col}20'"
+        ondragleave="this.style.background='${col}0C'"
+        ondrop="event.preventDefault();this.style.background='${col}0C';reorderProj('${esc(p)}')"
+        onclick="document.getElementById('proj-${p.replace(/\s/g,'')}')?.scrollIntoView({behavior:'smooth',block:'start'})"
+        style="display:flex;align-items:stretch;gap:8px;margin-bottom:4px;border-radius:8px;cursor:grab;background:${col}0C;overflow:hidden;transition:all 0.1s">
+        <div style="width:4px;background:${col};flex-shrink:0"></div>
+        <div style="flex:1;min-width:0;padding:8px 4px 8px 0">
+          <div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p)}</div>
+          <div style="display:flex;align-items:center;gap:4px;margin-top:3px">
+            <span style="font-size:9px;color:var(--text-light)">${open} open</span>
+            <div style="flex:1;height:2px;background:var(--border);border-radius:1px"><div style="height:2px;background:${col};border-radius:1px;width:${pct}%"></div></div>
+          </div>
         </div>
-      </div>
-      <button class="btn btn-ghost" style="padding:0;font-size:9px;color:var(--text-light);flex-shrink:0" onclick="event.stopPropagation();deleteProject('${esc(p)}')" title="Delete project">\u2715</button>
+        <button class="btn btn-ghost" style="padding:0 8px;font-size:9px;color:var(--text-light);flex-shrink:0" onclick="event.stopPropagation();deleteProject('${esc(p)}')" title="Delete project">\u2715</button>
+      </div>`;
+    });
+    h += `<button class="btn btn-default" style="width:100%;padding:6px;font-size:10px;margin-top:6px" onclick="createProject()">+ New project</button>
     </div>`;
-  });
-  h += `<button class="btn btn-default" style="width:100%;padding:6px;font-size:10px;margin-top:6px" onclick="createProject()">+ New project</button>
-  </div>`;
-  } // end sidebar if
+  }
 
   h += `<div style="flex:1;min-width:0">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <div class="page-header"><div style="display:flex;align-items:center;gap:8px">
-        <h1>Projects</h1>
-      </div></div>
-      <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;flex-shrink:0" onclick="state.projSideOpen=!state.projSideOpen;saveState();render()">${sideOpen?'\u25C4 Hide panel':'\u25BA Show panel'}</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div class="page-header"><div style="display:flex;align-items:center;gap:8px"><h1>Projects</h1></div></div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <div style="display:flex;background:var(--card);border:1px solid var(--border-vis);border-radius:8px;overflow:hidden">
+          <button onclick="state.projView='list';saveState();render()" style="padding:5px 12px;font-size:11px;border:none;cursor:pointer;font-family:var(--font);background:${view==='list'?'var(--accent)':'transparent'};color:${view==='list'?'#fff':'var(--text-mid)'};font-weight:${view==='list'?'600':'400'}">List</button>
+          <button onclick="state.projView='cards';saveState();render()" style="padding:5px 12px;font-size:11px;border:none;cursor:pointer;font-family:var(--font);background:${view==='cards'?'var(--accent)':'transparent'};color:${view==='cards'?'#fff':'var(--text-mid)'};font-weight:${view==='cards'?'600':'400'}">Cards</button>
+        </div>
+        ${view==='list'?`<button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;flex-shrink:0" onclick="state.projSideOpen=!state.projSideOpen;saveState();render()">${sideOpen?'\u25C4 Hide panel':'\u25BA Show panel'}</button>`:''}
+      </div>
     </div>`;
 
+  // ═══ CARDS VIEW ═══
+  if(view==='cards'){
+    h += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">`;
+    projs.forEach(proj => {
+      const items = state.actions.filter(a=>a.project===proj);
+      const open = items.filter(a=>a.status!=="Done"&&a.status!=="Cancelled");
+      const inProg = items.filter(a=>a.status==="In progress");
+      const done = items.filter(a=>a.status==="Done");
+      const col = WS_COLORS[proj]||"#94A3B8";
+      const od = open.filter(a=>isOverdue(a.due,a.status));
+      const pct = items.length?Math.round(done.length/items.length*100):0;
+      const subs = getSubs(proj);
+      
+      h += `<div class="card card-hover" onclick="state.projView='list';state.projCollapsed['${esc(proj)}']=false;saveState();render();setTimeout(()=>document.getElementById('proj-${proj.replace(/\s/g,'')}')?.scrollIntoView({behavior:'smooth',block:'start'}),50)" style="padding:0;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;min-height:150px">
+        <div style="height:6px;background:${col}"></div>
+        <div style="padding:16px;flex:1;display:flex;flex-direction:column">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:12px">
+            <div style="font-size:15px;font-weight:700;line-height:1.3;flex:1">${esc(proj)}</div>
+            <button class="btn btn-ghost" style="padding:2px 6px;font-size:11px;color:var(--text-light);flex-shrink:0" onclick="event.stopPropagation();deleteProject('${esc(proj)}')" title="Delete">\u2715</button>
+          </div>
+          <div style="display:flex;gap:14px;margin-bottom:14px">
+            <div><div style="font-size:22px;font-weight:700;color:${col};line-height:1">${open.length}</div><div style="font-size:9px;color:var(--text-light);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Open</div></div>
+            ${inProg.length?`<div><div style="font-size:22px;font-weight:700;color:#3B82F6;line-height:1">${inProg.length}</div><div style="font-size:9px;color:var(--text-light);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Active</div></div>`:''}
+            ${od.length?`<div><div style="font-size:22px;font-weight:700;color:var(--danger);line-height:1">${od.length}</div><div style="font-size:9px;color:var(--text-light);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Overdue</div></div>`:''}
+            <div style="margin-left:auto;text-align:right"><div style="font-size:22px;font-weight:700;color:var(--text-mid);line-height:1">${done.length}</div><div style="font-size:9px;color:var(--text-light);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Done</div></div>
+          </div>
+          <div style="margin-top:auto">
+            <div style="height:5px;background:var(--border-vis);border-radius:3px;overflow:hidden;margin-bottom:8px"><div style="height:100%;background:${col};border-radius:3px;width:${pct}%;transition:width .4s"></div></div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text-light)">
+              <span>${pct}% complete</span>
+              ${subs.length?`<span>\u00B7 ${subs.length} sub-project${subs.length>1?'s':''}</span>`:''}
+              <span style="margin-left:auto;display:flex;gap:4px" onclick="event.stopPropagation()">
+                <button style="background:none;border:none;cursor:pointer;font-size:10px;color:${col};font-weight:600;font-family:inherit" onclick="openAddInProject('${esc(proj)}')">+ action</button>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    });
+    h += `<div class="card" onclick="createProject()" style="padding:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px dashed var(--border-vis);background:transparent;min-height:150px;color:var(--text-light)"><div style="text-align:center"><div style="font-size:24px;margin-bottom:4px">+</div><div style="font-size:12px;font-weight:600">New project</div></div></div>`;
+    h += `</div></div></div>`;
+    return h;
+  }
+
+  // ═══ LIST VIEW ═══
   projs.forEach(proj => {
     const items = state.actions.filter(a=>a.project===proj);
     const open = items.filter(a=>a.status!=="Done"&&a.status!=="Cancelled");
@@ -4422,12 +4521,12 @@ function renderProjects() {
     const subs = getSubs(proj);
 
     h += `<div id="proj-${proj.replace(/\s/g,'')}" style="margin-bottom:16px">
-      <div onclick="state.projCollapsed[this.dataset.p]=!state.projCollapsed[this.dataset.p];render()" oncontextmenu="event.preventDefault();event.stopPropagation();renameProject('${esc(proj)}')" data-p="${esc(proj)}" ondragover="event.preventDefault();this.style.background=state.dark?'rgba(90,100,180,.1)':'rgba(90,100,180,.06)'" ondragleave="this.style.background=''" ondrop="event.preventDefault();this.style.background='';handleDropToProject('${esc(proj)}','')" style="display:flex;align-items:center;gap:8px;padding:10px 0;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s">
-        <div style="width:10px;height:10px;border-radius:5px;background:${col};flex-shrink:0"></div>
+      <div onclick="state.projCollapsed[this.dataset.p]=!state.projCollapsed[this.dataset.p];render()" oncontextmenu="event.preventDefault();event.stopPropagation();renameProject('${esc(proj)}')" data-p="${esc(proj)}" ondragover="event.preventDefault();this.style.background=state.dark?'rgba(90,100,180,.1)':'rgba(90,100,180,.06)'" ondragleave="this.style.background=''" ondrop="event.preventDefault();this.style.background='';handleDropToProject('${esc(proj)}','')" style="display:flex;align-items:center;gap:10px;padding:10px 0 10px 12px;cursor:pointer;border-bottom:2px solid ${col};transition:background .1s;position:relative">
+        <div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:${col};border-radius:2px"></div>
         <span style="font-size:15px;font-weight:700;flex:1">${esc(proj)}</span>
         <span style="font-size:11px;color:var(--text-light)">${open.length} open</span>
         ${od.length?`<span style="font-size:10px;color:var(--danger);font-weight:700">${od.length} overdue</span>`:""}
-        <div style="display:flex;gap:4px" onclick="event.stopPropagation()">
+        <div style="display:flex;gap:6px" onclick="event.stopPropagation()">
           <button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-mid);font-weight:600;font-family:inherit" onclick="openAddInProject(this.dataset.p)" data-p="${esc(proj)}">+ action</button>
           <button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-mid);font-family:inherit" onclick="promptSub(this.dataset.p)" data-p="${esc(proj)}">+ sub</button>
         </div>
@@ -4436,20 +4535,23 @@ function renderProjects() {
 
     if (!collapsed) {
       h += `<div class="card" style="border-radius:0 0 8px 8px;overflow:hidden">`;
-      // Sub-projects with nesting - different colors per depth
       const dk=state.dark; const depthColors = dk?['rgba(60,60,100,.15)','rgba(80,65,40,.15)','rgba(40,80,60,.15)','rgba(70,50,80,.15)','rgba(80,50,55,.15)']:['rgba(90,100,180,.06)','rgba(180,140,60,.06)','rgba(60,150,100,.06)','rgba(130,70,160,.06)','rgba(180,60,80,.06)'];
       const depthAccents = [col,'#B8934A','#5A9E7E','#8B72C4','#C57B98'];
       const sorted = [...subs].sort();
       sorted.forEach(sub => {
+        // NEW: skip rendering if an ancestor sub is collapsed
+        if(isSubHiddenByAncestor(proj,sub)) return;
         const depth = subDepth(sub);
         const subItems = open.filter(a=>a.subproject===sub);
         const dBg = depthColors[depth%depthColors.length];
         const dCol = depthAccents[depth%depthAccents.length];
         const subKey = proj+'//'+sub;
         const subColl = state.subCollapsed[subKey];
+        // Does this sub have nested children?
+        const hasChildren = subs.some(other=>other!==sub && other.startsWith(sub+' / '));
         h += `<div onclick="toggleSubCollapse('${esc(proj)}','${esc(sub)}')" oncontextmenu="event.preventDefault();event.stopPropagation();renameSubProject('${esc(proj)}','${esc(sub)}')" ondragover="event.preventDefault();this.style.background=state.dark?'rgba(90,100,180,.1)':'rgba(90,100,180,.06)'" ondragleave="this.style.background='${dBg}'" ondrop="event.preventDefault();this.style.background='${dBg}';handleDropToProject('${esc(proj)}','${esc(sub)}')" style="display:flex;align-items:center;gap:6px;padding:7px ${16+depth*20}px;background:${dBg};border-bottom:1px solid var(--border);border-left:2px solid ${dCol};transition:background .1s;cursor:pointer">
           ${depth>0?'<span style="color:var(--text-light);font-size:10px">\u2514</span>':''}
-          <span style="font-size:10px;color:${dCol};transform:rotate(${subColl?'-90deg':'0'});transition:transform .15s">\u25BE</span>
+          <span style="font-size:10px;color:${dCol};transform:rotate(${subColl?'-90deg':'0'});transition:transform .15s;${(hasChildren||subItems.length)?'':'opacity:.3'}">\u25BE</span>
           <span style="font-size:${depth>0?'11.5':'12.5'}px;font-weight:700;color:${dCol}">${subLabel(sub)}</span>
           <span style="font-size:10px;color:var(--text-light)">${subItems.length||'<i style="opacity:.5">empty</i>'}</span>
           <button onclick="event.stopPropagation();promptSub(this.dataset.p,this.dataset.s)" data-p="${esc(proj)}" data-s="${esc(sub)}" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:9px;color:${dCol};font-weight:600;font-family:inherit">+ sub</button>
@@ -4457,11 +4559,9 @@ function renderProjects() {
         </div>`;
         if(!subColl) subItems.forEach(a => h += projRow(a, col, depth+1));
       });
-      // Unassigned
       const unassigned = open.filter(a=>!a.subproject);
       if(unassigned.length && subs.length) h += `<div style="padding:6px 16px;background:var(--accent-soft);border-bottom:1px solid var(--border);font-size:11px;font-weight:700;color:var(--text-light)">Unassigned</div>`;
       unassigned.forEach(a => h += projRow(a, col, 0));
-      // Done
       if (done.length) {
         h += `<details style="padding:6px 16px"><summary style="font-size:10.5px;color:var(--text-light);cursor:pointer">${done.length} completed</summary>`;
         done.forEach(a => h += `<div style="font-size:10.5px;color:var(--text-light);padding:1px 0;text-decoration:line-through">${esc(a.action)}</div>`);
@@ -4876,7 +4976,7 @@ STEP 4: Create API Key
 STEP 5: Paste into this file
   1. Open this HTML file in a text editor
   2. Find these lines near the top of the <script>:
-     const APP_VERSION = 'v6.3';
+     const APP_VERSION = 'v7.1';
 console.log('%c Action Tracker ' + APP_VERSION, 'background:#4A7BF7;color:#fff;padding:4px 8px;border-radius:4px;font-weight:bold');
 
 // ═══ MINIMAL SVG ICONS ═══
