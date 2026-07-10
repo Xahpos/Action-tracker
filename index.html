@@ -343,7 +343,7 @@ body.dark .coach-msg.ai{background:rgba(255,255,255,.04)}
   <div class="logo">
     <h2>Action Tracker</h2>
     <p id="action-count">149 actions</p>
-    <p style="font-size:8px;color:#4A7BF7;opacity:.6;margin-top:1px;font-family:var(--mono)">v7.3</p>
+    <p style="font-size:8px;color:#4A7BF7;opacity:.6;margin-top:1px;font-family:var(--mono)">v7.4</p>
   </div>
   <nav id="nav"></nav>
   <div style="padding:6px 12px;border-top:1px solid rgba(255,255,255,.06)">
@@ -371,7 +371,7 @@ body.dark .coach-msg.ai{background:rgba(255,255,255,.04)}
 // ═══════════════════════════════════════
 // *** REPLACE THESE WITH YOUR OWN VALUES ***
 // See setup guide at the bottom of this file
-const APP_VERSION = 'v7.3';
+const APP_VERSION = 'v7.4';
 console.log('%c Action Tracker ' + APP_VERSION, 'background:#4A7BF7;color:#fff;padding:4px 8px;border-radius:4px;font-weight:bold');
 
 // ═══ MINIMAL SVG ICONS ═══
@@ -448,9 +448,14 @@ async function handleGoogleSignIn() {
         gdriveEnabled = true;
         document.getElementById('auth-overlay').style.display = 'none';
         updateSyncStatus('cloud', 'Google Drive');
+        state.dark = localStorage.getItem('at-dark')==='true';
+        if(state.dark) document.body.classList.add('dark');
+        loadState();            // local data + UI prefs (collapse states, view, columns)
         await findOrCreateDriveFile();
-        await loadFromDrive();
-        render();
+        await loadFromDrive();  // drive data overwrites content, prefs stay local
+        loadPrefs();            // re-assert prefs after drive merge
+        applyTheme(); render();
+        setTimeout(showLaunch, 500);
       }
     });
     client.requestAccessToken();
@@ -601,6 +606,7 @@ const SEED_MEETINGS = []
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const todayISO = () => new Date().toISOString().slice(0, 10);
+const todayBrussels = () => {try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Brussels'}).format(new Date());}catch(e){return todayISO();}};
 const fmtDate = (d) => { if (!d) return "\u2014"; return new Date(d+"T12:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}); };
 const isOverdue = (due, st) => { if (!due||st==="Done"||st==="Cancelled") return false; return new Date(due+"T23:59:59")<new Date(); };
 
@@ -768,15 +774,22 @@ function dueColor(d,st) {
   return "var(--text-mid)";
 }
 function esc(s) { return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
-function statusBadge(st) { const sc=stColors(); const s=sc[st]||{bg:"rgba(0,0,0,.04)",fg:"var(--text-mid)"}; return `<span class="status-badge" style="background:${s.bg};color:${s.fg}">${st}</span>`; }
+function statusBadge(st, id) {
+  const sc=stColors(); const s=sc[st]||{bg:"rgba(0,0,0,.04)",fg:"var(--text-mid)"};
+  if(!id) return `<span class="status-badge" style="background:${s.bg};color:${s.fg}">${st}</span>`;
+  return `<span class="status-badge" style="background:${s.bg};color:${s.fg};cursor:pointer" title="Click to cycle status" onclick="event.stopPropagation();cycleStatus('${id}')">${st}</span>`;
+}
+function cycleStatus(id){
+  const a=state.actions.find(x=>x.id===id); if(!a) return;
+  const cyc=['Open','In progress','Done'];
+  const i=cyc.indexOf(a.status);
+  patch(id,{status:cyc[(i+1)%cyc.length] || 'Open'});
+}
 function projTag(p,sub) { const c=WS_COLORS[p]||"#94A3B8"; return `<span class="proj-tag" style="background:${c}18;color:${c}">${esc(p)}${sub?` <span style="opacity:.6">/ ${esc(subLabel(sub))}</span>`:""}</span>`; }
 function actionBtns(a) {
   return `<div class="action-btns"><button class="toggle-btn off" onclick="event.stopPropagation();archiveAction('${a.id}')" title="Archive" style="font-size:9px;opacity:.15;transition:opacity .1s" onmouseover="this.style.opacity=.7" onmouseout="this.style.opacity=.15">\u2715</button>
-    <button class="toggle-btn ${a.priority?'on-prio':'off'}" onclick="event.stopPropagation();patch('${a.id}',{priority:${!a.priority}})">\u2605</button>
-    <button class="toggle-btn ${a.todayFocus?'on-today':'off'}" onclick="event.stopPropagation();patch('${a.id}',{todayFocus:${!a.todayFocus}})">\u25C9</button>
-    <select onchange="event.stopPropagation();patch('${a.id}',{status:this.value})" onclick="event.stopPropagation()">
-      ${STATUSES.map(s=>`<option ${s===a.status?'selected':''}>${s}</option>`).join("")}
-    </select>
+    <button class="toggle-btn ${a.priority?'on-prio':'off'}" onclick="event.stopPropagation();patch('${a.id}',{priority:${!a.priority}})" title="Priority">\u2605</button>
+    <button class="toggle-btn ${a.todayFocus?'on-today':'off'}" onclick="event.stopPropagation();patch('${a.id}',{todayFocus:${!a.todayFocus}})" title="Today focus">\u25C9</button>
   </div>`;
 }
 
@@ -1569,6 +1582,9 @@ function renderReflect(){
   const log=state.diary.habitLog||{};
   const weights=state.diary.weights||{};
   const today=todayISO();
+  const tBru=todayBrussels();
+  // Effective status: explicit log wins; otherwise past days (Brussels time, after habit creation) auto-count as missed
+  const effStatus=(habit,d)=>{const v=(log[habit.id]||{})[d];if(v)return v;return (d<tBru && d>=(habit.createdAt||'2000-01-01'))?'auto':'';};
   const todayObj=new Date(today+'T12:00:00');
   
   // Compute today's status per habit
@@ -1729,12 +1745,14 @@ function renderReflect(){
       const isWeekend=dow===0||dow===6;
       const isFuture=iso>today;
       const isToday=iso===today;
+      const est=effStatus(habit,iso);
       let bg='transparent',content='';
-      if(st==='done'){bg='#5A9E7E';content='';}
-      else if(st==='missed'){bg='#CF6F6F';content='';}
-      else if(st==='skip'){bg='#CBD5E1';content='';}
+      if(est==='done'){bg='#5A9E7E';}
+      else if(est==='missed'){bg='#CF6F6F';}
+      else if(est==='auto'){bg='rgba(207,111,111,.32)';}
+      else if(est==='skip'){bg='#CBD5E1';}
       else if(isWeekend){bg='rgba(0,0,0,.03)';}
-      h+=`<td onclick="${isFuture?'':"habitToggle('"+habit.id+"','"+iso+"')"}" style="background:${bg};border:1px solid #fff;cursor:${isFuture?'default':'pointer'};${isToday?'outline:1.5px solid var(--accent);outline-offset:-1.5px':''};${isFuture?'opacity:.4':''};height:22px" title="${iso} - ${st||'pending'}"></td>`;
+      h+=`<td onclick="${isFuture?'':"habitToggle('"+habit.id+"','"+iso+"')"}" style="background:${bg};border:1px solid #fff;cursor:${isFuture?'default':'pointer'};${isToday?'outline:1.5px solid var(--accent);outline-offset:-1.5px':''};${isFuture?'opacity:.4':''};height:22px" title="${iso} \u00b7 ${est==='auto'?'missed (not logged)':(est||'pending')}"></td>`;
     });
     h+=`<td style="text-align:center;font-size:11px;border-left:1px solid var(--border-vis);padding:6px 8px;padding-left:12px;border-bottom:1px solid var(--border)">${monthlyGoal}<div style="font-size:8.5px;color:var(--text-light);font-weight:400">(${habit.weeklyGoal}/wk)</div></td>
       <td style="text-align:center;font-size:12px;font-weight:600;padding:6px 8px;border-bottom:1px solid var(--border)">${monthDone}</td>
@@ -1755,18 +1773,27 @@ function renderReflect(){
   // ── 3. SUCCESS RATE — overall passes/tries × 100 ──
   h+=`<div class="card" style="padding:18px;margin-bottom:14px">
     <div style="font-size:13px;font-weight:700;margin-bottom:4px">Success rate</div>
-    <div style="font-size:11px;color:var(--text-light);margin-bottom:14px">Passes / tries × 100 across all logged history. Skip-days don't count as a try.</div>`;
+    <div style="font-size:11px;color:var(--text-light);margin-bottom:14px">Passes / tries × 100 since each habit began. Unlogged past days count as missed (Brussels time). Skip-days don't count.</div>`;
   
   habits.forEach(habit=>{
     const hl=log[habit.id]||{};
-    let pass=0,tries=0;
-    Object.values(hl).forEach(st=>{
-      if(st==='done'){pass++;tries++;}
-      else if(st==='missed'){tries++;}
-    });
+    let pass=0,tries=0,skipCnt=0;
+    // Walk every day from habit creation to yesterday (Brussels); unlogged = missed
+    const startD=new Date((habit.createdAt||'2026-01-01')+'T12:00:00');
+    const endD=new Date(tBru+'T12:00:00');
+    for(let d=new Date(startD); d<endD; d.setDate(d.getDate()+1)){
+      const ds=d.toISOString().slice(0,10);
+      const v=hl[ds];
+      if(v==='done'){pass++;tries++;}
+      else if(v==='skip'){skipCnt++;}
+      else {tries++;} // explicit missed OR unlogged past day
+    }
+    // Today counts only if explicitly logged
+    const tv=hl[tBru];
+    if(tv==='done'){pass++;tries++;} else if(tv==='missed'){tries++;} else if(tv==='skip'){skipCnt++;}
     const rate=tries>0?Math.round(pass/tries*100):0;
     const rateColor=rate>=80?'#5A9E7E':rate>=50?'#D4A04A':'#CF6F6F';
-    const skipCount=Object.values(hl).filter(s=>s==='skip').length;
+    const skipCount=skipCnt;
     
     h+=`<div style="margin-bottom:10px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
@@ -1928,7 +1955,7 @@ function renderDiary(){
     const e=state.diary.entries[d];
     let avg=0;
     if(e){const ss=getSMAllAreas().map(a=>e[a]&&e[a].score?e[a].score:0).filter(s=>s>0);avg=ss.length?ss.reduce((x,y)=>x+y,0)/ss.length:0;}
-    const col=avg===0?'rgba(255,255,255,.09)':avg<3.5?'#CF6F6F':avg<6.5?'#D4A04A':'#5A9E7E';
+    const col=avg===0?(d<todayISO()?'rgba(207,111,111,.30)':'rgba(255,255,255,.09)'):avg<3.5?'#CF6F6F':avg<6.5?'#D4A04A':'#5A9E7E';
     const isT=d===todayISO();const isView=d===td;
     const label=new Date(d+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
     const clickTarget=isT?'null':`'${d}'`;
@@ -1994,6 +2021,9 @@ function renderDiary(){
       metaBits.push(`<button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-light);font-family:var(--font);text-decoration:underline;padding:0" onclick="var bd=prompt('Enter birthday (YYYY-MM-DD):');if(bd){state.diary.birthday=bd;saveState();render();}">set birthday</button>`);
     }
     metaBits.push(`<span><b style="color:var(--text)">${filled.length}</b> entries</span>`);
+    const _lastFill=filled.length?filled[filled.length-1]:null;
+    const _gap=_lastFill?Math.round((new Date(todayISO()+'T12:00:00')-new Date(_lastFill+'T12:00:00'))/864e5):0;
+    if(_gap>1) metaBits.push(`<span style="color:var(--red);font-weight:600">${_gap}d since last entry</span>`);
 
     // Reviews: year + month pills (only months with data)
     let reviewBits='';
@@ -2270,20 +2300,11 @@ function renderDiary(){
   // ── INSIGHTS ──
     // Contribution graph
   if(hideMap['sm-contrib']){h+=smSectionToggle('sm-contrib','365-Day Activity');}
-  else{h+='<div class="card" style="padding:12px;margin-bottom:12px;overflow-x:auto"><div style="display:flex;align-items:center;font-size:11px;font-weight:700;color:var(--text-mid);margin-bottom:6px">Activity'+smHideBtn('sm-contrib')+'</div>'+smContributionGraph()+'</div>';}
+  else{h+='<div class="card" style="padding:16px 18px;margin-bottom:14px;overflow-x:auto"><div style="display:flex;align-items:center;font-size:var(--fs-sm);font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">365-day activity'+smHideBtn('sm-contrib')+'</div>'+smContributionGraph()+'</div>';}
   
-  // Photo
-  if(!hideMap['sm-photo']){
-  const photo=diaryPhoto(td);
-  h+=`<div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
-    ${photo?'<img src="'+photo+'" style="width:60px;height:60px;border-radius:8px;object-fit:cover;border:2px solid var(--border)">':'<div style="width:60px;height:60px;border-radius:8px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:20px;opacity:.3">cam</div>'}
-    <div><button class="btn btn-default" style="font-size:10px;padding:4px 10px" onclick="capturePhoto('${td}')">${ICON.camera} Photo</button>
-    <div style="font-size:9px;color:var(--text-light);margin-top:2px">Daily snapshot</div></div>
-  </div>`;
-  } else { h+=smSectionToggle('sm-photo','Photo'); }
-
-  // Report + digest buttons
-  h+='<div style="display:flex;gap:6px;margin-bottom:12px"><button class="btn btn-default" style="font-size:10px;padding:6px 12px" onclick="generateMonthlyReport()">Monthly Report</button><button class="btn btn-default" style="font-size:10px;padding:6px 12px" onclick="emailDigest()">Email Digest</button></div>';
+  // (Daily snapshot / photo removed per user request)
+  // Report + digest — quiet text links, not buttons
+  h+='<div style="display:flex;gap:14px;margin-bottom:12px;padding:0 2px"><button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-light);font-family:var(--font);text-decoration:underline;text-underline-offset:2px;padding:0" onclick="generateMonthlyReport()">Monthly report</button><button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-light);font-family:var(--font);text-decoration:underline;text-underline-offset:2px;padding:0" onclick="emailDigest()">Email digest</button></div>';
 
   // 7 Habits lens
   const habits7map=[
@@ -2316,35 +2337,24 @@ function renderDiary(){
     const avg=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):'—';
     const pct=avg!=='—'?parseFloat(avg)*10:0;
     const c=habits7content[hi]||{};
-    const borderColor=pct>60?'#5A9E7E':pct>30?'#D4A04A':'var(--border-vis)';
-    h+=`<div style="padding:12px;border-radius:8px;background:var(--accent-soft);border-left:3px solid ${borderColor};display:flex;flex-direction:column;gap:6px">
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="width:28px;height:28px;border-radius:14px;background:var(--card);border:2px solid ${borderColor};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;color:var(--text)">${avg}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:11.5px;font-weight:700;color:var(--text)">${hb.habit}</div>
-          <div style="font-size:9.5px;color:var(--text-mid);font-style:italic">${hb.principle}</div>
-        </div>
+    const scoreCol=avg==='\u2014'?'var(--text-light)':pct>60?'#5A9E7E':pct>30?'#D4A04A':'#CF6F6F';
+    h+=`<div style="padding:14px 15px;border-radius:var(--radius-sm);background:var(--card);border:1px solid var(--border);display:flex;flex-direction:column;gap:7px">
+      <div style="display:flex;align-items:baseline;gap:8px">
+        <span style="font-size:12px;font-weight:700;letter-spacing:-.01em">${hb.habit}</span>
+        ${avg!=='\u2014'?`<span style="margin-left:auto;font-size:14px;font-weight:700;color:${scoreCol};font-variant-numeric:tabular-nums">${avg}</span>`:'<span style="margin-left:auto"></span>'}
       </div>
-      <div style="font-size:10.5px;color:var(--text-mid);line-height:1.55;border-top:1px solid var(--border);padding-top:6px;margin-top:2px">${c.idea||''}</div>
-      ${c.outcome?`<div style="font-size:10px;color:var(--text-light);line-height:1.5"><span style="color:#5A9E7E;font-weight:700">→</span> ${c.outcome}</div>`:''}
-      ${c.action?`<div style="font-size:10px;color:#5B8DEF;background:rgba(91,141,239,.06);padding:5px 7px;border-radius:4px;line-height:1.5"><b>Today:</b> ${c.action}</div>`:''}
-      <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:2px">
-        ${hb.areas.map(a=>{const ae=entry[a]||{};const s=ae.score||0;const dotC=s===0?'var(--border-vis)':s<=3?'#CF6F6F':s<=6?'#D4A04A':'#5A9E7E';return `<span style="font-size:8.5px;background:var(--card);color:var(--text-mid);padding:2px 5px;border-radius:3px;border:1px solid var(--border);display:inline-flex;align-items:center;gap:3px"><span style="width:6px;height:6px;border-radius:50%;background:${dotC};display:inline-block"></span>${a}${s?` ${s}`:''}</span>`}).join('')}
+      <div style="font-size:9.5px;color:var(--text-light);font-style:italic;margin-top:-5px">${hb.principle}</div>
+      <div style="font-size:10.5px;color:var(--text-mid);line-height:1.6">${c.idea||''}</div>
+      ${c.action?`<div style="font-size:10px;color:var(--text-mid);line-height:1.55;border-left:2px solid var(--accent);padding-left:9px"><b style="color:var(--accent);font-weight:600">Today</b> \u2014 ${c.action}</div>`:''}
+      <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:1px">
+        ${hb.areas.map(a=>{const ae=entry[a]||{};const s=ae.score||0;const dotC=s===0?'var(--border-vis)':s<=3?'#CF6F6F':s<=6?'#D4A04A':'#5A9E7E';return `<span style="font-size:8.5px;color:var(--text-light);padding:2px 7px;border-radius:20px;border:1px solid var(--border);display:inline-flex;align-items:center;gap:4px"><span style="width:5px;height:5px;border-radius:50%;background:${dotC};display:inline-block"></span>${a}${s?` <b style="color:var(--text-mid)">${s}</b>`:''}</span>`}).join('')}
       </div>
     </div>`;
   });
   h+='</div></div>';
   } // end 7 habits else
 
-  const daysSinceLast=filled.length?Math.round((new Date()-new Date(filled[filled.length-1]))/864e5):999;
-  h+=`<div class="card" style="padding:14px;margin-bottom:12px;border:1px solid #8B5CF620;background:linear-gradient(135deg,#8B5CF606,transparent)">
-    <div style="font-size:13px;font-weight:700;color:#8B5CF6;margin-bottom:10px"> Insights</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;color:var(--text-mid);line-height:1.6">`;
-  if(daysSinceLast>3) h+=`<div style="padding:8px;border-radius:8px;background:var(--card);border:1px solid var(--border)"><b style="color:var(--danger)">${daysSinceLast}d gap</b> \u2014 Never miss two days in a row.</div>`;
-  h+=`<div style="padding:8px;border-radius:8px;background:var(--card);border:1px solid var(--border)"><b style="color:var(--accent)">Quick Score:</b> Tap  above \u2014 just scores in 30s.</div>`;
-  h+=`<div style="padding:8px;border-radius:8px;background:var(--card);border:1px solid var(--border)"><b style="color:#5A9E7E">Anchor:</b> After Isha prayer. 2 minutes.</div>`;
-  h+=`<div style="padding:8px;border-radius:8px;background:var(--card);border:1px solid var(--border)"><b style="color:#8B72C4">Record:</b> 34-day streak (Jan 2019).</div>`;
-  h+=`</div></div>`;
+  // (Insights section removed per user request)
 
   h+=`</div>`;
   return h;
@@ -3104,29 +3114,30 @@ function smContributionGraph(){
   const maxI=Math.max(...Object.values(intensity),1);
   const end=new Date();const start=new Date(end);start.setDate(start.getDate()-364);
   start.setDate(start.getDate()-start.getDay());
-  const cellSize=8,gap=1;
+  const cellSize=13,gap=2.5;
   const weeks=Math.ceil(365/7)+1;
-  const w=weeks*(cellSize+gap)+24;
-  let svg=`<svg width="${w}" height="74" viewBox="0 0 ${w} 74" style="display:block;width:100%">`;
+  const w=weeks*(cellSize+gap)+28;
+  const hgt=7*(cellSize+gap)+18;
+  let svg=`<svg width="${w}" height="${hgt}" viewBox="0 0 ${w} ${hgt}" style="display:block;min-width:${w}px">`;
   let week=0;
   const d=new Date(start);
   const monthLabels=[];let lastMonth=-1;
-  const colors=['var(--border)','rgba(0,113,227,.15)','rgba(0,113,227,.3)','rgba(0,113,227,.5)','rgba(0,113,227,.75)'];
+  const colors=['var(--border)','rgba(110,102,200,.2)','rgba(110,102,200,.4)','rgba(110,102,200,.62)','rgba(110,102,200,.88)'];
   let cellIdx=0;
   while(d<=end){
     const dow=d.getDay();
     const ds=d.toISOString().slice(0,10);
     const val=intensity[ds]||0;
     const lvl=val===0?0:Math.ceil((val/maxI)*4);
-    const x=week*(cellSize+gap)+22;
-    const y=dow*(cellSize+gap)+12;
-    svg+=`<rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" rx="1.5" fill="${colors[lvl]}" style="animation:fadeIn .3s ${cellIdx*2}ms both;cursor:pointer" onclick="state.diary.viewDate='${ds}';render()"><title>${ds}: ${val} areas</title></rect>`;
+    const x=week*(cellSize+gap)+26;
+    const y=dow*(cellSize+gap)+15;
+    svg+=`<rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" rx="3" fill="${colors[lvl]}" style="animation:fadeIn .3s ${cellIdx*2}ms both;cursor:pointer" onclick="state.diary.viewDate='${ds}';render()"><title>${ds}: ${val} areas</title></rect>`;
     if(d.getMonth()!==lastMonth){monthLabels.push({x,label:d.toLocaleDateString('en',{month:'short'})});lastMonth=d.getMonth();}
     if(dow===6)week++;
     d.setDate(d.getDate()+1);
     cellIdx++;
   }
-  monthLabels.forEach(m=>{svg+=`<text x="${m.x}" y="9" font-size="7" fill="var(--text-light)" font-family="var(--font)">${m.label}</text>`;});
+  monthLabels.forEach(m=>{svg+=`<text x="${m.x}" y="10" font-size="9" fill="var(--text-light)" font-family="var(--font)" font-weight="600">${m.label}</text>`;});
   svg+=`</svg>`;
   return svg;
 }
@@ -3573,23 +3584,21 @@ function renderToday(s) {
   const dateStr = new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
 
   let h = pomodoroWidget();
-  h += `<div class="fade-in"><div class="page-header">
-    <div><h1>Today</h1><div class="subtitle">
-    <div class="actions">
-      ${!pomodoroState.running?`<button class="btn btn-default" style="font-size:11px;padding:5px 12px;display:flex;align-items:center;gap:5px" onclick="pomodoroStart()">${ICON.play} Focus 25m</button>`:''}
-      </div>
+  h += `<div class="fade-in">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><h1>Today</h1><span style="font-size:var(--fs-sm);color:var(--text-light)">${dateStr}</span></div>
+    ${!pomodoroState.running?`<button class="btn btn-default" style="font-size:11px;padding:5px 12px;display:flex;align-items:center;gap:5px" onclick="pomodoroStart()">${ICON.play} Focus 25m</button>`:''}
   </div>`;
   h += quickAdd({todayFocus:true});
-  h += `<div><p style="font-size:12px;color:var(--text-light);margin:2px 0 16px">${dateStr}</p></div>`;
   fetchPrayerTimes().then(t=>{const el=document.getElementById("prayer-slot");if(el&&t)el.innerHTML=prayerWidget(t);});
   h += `<div id="prayer-slot"></div>`;
 
   if (!focused.length && !dueToday.length) {
-    h += `<div style="text-align:center;padding:60px 20px;color:var(--text-light)"><div style="font-size:15px;font-weight:600">Nothing for today</div><div style="font-size:12px;margin-top:4px">Mark actions with \u25C9 Today Focus</div></div>`;
+    h += emptyState('Nothing for today', 'Mark actions with \u25C9 to bring them into focus, or add one above.', '\u25C9');
   }
 
   if (focused.length) {
-    h += `<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:500;color:var(--accent);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">\u25C9 Focus (${focused.length})</div>`;
+    h += `<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">\u25C9 Focus (${focused.length})</div>`;
     focused.forEach(a => {
       const sel = state.selected.has(a.id);
       h += `<div class="card card-hover" onclick="if(event.ctrlKey||event.metaKey||event.shiftKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="padding:10px 14px;margin-bottom:6px;cursor:pointer;display:flex;gap:8px;align-items:center;border-left:3px solid var(--accent);${sel?'background:var(--accent-soft)':''}">
@@ -3604,7 +3613,7 @@ function renderToday(s) {
   }
 
   if (dueToday.length) {
-    h += `<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:500;color:var(--danger);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em"> Due today (${dueToday.length})</div>`;
+    h += `<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:600;color:var(--red);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">Due today (${dueToday.length})</div>`;
     dueToday.forEach(a => {
       const sel = state.selected.has(a.id);
       h += `<div class="card card-hover" onclick="if(event.ctrlKey||event.metaKey||event.shiftKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="padding:10px 14px;margin-bottom:6px;cursor:pointer;display:flex;gap:8px;align-items:center;border-left:3px solid var(--danger);${sel?'background:var(--accent-soft)':''}">
@@ -3715,27 +3724,31 @@ function renderInbox(s) {
     if (!a.due&&!a.ongoing&&!a.recur) reasons.push("no due date");
     if (!a.measurable) reasons.push("no outcome");
     const sel = state.selected.has(a.id);
-    h += `<div class="card card-hover" onclick="if(event.ctrlKey||event.metaKey||event.shiftKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="padding:12px 16px;margin-bottom:6px;cursor:pointer;display:flex;gap:10px;align-items:flex-start;border-left:2px solid ${sel?'var(--accent)':'var(--accent)'};${sel?'background:var(--accent-soft)':''};animation:smSlideUp .25s cubic-bezier(.16,1,.3,1) both;animation-delay:${i*30}ms">
-      <input type="checkbox" ${sel?'checked':''} onclick="event.stopPropagation();toggleSelect('${a.id}')" style="margin-top:3px;flex-shrink:0">
-      <div style="flex:1"><div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-        <span style="font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text-mid)">${esc(a.num)}</span>
-        <span style="font-size:13px;font-weight:600">${esc(a.action)}</span></div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-          <span style="font-size:11.5px;color:var(--text-mid)">${esc(a.owner)}</span>${projTag(a.project)}</div>
-        <div style="display:flex;gap:4px;margin-top:4px">${reasons.map(r=>`<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:rgba(255,69,58,.06);color:var(--danger);font-weight:500">${r}</span>`).join("")}</div>
+    h += `<div class="card card-hover" onclick="if(event.ctrlKey||event.metaKey||event.shiftKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="padding:11px 14px;margin-bottom:6px;cursor:pointer;${sel?'background:var(--accent-soft);border-color:var(--accent)':''};animation:smSlideUp .22s cubic-bezier(.16,1,.3,1) both;animation-delay:${Math.min(i,12)*24}ms">
+      <div style="display:flex;gap:9px;align-items:flex-start">
+        <input type="checkbox" ${sel?'checked':''} onclick="event.stopPropagation();toggleSelect('${a.id}')" style="margin-top:2px;flex-shrink:0">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;line-height:1.35">${esc(a.action)}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px;font-size:10.5px;color:var(--text-light)">
+            <span style="font-family:var(--mono);font-size:9.5px;opacity:.7">${esc(a.num)}</span>
+            <span style="color:var(--text-mid)">${esc(a.owner)}</span>
+            ${projTag(a.project)}
+            ${reasons.map(r=>`<span style="color:var(--red);opacity:.85;font-size:9.5px;font-weight:500">\u00b7 ${r}</span>`).join("")}
+          </div>
+        </div>
+        ${actionBtns(a)}
       </div>
-      <div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0" onclick="event.stopPropagation()">
-        <select class="select" style="font-size:10px;width:130px" onchange="if(this.value==='__new__'){var n=prompt('New project name:');if(n&&n.trim()){patch('${a.id}',{project:n.trim()});}else{this.value='${esc(a.project)}';}return;}patch('${a.id}',{project:this.value})">
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:9px;padding-top:9px;border-top:1px solid var(--border)" onclick="event.stopPropagation()">
+        <select class="select" style="font-size:10px;padding:3px 7px;max-width:170px" onchange="if(this.value==='__new__'){var n=prompt('New project name:');if(n&&n.trim()){patch('${a.id}',{project:n.trim()});}else{this.value='${esc(a.project)}';}return;}patch('${a.id}',{project:this.value})">
           ${getProjects().map(p=>`<option ${p===a.project?'selected':''}>${esc(p)}</option>`).join("")}
           <option value="__new__">+ New project...</option>
         </select>
-        <input type="date" class="input" style="font-size:10px;width:130px" value="${a.due||''}" onchange="patch('${a.id}',{due:this.value})">
-        <div style="display:flex;gap:5px;align-items:center;margin-top:1px">
-          <button style="padding:3px 9px;font-size:10px;border-radius:6px;border:1px solid var(--border-vis);background:var(--card);color:var(--text-mid);cursor:pointer;font-family:var(--font);white-space:nowrap;transition:all .1s" onmouseover="this.style.borderColor='#5B8DEF';this.style.color='#5B8DEF'" onmouseout="this.style.borderColor='var(--border-vis)';this.style.color='var(--text-mid)'" onclick="event.stopPropagation();patch('${a.id}',{ongoing:true});toast('Marked ongoing — out of inbox')" title="No due date needed (ongoing / follow-up)">\u221E No due needed</button>
-          <button style="padding:3px 9px;font-size:10px;border-radius:6px;border:1px solid var(--border-vis);background:var(--card);color:var(--text-mid);cursor:pointer;font-family:var(--font);white-space:nowrap;transition:all .1s" onmouseover="this.style.borderColor='#8B5CF6';this.style.color='#8B5CF6'" onmouseout="this.style.borderColor='var(--border-vis)';this.style.color='var(--text-mid)'" onclick="event.stopPropagation();showRecurMenu(event,'${a.id}')" title="Set a recurring schedule">\u21BB Recurring</button>
-        </div>
-        ${actionBtns(a)}
-      </div></div>`;
+        <input type="date" class="input" style="font-size:10px;padding:3px 7px" value="${a.due||''}" onchange="patch('${a.id}',{due:this.value})">
+        <span style="flex:1"></span>
+        <button style="padding:3px 9px;font-size:9.5px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text-light);cursor:pointer;font-family:var(--font);white-space:nowrap;transition:all .1s" onmouseover="this.style.borderColor='#5B8DEF';this.style.color='#5B8DEF'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-light)'" onclick="event.stopPropagation();patch('${a.id}',{ongoing:true});toast('Marked ongoing \u2014 out of inbox')" title="No due date needed (ongoing / follow-up)">\u221E no due needed</button>
+        <button style="padding:3px 9px;font-size:9.5px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text-light);cursor:pointer;font-family:var(--font);white-space:nowrap;transition:all .1s" onmouseover="this.style.borderColor='#8B72C4';this.style.color='#8B72C4'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-light)'" onclick="event.stopPropagation();showRecurMenu(event,'${a.id}')" title="Set a recurring schedule">\u21BB recurring</button>
+      </div>
+    </div>`;
   });
   h += `</div>`;
   return h;
@@ -4011,8 +4024,10 @@ function renderActions(s) {
   if (state.search) { const q=state.search.toLowerCase(); filtered=filtered.filter(a=>(a.action+a.num+a.owner).toLowerCase().includes(q)); }
 
   let h = quickAdd() + `<div class="fade-in"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-    <div><h1>Actions</h1><div class="subtitle">${filtered.length} of ${state.actions.length}</div></div>
-    <div class="actions"><button class="btn btn-primary" onclick="openAddModal()">+ Add</button><button class="btn btn-default" onclick="exportJSON()">JSON</button><button class="btn btn-default" onclick="exportMD()">MD</button></div></div>
+    <div style="display:flex;align-items:baseline;gap:12px"><h1>Actions</h1><span class="subtitle" style="margin:0">${filtered.length} of ${state.actions.length}</span>
+      <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px" onclick="exportJSON()">JSON</button>
+      <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px" onclick="exportMD()">MD</button></div>
+    <button class="btn btn-primary" onclick="openAddModal()">+ Add</button></div>
     <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">
       <input class="input" id="search-input" style="flex:1;min-width:120px" placeholder="Search... (press /)" value="${esc(state.search)}" oninput="state.search=this.value;renderDebounced()">
       <button class="btn ${state.fPrio?'btn-primary':'btn-default'}" onclick="state.fPrio=!state.fPrio;render()">\u2605 Priority</button>
@@ -4030,6 +4045,8 @@ function renderActions(s) {
         <option value="today" ${state.fDate==="today"?"selected":""}>Added today</option>
         <option value="week" ${state.fDate==="week"?"selected":""}>This week</option>
       </select>
+      <span style="width:1px;height:20px;background:var(--border-vis);margin:0 2px"></span>
+      ${[['owner','Owner'],['added','Added'],['due','Due'],['status','Status'],['project','Project']].map(([k,l])=>{const on=(state.colVis||{})[k]!==false;return `<button onclick="state.colVis['${k}']=!state.colVis['${k}'];savePrefs();render()" title="Show/hide ${l} column" style="padding:3px 9px;border-radius:20px;border:1px solid ${on?'var(--border-vis)':'var(--border)'};background:none;color:${on?'var(--text-mid)':'var(--text-light)'};font-size:9.5px;cursor:pointer;font-family:var(--font);opacity:${on?'1':'.55'};text-decoration:${on?'none':'line-through'}">${l}</button>`;}).join('')}
     </div>${bulkBar()}`;
 
   // Store filtered IDs for select-all
@@ -4038,12 +4055,7 @@ function renderActions(s) {
     h += `<div style="text-align:center;padding:40px;color:var(--text-light)">No actions match filters</div>`;
   } else {
     const cv=state.colVis||{};
-    const colToggleBtn=`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px;align-items:center">
-      <span style="font-size:10px;color:var(--text-light);margin-right:4px">Columns:</span>
-      ${[['owner','Owner'],['added','Added'],['due','Due'],['status','Status'],['project','Project']].map(([k,l])=>`<button onclick="state.colVis['${k}']=!state.colVis['${k}'];savePrefs();render()" style="padding:2px 8px;border-radius:12px;border:1px solid var(--border-vis);background:${cv[k]!==false?'var(--accent)':'var(--card)'};color:${cv[k]!==false?'#fff':'var(--text-mid)'};font-size:10px;cursor:pointer;font-family:var(--font)">${l}</button>`).join('')}
-    </div>`;
-    h += colToggleBtn;
-    h += `<div class="card" style="overflow:auto;border-radius:8px"><table><thead><tr>
+    h += `<div class="card" style="overflow:auto;border-radius:var(--radius-sm)"><table><thead><tr>
       <th style="width:28px"><input type="checkbox" onchange="selectAllFiltered(this.checked)"></th>
       <th>Action</th>
       ${cv.owner!==false?'<th>Owner</th>':''}
@@ -4064,7 +4076,7 @@ function renderActions(s) {
         ${cv.owner!==false?`<td><span style="font-weight:600;font-size:12px">${esc(a.owner)}</span></td>`:''}
         ${cv.added!==false?`<td><span style="font-size:11px;color:var(--text-light)">${a.createdAt?fmtDate(a.createdAt):'—'}</span></td>`:''}
         ${cv.due!==false?`<td>${a.due?`<span style="color:${dueColor(a.due,a.status)};font-weight:${isOverdue(a.due,a.status)?700:500}">${fmtDate(a.due)}</span>`:''}</td>`:''}
-        ${cv.status!==false?`<td>${statusBadge(a.status)}</td>`:''}
+        ${cv.status!==false?`<td>${statusBadge(a.status,a.id)}</td>`:''}
         ${cv.project!==false?`<td>${projTag(a.project,a.subproject)}</td>`:''}
         <td onclick="event.stopPropagation()">${actionBtns(a)}</td></tr>`;
     });
@@ -4918,7 +4930,7 @@ STEP 4: Create API Key
 STEP 5: Paste into this file
   1. Open this HTML file in a text editor
   2. Find these lines near the top of the <script>:
-     const APP_VERSION = 'v7.3';
+     const APP_VERSION = 'v7.4';
 console.log('%c Action Tracker ' + APP_VERSION, 'background:#4A7BF7;color:#fff;padding:4px 8px;border-radius:4px;font-weight:bold');
 
 // ═══ MINIMAL SVG ICONS ═══
