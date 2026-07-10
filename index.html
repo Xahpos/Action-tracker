@@ -13,17 +13,40 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..800&display=swap');
 
 :root {
-  --bg: #F5F5F7; --sidebar-bg: #1D1D1F;
-  --accent: #0071E3; --accent-soft: rgba(0,113,227,.06);
-  --danger: #FF453A; --success: #30D158; --warning: #FFD60A;
-  --text: #1D1D1F; --text-mid: #86868B; --text-light: #AEAEB2;
+  /* ── Surface ── */
+  --bg: #F6F5F8; --sidebar-bg: #26233E;
   --card: rgba(255,255,255,.72); --card-solid: #fff;
-  --border: rgba(0,0,0,.04); --border-vis: rgba(0,0,0,.08);
-  --radius: 14px; --radius-sm: 10px; --radius-xs: 8px;
+  --border: rgba(38,35,62,.05); --border-vis: rgba(38,35,62,.1);
+
+  /* ── Brand: one accent — the Companion violet ── */
+  --accent: #6E66C8; --accent-soft: rgba(110,102,200,.07);
+  --accent-strong: #5B53B8;
+
+  /* ── Semantic: the two lines + support ── */
+  --green: #5A9E7E;   /* green line — intrinsic value, growth, done */
+  --amber: #D4A04A;   /* attention, in-between */
+  --red:   #D96B6B;   /* overdue, danger — muted, not alarm-red */
+  --blue:  #5B8DEF;   /* informational */
+  --danger: var(--red); --success: var(--green); --warning: var(--amber);
+
+  /* ── Text ── */
+  --text: #232134; --text-mid: #7B7791; --text-light: #A9A6BC;
+
+  /* ── Shape scale (use ONLY these) ── */
+  --radius: 14px;      /* cards, modals */
+  --radius-sm: 10px;   /* inner cards, headers */
+  --radius-xs: 7px;    /* buttons, inputs, tags */
+
+  /* ── Type scale (use ONLY these) ── */
+  --fs-2xs: 9px; --fs-xs: 10px; --fs-sm: 11.5px; --fs-base: 13px; --fs-md: 15px; --fs-lg: 17px; --fs-xl: 21px;
+
+  /* ── Space scale ── */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 28px;
+
   --blur: blur(20px) saturate(180%);
-  --shadow-sm: 0 0.5px 1px rgba(0,0,0,.02);
-  --shadow-md: 0 2px 8px rgba(0,0,0,.03), 0 0.5px 1px rgba(0,0,0,.02);
-  --shadow-lg: 0 8px 28px rgba(0,0,0,.06);
+  --shadow-sm: 0 0.5px 1px rgba(35,33,52,.03);
+  --shadow-md: 0 2px 10px rgba(35,33,52,.05), 0 0.5px 1px rgba(35,33,52,.03);
+  --shadow-lg: 0 10px 34px rgba(35,33,52,.09);
   --font: 'Inter', -apple-system, system-ui, sans-serif;
   --mono: ui-monospace, 'SF Mono', monospace;
 }
@@ -40,7 +63,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:rgba(0,0,0,.08);border-radius:3px}
-input:focus,select:focus,textarea:focus{border-color:var(--accent)!important;box-shadow:0 0 0 3px rgba(0,113,227,.08);outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)!important;box-shadow:0 0 0 3px rgba(110,102,200,.1);outline:none}
 
 /* ═ SIDEBAR ═ */
 .sidebar{
@@ -78,8 +101,11 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)!important;box
 }
 .sidebar nav button.active::before{
   content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);
-  width:2.5px;height:14px;background:#7C6FC4;border-radius:0 2px 2px 0;
+  width:2.5px;height:14px;background:var(--accent);border-radius:0 2px 2px 0;
 }
+/* Green-line tabs: personal development gets the green identity */
+.sidebar nav button.active[data-tab="reflect"]::before,
+.sidebar nav button.active[data-tab="diary"]::before{background:var(--green)}
 .sidebar nav button .badge{
   margin-left:auto;font-size:9px;font-weight:600;padding:1px 6px;
   border-radius:8px;color:#fff;
@@ -93,11 +119,11 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)!important;box
   background:rgba(255,255,255,.25);
 }
 .sync-bar .sync-dot{width:5px;height:5px;border-radius:3px}
-.sync-bar .sync-dot.synced,.sync-bar .sync-dot.cloud{background:#30D158}
-.sync-bar .sync-dot.local{background:#FFD60A}
+.sync-bar .sync-dot.synced,.sync-bar .sync-dot.cloud{background:#5A9E7E}
+.sync-bar .sync-dot.local{background:#D4A04A}
 .sync-status{font-size:10px;display:flex;align-items:center;gap:4px;color:#6E6B8A}
 .sync-status .dot{width:5px;height:5px;border-radius:3px}
-.sync-status .dot.cloud{background:#30D158}.sync-status .dot.local{background:#FFD60A}.sync-status .dot.offline{background:#FF453A}
+.sync-status .dot.cloud{background:#5A9E7E}.sync-status .dot.local{background:#D4A04A}.sync-status .dot.offline{background:#D96B6B}
 
 /* Dark sidebar */
 body.dark{background:linear-gradient(160deg,#1E1B2E 0%,#252240 40%,#1E1B30 100%)}
@@ -118,7 +144,7 @@ body.dark .sync-status{color:rgba(160,155,190,.4)}
 
 /* ═ MAIN ═ */
 main{flex:1;padding:36px 44px;overflow:auto}
-h1{font-size:22px;font-weight:600;letter-spacing:-.03em}
+h1{font-size:var(--fs-xl);font-weight:600;letter-spacing:-.025em}
 
 /* ═ CARDS ═ */
 .card{background:var(--card);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow-sm);transition:all .15s ease}
@@ -129,26 +155,27 @@ h1{font-size:22px;font-weight:600;letter-spacing:-.03em}
 textarea.input{resize:vertical}
 
 /* ═ BUTTONS ═ */
-.btn{padding:6px 12px;border-radius:var(--radius-xs);border:none;cursor:pointer;font-size:12px;font-weight:500;font-family:var(--font);transition:all .1s;letter-spacing:-.01em}
+.btn{padding:6px 13px;border-radius:var(--radius-xs);border:none;cursor:pointer;font-size:12px;font-weight:500;font-family:var(--font);transition:all .12s cubic-bezier(.16,1,.3,1);letter-spacing:-.01em;line-height:1.4}
 .btn:active{transform:scale(.97)}
-.btn-primary{background:var(--accent);color:#fff}
-.btn-primary:hover{filter:brightness(1.06)}
-.btn-danger{background:var(--danger);color:#fff}
-.btn-success{background:var(--success);color:#fff}
-.btn-default{background:rgba(0,0,0,.03);color:var(--text-mid)}
-.btn-default:hover{background:rgba(0,0,0,.06)}
+.btn-primary{background:var(--accent);color:#fff;box-shadow:0 1px 3px rgba(110,102,200,.25)}
+.btn-primary:hover{background:var(--accent-strong)}
+.btn-danger{background:transparent;color:var(--red);border:1px solid rgba(217,107,107,.35)}
+.btn-danger:hover{background:rgba(217,107,107,.08);border-color:var(--red)}
+.btn-success{background:var(--green);color:#fff}
+.btn-default{background:rgba(38,35,62,.04);color:var(--text-mid);border:1px solid var(--border)}
+.btn-default:hover{background:rgba(38,35,62,.07);color:var(--text)}
 .btn-ghost{background:transparent;color:var(--text-light);font-weight:400}
-.btn-ghost:hover{color:var(--text-mid)}
+.btn-ghost:hover{color:var(--text);background:rgba(38,35,62,.03)}
 
 /* ═ BADGES ═ */
-.status-badge{display:inline-flex;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:600;white-space:nowrap}
-.proj-tag{display:inline-flex;padding:2px 6px;border-radius:4px;font-size:9.5px;font-weight:500;white-space:nowrap}
+.status-badge{display:inline-flex;align-items:center;padding:2.5px 8px;border-radius:20px;font-size:var(--fs-xs);font-weight:600;white-space:nowrap;letter-spacing:.01em}
+.proj-tag{display:inline-flex;align-items:center;padding:2.5px 8px;border-radius:20px;font-size:var(--fs-2xs);font-weight:500;white-space:nowrap;letter-spacing:.01em}
 
 /* ═ ACTIONS ═ */
 .action-btns{display:flex;gap:2px;align-items:center;flex-shrink:0}
 .action-btns .toggle-btn{background:none;border:none;cursor:pointer;font-size:12px;padding:2px;line-height:1;transition:all .1s;border-radius:4px;color:#D1D1D6}
 .action-btns .toggle-btn:hover{background:rgba(0,0,0,.03)}
-.action-btns .toggle-btn.on-prio{color:#AF52DE}
+.action-btns .toggle-btn.on-prio{color:#B478C8}
 .action-btns .toggle-btn.on-today{color:var(--accent)}
 .action-btns .toggle-btn.off{color:#D1D1D6}
 .action-btns select{padding:2px 4px;border-radius:5px;border:1px solid var(--border-vis);font-size:10px;font-family:var(--font);background:transparent;color:var(--text-mid);width:72px}
@@ -162,7 +189,7 @@ tr:hover{background:var(--accent-soft)!important}
 
 /* ═ MODAL ═ */
 .modal-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.25);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
-.modal{background:var(--card-solid);border-radius:18px;padding:24px;width:92%;max-width:520px;max-height:85vh;overflow:auto;box-shadow:0 24px 80px rgba(0,0,0,.1);animation:scaleIn .2s cubic-bezier(.16,1,.3,1)}
+.modal{background:var(--card-solid);border-radius:16px;padding:24px;width:92%;max-width:520px;max-height:85vh;overflow:auto;box-shadow:0 24px 80px rgba(0,0,0,.1);animation:scaleIn .2s cubic-bezier(.16,1,.3,1)}
 
 /* ═ TOAST ═ */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--sidebar-bg);color:rgba(255,255,255,.9);padding:9px 22px;border-radius:12px;font-size:13px;font-weight:500;z-index:9999;animation:scaleIn .2s ease-out;box-shadow:0 8px 32px rgba(0,0,0,.18)}
@@ -177,7 +204,7 @@ tr:hover{background:var(--accent-soft)!important}
 .gauth-skip{background:none;border:none;color:var(--text-light);font-size:12px;cursor:pointer;font-family:var(--font);margin-top:8px}
 
 /* ═ DARK ═ */
-body.dark{--bg:#1E1B2E;--card:rgba(40,36,58,.7);--card-solid:#262240;--border:rgba(255,255,255,.06);--border-vis:rgba(255,255,255,.1);--text:#E8E6F0;--text-mid:#9590B0;--text-light:#6A6580;--sidebar-bg:#141225;--accent-soft:rgba(120,110,200,.1)}
+body.dark{--bg:#1E1B2E;--card:rgba(40,36,58,.7);--card-solid:#262240;--border:rgba(255,255,255,.06);--border-vis:rgba(255,255,255,.11);--text:#E8E6F0;--text-mid:#9590B0;--text-light:#6A6580;--sidebar-bg:#141225;--accent:#8A82DC;--accent-strong:#9B94E4;--accent-soft:rgba(138,130,220,.12);--green:#6BAF8E;--amber:#DCAF62;--red:#DE8080;--blue:#7BA2F0}
 body.dark{background:linear-gradient(160deg,#1E1B2E 0%,#252240 40%,#1E1B30 100%)}
 
 body.dark .input,body.dark .select{background:rgba(40,36,58,.6);color:#E8E6F0;border-color:rgba(255,255,255,.08)}
@@ -188,7 +215,7 @@ body.dark .toast{background:rgba(230,226,245,.92);color:#1A1830}
 body.dark .btn-default{background:rgba(255,255,255,.06);color:var(--text-mid);border:1px solid rgba(255,255,255,.06)}
 
 /* ═ SELF MAP ═ */
-.sm-hero{background:linear-gradient(135deg,#2D2854 0%,#3B3570 50%,#2A2650 100%);border-radius:18px;padding:24px;color:rgba(255,255,255,.92);margin-bottom:16px}
+.sm-hero{background:linear-gradient(135deg,#26233E 0%,#332E58 50%,#262244 100%);border-radius:var(--radius);padding:var(--sp-6) var(--sp-5);color:rgba(255,255,255,.92);margin-bottom:var(--sp-4);box-shadow:var(--shadow-lg)}
 body.dark .sm-hero{background:linear-gradient(135deg,#201D38 0%,#2A264A 50%,#1E1B35 100%);border:1px solid rgba(255,255,255,.04)}
 .sm-pillar{border-radius:var(--radius);overflow:hidden;margin-bottom:10px;border:1px solid var(--border);background:var(--card);backdrop-filter:var(--blur)}
 .sm-pillar-head{padding:14px 18px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:background .1s}
@@ -210,7 +237,7 @@ body.dark .sm-prev-hint{background:rgba(255,255,255,.03);color:rgba(255,255,255,
 .sm-timeline-dot{width:6px;height:6px;border-radius:2px;display:inline-block;cursor:pointer;transition:transform .1s}
 .sm-timeline-dot:hover{transform:scale(2)}
 .sm-lock{min-height:70vh;display:flex;align-items:center;justify-content:center}
-.sm-lock-card{background:linear-gradient(145deg,#2D2854,#3B3570);border-radius:24px;padding:48px;text-align:center;color:rgba(255,255,255,.9);max-width:340px;box-shadow:0 24px 80px rgba(0,0,0,.15)}
+.sm-lock-card{background:linear-gradient(145deg,#26233E,#332E58);border-radius:20px;padding:48px;text-align:center;color:rgba(255,255,255,.9);max-width:340px;box-shadow:0 24px 80px rgba(0,0,0,.15)}
 .radar-svg{filter:drop-shadow(0 1px 4px rgba(0,0,0,.04))}
 
 /* ═ COACH ═ */
@@ -233,14 +260,14 @@ body.dark .coach-msg.ai{background:rgba(255,255,255,.04)}
 .kanban-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px)}
 
 /* ═ LAUNCH ═ */
-.launch-screen{position:fixed;inset:0;z-index:8000;background:#000;display:flex;align-items:center;justify-content:center;flex-direction:column;color:rgba(255,255,255,.9);gap:16px;cursor:pointer;animation:fadeIn .4s}
+.launch-screen{position:fixed;inset:0;z-index:8000;background:linear-gradient(160deg,#1E1B2E 0%,#26233E 60%,#1E1B30 100%);display:flex;align-items:center;justify-content:center;flex-direction:column;color:rgba(255,255,255,.9);gap:16px;cursor:pointer;animation:fadeIn .4s}
 .launch-screen .streak-ring{width:140px;height:140px;border-radius:70px;border:2px solid rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;flex-direction:column;position:relative}
 .launch-screen .streak-ring svg{position:absolute;inset:-2px}
 
 
 /* ═ PAGE HEADERS ═ */
 .page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border)}
-.page-header h1{font-size:20px;font-weight:600;letter-spacing:-.02em}
+.page-header h1{font-size:var(--fs-xl);font-weight:600;letter-spacing:-.025em}
 .page-header .subtitle{font-size:12px;color:var(--text-mid);margin-top:2px;font-weight:400}
 .page-header .actions{display:flex;gap:6px;align-items:center}
 .section-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--text-light);margin-bottom:8px}
@@ -316,7 +343,7 @@ body.dark .coach-msg.ai{background:rgba(255,255,255,.04)}
   <div class="logo">
     <h2>Action Tracker</h2>
     <p id="action-count">149 actions</p>
-    <p style="font-size:8px;color:#4A7BF7;opacity:.6;margin-top:1px;font-family:var(--mono)">v7.1</p>
+    <p style="font-size:8px;color:#4A7BF7;opacity:.6;margin-top:1px;font-family:var(--mono)">v7.3</p>
   </div>
   <nav id="nav"></nav>
   <div style="padding:6px 12px;border-top:1px solid rgba(255,255,255,.06)">
@@ -344,7 +371,7 @@ body.dark .coach-msg.ai{background:rgba(255,255,255,.04)}
 // ═══════════════════════════════════════
 // *** REPLACE THESE WITH YOUR OWN VALUES ***
 // See setup guide at the bottom of this file
-const APP_VERSION = 'v7.1';
+const APP_VERSION = 'v7.3';
 console.log('%c Action Tracker ' + APP_VERSION, 'background:#4A7BF7;color:#fff;padding:4px 8px;border-radius:4px;font-weight:bold');
 
 // ═══ MINIMAL SVG ICONS ═══
@@ -559,7 +586,7 @@ async function forceSyncFromDrive() {
 // DATA & STATE
 // ═══════════════════════════════════════
 const STATUSES = ["Open","In progress","Done","Blocked","Cancelled","Carry-over"];
-function stColors(){const d=document.body.classList.contains('dark');return{Open:{bg:d?'rgba(200,170,60,.15)':'rgba(200,170,60,.12)',fg:d?'#D4A04A':'#92400E'},"In progress":{bg:d?'rgba(90,120,200,.15)':'rgba(90,120,200,.1)',fg:d?'#7B9AE0':'#1E40AF'},Done:{bg:d?'rgba(48,209,88,.12)':'rgba(48,209,88,.1)',fg:d?'#30D158':'#065F46'},Blocked:{bg:d?'rgba(255,69,58,.12)':'rgba(255,69,58,.08)',fg:d?'#FF6B6B':'#991B1B'},Cancelled:{bg:d?'rgba(255,255,255,.05)':'rgba(0,0,0,.04)',fg:d?'#6A6580':'#6B7280'},"Carry-over":{bg:d?'rgba(130,100,200,.15)':'rgba(130,100,200,.1)',fg:d?'#A090D0':'#5B21B6'}};}
+function stColors(){const d=document.body.classList.contains('dark');return{Open:{bg:d?'rgba(212,160,74,.16)':'rgba(212,160,74,.13)',fg:d?'#DCAF62':'#8A6420'},"In progress":{bg:d?'rgba(91,141,239,.16)':'rgba(91,141,239,.11)',fg:d?'#7BA2F0':'#3D62B8'},Done:{bg:d?'rgba(90,158,126,.16)':'rgba(90,158,126,.12)',fg:d?'#6BAF8E':'#3E7A5E'},Blocked:{bg:d?'rgba(217,107,107,.15)':'rgba(217,107,107,.1)',fg:d?'#DE8080':'#A84848'},Cancelled:{bg:d?'rgba(255,255,255,.05)':'rgba(38,35,62,.05)',fg:d?'#6A6580':'#8B8798'},"Carry-over":{bg:d?'rgba(138,130,220,.16)':'rgba(110,102,200,.11)',fg:d?'#A29AE0':'#5B53B8'}};}
 const ST = stColors();
 const WS_COLORS = new Proxy({}, {get:(t,p)=>{
   if(p in t) return t[p];
@@ -711,11 +738,18 @@ function addAction(data) {
   state.actions.push({id:uid(),createdAt:todayISO(),notes:"",project:"Untagged",subproject:"",startDate:"",deps:[],isMilestone:false,gantt:false,priority:false,todayFocus:false,sortIdx:Date.now(),...data});
   saveState(); render(); toast("Added");
 }
+function emptyState(title, hint, icon){
+  return `<div style="text-align:center;padding:56px 20px;color:var(--text-light)">
+    <div style="width:44px;height:44px;border-radius:14px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;color:var(--accent);font-size:18px">${icon||'\u2713'}</div>
+    <div style="font-size:var(--fs-md);font-weight:600;color:var(--text-mid)">${title}</div>
+    ${hint?`<div style="font-size:var(--fs-sm);margin-top:5px;max-width:280px;margin-left:auto;margin-right:auto;line-height:1.6">${hint}</div>`:''}
+  </div>`;
+}
 function quickAdd(opts){
   opts=opts||{};
   var tf=opts.todayFocus?'true':'false';
   var ph=opts.todayFocus?'Add a focus action...':'Add an action...';
-  return '<div style="display:flex;gap:6px;margin-bottom:16px">'+
+  return '<div style="display:flex;gap:8px;margin-bottom:18px">'+
     '<input class="input" id="qa" style="flex:1" placeholder="'+ph+'"'+
     ' onkeydown="if(event.key===\'Enter\'&&this.value.trim()){addAction({action:this.value.trim(),owner:\'Me\',num:\'\',status:\'Open\',todayFocus:'+tf+'});this.value=\'\';}"'+
     '>'+
@@ -1880,119 +1914,123 @@ function renderDiary(){
 
   let h=`<div class="fade-in">`;
 
-  // ── HERO ──
-  h+=`<div class="sm-hero">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-      <div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <span style="font-size:20px;font-weight:800;letter-spacing:-.02em">Self Map</span>
-          ${state.diary.pin?`<button style="background:rgba(255,255,255,.08);border:none;border-radius:4px;color:rgba(255,255,255,.5);font-size:9px;padding:2px 6px;cursor:pointer;font-family:inherit" onclick="smLock()">\u25CF</button>`:`<button style="background:rgba(255,255,255,.08);border:none;border-radius:4px;color:rgba(255,255,255,.5);font-size:9px;padding:2px 6px;cursor:pointer;font-family:inherit" onclick="smSetPin()">\u25CB Set PIN</button>`}
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;margin-top:2px"><div style="font-size:13px;opacity:.85;font-weight:600">${new Date(td+'T12:00:00').toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</div>${isToday?`<span style="background:rgba(90,158,126,.2);color:#5A9E7E;font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.05em">TODAY · ${new Date(td+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</span>`:`<span style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.05em">PAST DAY · ${new Date(td+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</span>`}</div>
+  // ── HERO (slim) — date nav + daily average + 6-week score strip ──
+  const allScoresToday=getSMAllAreas().map(a=>entry[a]&&entry[a].score?entry[a].score:0).filter(s=>s>0);
+  const dayAvg=allScoresToday.length?(allScoresToday.reduce((a,b)=>a+b,0)/allScoresToday.length):0;
+  const avgCol=dayAvg===0?'rgba(255,255,255,.35)':dayAvg<3.5?'#E08A8A':dayAvg<6.5?'#E4B76A':'#7BC49E';
+
+  // Score strip — last 42 days, colored by daily average
+  const stripDays=[];
+  const stripBase=new Date(todayISO()+'T12:00:00');
+  for(let i=41;i>=0;i--){const d=new Date(stripBase);d.setDate(d.getDate()-i);stripDays.push(d.toISOString().slice(0,10));}
+  let stripHtml='';
+  stripDays.forEach(d=>{
+    const e=state.diary.entries[d];
+    let avg=0;
+    if(e){const ss=getSMAllAreas().map(a=>e[a]&&e[a].score?e[a].score:0).filter(s=>s>0);avg=ss.length?ss.reduce((x,y)=>x+y,0)/ss.length:0;}
+    const col=avg===0?'rgba(255,255,255,.09)':avg<3.5?'#CF6F6F':avg<6.5?'#D4A04A':'#5A9E7E';
+    const isT=d===todayISO();const isView=d===td;
+    const label=new Date(d+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+    const clickTarget=isT?'null':`'${d}'`;
+    stripHtml+=`<div onclick="state.diary.viewDate=${clickTarget};render()" title="${label}${avg?' \u00b7 '+avg.toFixed(1)+'/10':' \u00b7 empty'}" style="width:11px;height:11px;border-radius:3px;background:${col};cursor:pointer;flex-shrink:0;${isView?'outline:2px solid rgba(255,255,255,.9);outline-offset:1px;':isT?'outline:1.5px solid rgba(255,255,255,.4);outline-offset:1px;':''}transition:transform .1s" onmouseover="this.style.transform='scale(1.35)'" onmouseout="this.style.transform=''"></div>`;
+  });
+
+  // Prev / next day navigation (next capped at today)
+  const tdObj=new Date(td+'T12:00:00');
+  const prevD=new Date(tdObj);prevD.setDate(prevD.getDate()-1);
+  const nextD=new Date(tdObj);nextD.setDate(nextD.getDate()+1);
+  const prevISO=prevD.toISOString().slice(0,10);
+  const nextISO=nextD.toISOString().slice(0,10);
+  const canNext=nextISO<=todayISO();
+
+  h+=`<div class="sm-hero" style="padding:20px 22px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:17px;font-weight:700;letter-spacing:-.02em">Self Map</span>
+        ${state.diary.pin?`<button style="background:rgba(255,255,255,.08);border:none;border-radius:5px;color:rgba(255,255,255,.5);font-size:9px;padding:3px 7px;cursor:pointer;font-family:inherit" onclick="smLock()" title="Lock">\u25CF</button>`:`<button style="background:rgba(255,255,255,.08);border:none;border-radius:5px;color:rgba(255,255,255,.5);font-size:9px;padding:3px 7px;cursor:pointer;font-family:inherit" onclick="smSetPin()">\u25CB PIN</button>`}
+        ${isToday?`<span style="background:rgba(90,158,126,.22);color:#7BC49E;font-size:9px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.05em">TODAY \u00b7 ${tdObj.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</span>`:`<span style="background:rgba(228,183,106,.18);color:#E4B76A;font-size:9px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.05em">PAST DAY \u00b7 ${tdObj.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</span>`}
       </div>
-      <div style="display:flex;gap:4px;align-items:center">
-        <button class="btn" style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);padding:5px 10px;font-size:10px;border:1px solid rgba(255,255,255,.08)" onclick="smQuickScore()">Quick score</button>
-        <button class="btn" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);padding:5px 8px;font-size:10px;border:1px solid rgba(255,255,255,.05)" onclick="SM_PILLARS.forEach(function(p,i){state.diary['sm-p-'+i]='closed'});saveState();render()">Collapse</button>
-        <button class="btn" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);padding:5px 8px;font-size:10px;border:1px solid rgba(255,255,255,.05)" onclick="SM_PILLARS.forEach(function(p,i){state.diary['sm-p-'+i]='open'});saveState();render()">Expand</button>
-        <button class="btn" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);padding:5px 8px;font-size:10px;border:1px solid rgba(255,255,255,.05)" onclick="editSmPillars()">Edit</button>
-        <button class="btn" style="background:${isToday?'rgba(90,158,126,.2)':'rgba(245,158,11,.25)'};color:${isToday?'rgba(255,255,255,.6)':'#FBBF24'};padding:4px 10px;font-size:10px;border:1px solid ${isToday?'rgba(255,255,255,.1)':'rgba(245,158,11,.4)'};font-weight:${isToday?'400':'600'}" onclick="state.diary.viewDate=null;render()" title="${isToday?'Already on today':'Jump back to today'}">\u25C9 Today</button>
-        <input type="date" class="input" style="font-size:10px;padding:4px 6px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.85)" value="${td}" onchange="state.diary.viewDate=this.value;render()">
+      <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
+        <button style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08);border-radius:7px;color:rgba(255,255,255,.65);font-size:11px;padding:4px 9px;cursor:pointer;font-family:inherit" onclick="state.diary.viewDate='${prevISO}';render()" title="Previous day">\u2039</button>
+        <input type="date" class="input" style="font-size:10px;padding:4px 6px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.85)" value="${td}" max="${todayISO()}" onchange="state.diary.viewDate=this.value===todayISO()?null:this.value;render()">
+        <button style="background:rgba(255,255,255,${canNext?'.07':'.03'});border:1px solid rgba(255,255,255,.08);border-radius:7px;color:rgba(255,255,255,${canNext?'.65':'.25'});font-size:11px;padding:4px 9px;cursor:${canNext?'pointer':'default'};font-family:inherit" ${canNext?`onclick="state.diary.viewDate='${nextISO}'===todayISO()?null:'${nextISO}';render()"`:''} title="Next day">\u203A</button>
+        ${!isToday?`<button style="background:rgba(228,183,106,.2);border:1px solid rgba(228,183,106,.35);border-radius:7px;color:#E4B76A;font-size:10px;font-weight:600;padding:4px 11px;cursor:pointer;font-family:inherit" onclick="state.diary.viewDate=null;render()">\u25C9 Today</button>`:''}
+        <button style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.06);border-radius:7px;color:rgba(255,255,255,.45);font-size:10px;padding:4px 9px;cursor:pointer;font-family:inherit" onclick="smQuickScore()">Quick score</button>
+        <button style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.06);border-radius:7px;color:rgba(255,255,255,.45);font-size:10px;padding:4px 9px;cursor:pointer;font-family:inherit" onclick="editSmPillars()">Edit</button>
       </div>
     </div>
-
-    <div style="display:flex;gap:16px;align-items:center">
-      <div style="text-align:center;min-width:56px">
-        <div style="font-size:28px;font-weight:800;line-height:1">${todayPct}<span style="font-size:14px;opacity:.5">%</span></div>
-        <div style="font-size:8px;opacity:.4;text-transform:uppercase;letter-spacing:.06em;margin-top:2px">filled</div>
+    <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+      <div style="display:flex;align-items:baseline;gap:5px;min-width:84px" title="Average of today's scored areas">
+        <span style="font-size:36px;font-weight:800;line-height:1;color:${avgCol};letter-spacing:-.02em">${dayAvg?dayAvg.toFixed(1):'\u2014'}</span>
+        <span style="font-size:11px;opacity:.4">/10</span>
       </div>
-      <div style="flex:1;display:flex;gap:3px;align-items:end;height:28px">`;
-  SM_PILLARS.forEach(p=>{
-    const avg=pillarAvg[p.name]||0;
-    h+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
-      <div style="width:100%;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;height:20px;display:flex;align-items:end">
-        <div style="width:100%;height:${avg*10}%;background:${p.color};border-radius:3px;transition:height .3s"></div>
+      <div style="flex:1;min-width:250px">
+        <div style="display:flex;gap:2.5px;overflow-x:auto;padding:2px 1px;-webkit-overflow-scrolling:touch">${stripHtml}</div>
+        <div style="display:flex;justify-content:space-between;font-size:8px;opacity:.35;margin-top:5px;letter-spacing:.04em"><span>6 WEEKS AGO</span><span>TODAY</span></div>
       </div>
-      <span style="font-size:7px;opacity:.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60px">${p.name.split('/')[0]}</span>
-    </div>`;
-  });
-  h+=`</div>
-      <div style="text-align:center;min-width:48px">
-        <div style="font-size:16px;font-weight:800;line-height:1">${filled.length}</div>
-        <div style="font-size:8px;opacity:.4;text-transform:uppercase;letter-spacing:.06em;margin-top:2px">entries</div>
+      <div style="text-align:right;min-width:64px">
+        <div style="font-size:15px;font-weight:700;line-height:1">${filledAreas}<span style="opacity:.4;font-weight:400">/${totalAreas}</span></div>
+        <div style="font-size:8px;opacity:.4;text-transform:uppercase;letter-spacing:.06em;margin-top:3px">areas today</div>
       </div>
     </div>
   </div>`;
 
-  // ── LIFE COUNTER ──
-  if(state.diary.birthday){
-    const bday=new Date(state.diary.birthday);
-    const now=new Date();
-    const thisYearBday=new Date(now.getFullYear(),bday.getMonth(),bday.getDate());
-    if(thisYearBday<now) thisYearBday.setFullYear(thisYearBday.getFullYear()+1);
-    const daysToNext=Math.ceil((thisYearBday-now)/864e5);
-    const nextAge=thisYearBday.getFullYear()-bday.getFullYear();
-    const livedDays=Math.floor((now-bday)/864e5);
-    const remainingDays=Math.max(80*365-livedDays,0);
-    const livedPct=(livedDays/(80*365)*100).toFixed(1);
-    h+=`<div style="display:flex;gap:8px;margin-bottom:14px">
-      <div style="flex:1;padding:10px 12px;border-radius:var(--radius-xs);background:var(--card);border:1px solid var(--border);text-align:center">
-        <div style="font-size:18px;font-weight:700;color:var(--text)">${daysToNext}</div>
-        <div style="font-size:8px;color:var(--text-light);text-transform:uppercase;letter-spacing:.05em">days to ${nextAge}</div>
-      </div>
-      <div style="flex:1;padding:10px 12px;border-radius:var(--radius-xs);background:var(--card);border:1px solid var(--border);text-align:center">
-        <div style="font-size:18px;font-weight:700;color:var(--text)">${livedDays.toLocaleString()}</div>
-        <div style="font-size:8px;color:var(--text-light);text-transform:uppercase;letter-spacing:.05em">days lived</div>
-      </div>
-      <div style="flex:1;padding:10px 12px;border-radius:var(--radius-xs);background:var(--card);border:1px solid var(--border);text-align:center">
-        <div style="font-size:18px;font-weight:700;color:var(--text-mid)">${remainingDays.toLocaleString()}</div>
-        <div style="font-size:8px;color:var(--text-light);text-transform:uppercase;letter-spacing:.05em">~days remaining</div>
-      </div>
-      <div style="flex:1;padding:10px 12px;border-radius:var(--radius-xs);background:var(--card);border:1px solid var(--border);text-align:center">
-        <div style="font-size:18px;font-weight:700;color:var(--accent)">${livedPct}%</div>
-        <div style="font-size:8px;color:var(--text-light);text-transform:uppercase;letter-spacing:.05em">of ~80 years</div>
-      </div>
+  // ── META STRIP — life counter + entries + reviews, one quiet row ──
+  {
+    let metaBits=[];
+    if(state.diary.birthday){
+      const bday=new Date(state.diary.birthday);
+      const now=new Date();
+      const thisYearBday=new Date(now.getFullYear(),bday.getMonth(),bday.getDate());
+      if(thisYearBday<now) thisYearBday.setFullYear(thisYearBday.getFullYear()+1);
+      const daysToNext=Math.ceil((thisYearBday-now)/864e5);
+      const nextAge=thisYearBday.getFullYear()-bday.getFullYear();
+      const livedDays=Math.floor((now-bday)/864e5);
+      const livedPct=(livedDays/(80*365)*100).toFixed(1);
+      metaBits.push(`<span><b style="color:var(--text)">${livedDays.toLocaleString()}</b> days lived</span>`);
+      metaBits.push(`<span><b style="color:var(--text)">${daysToNext}</b> to ${nextAge}</span>`);
+      metaBits.push(`<span><b style="color:var(--accent)">${livedPct}%</b> of ~80y</span>`);
+    } else {
+      metaBits.push(`<button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-light);font-family:var(--font);text-decoration:underline;padding:0" onclick="var bd=prompt('Enter birthday (YYYY-MM-DD):');if(bd){state.diary.birthday=bd;saveState();render();}">set birthday</button>`);
+    }
+    metaBits.push(`<span><b style="color:var(--text)">${filled.length}</b> entries</span>`);
+
+    // Reviews: year + month pills (only months with data)
+    let reviewBits='';
+    const years=[...new Set(filled.map(d=>d.slice(0,4)))].sort();
+    if(years.length){
+      reviewBits+='<span style="opacity:.6;margin-right:2px">Reviews:</span>';
+      years.forEach(y=>{
+        reviewBits+=`<button style="background:var(--card);border:1px solid var(--border-vis);border-radius:20px;padding:2px 9px;font-size:9.5px;color:var(--text-mid);cursor:pointer;font-family:var(--font);font-weight:600" onclick="yearlySummary(${y})">${y}</button>`;
+      });
+      const viewYear=td.slice(0,4);
+      const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      months.forEach((m,i)=>{
+        const ym=viewYear+'-'+String(i+1).padStart(2,'0');
+        const cnt=filled.filter(d=>d.startsWith(ym)).length;
+        if(cnt>0) reviewBits+=`<button style="background:none;border:1px solid var(--border);border-radius:20px;padding:2px 8px;font-size:9px;color:var(--text-light);cursor:pointer;font-family:var(--font)" onclick="monthlySummary('${ym}')">${m}</button>`;
+      });
+    }
+
+    h+=`<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:9px 14px;margin-bottom:14px;border-radius:var(--radius-sm);background:var(--card);border:1px solid var(--border);font-size:10.5px;color:var(--text-light)">
+      ${metaBits.join('<span style="opacity:.25">\u00b7</span>')}
+      <div style="margin-left:auto;display:flex;gap:4px;align-items:center;flex-wrap:wrap">${reviewBits}</div>
     </div>`;
-  } else {
-    h+=`<div style="margin-bottom:10px"><button class="btn btn-default" style="font-size:10px" onclick="var bd=prompt('Enter birthday (YYYY-MM-DD):');if(bd){state.diary.birthday=bd;saveState();render();}">Set birthday for life counter</button></div>`;
   }
 
-  // ── RADAR ──
+  // ── RADAR (hideable) ──
+  if(hideMap['sm-radar']===undefined) hideMap['sm-radar']=localStorage.getItem('sm-hide-radar')==='1';
   if(hasScores){
-    h+=`<div class="card" style="padding:16px;margin-bottom:14px;display:flex;align-items:center;justify-content:center">
-      ${smRadarChart(pillarAvg, 280, td)}
-    </div>`;
+    if(hideMap['sm-radar']){
+      h+='<div style="margin-bottom:8px"><button style="background:none;border:none;cursor:pointer;font-size:9px;color:var(--text-light);font-family:var(--font);opacity:.45;padding:0" onclick="localStorage.removeItem(\'sm-hide-radar\');render()">+ Show radar</button></div>';
+    } else {
+      h+=`<div class="card" style="padding:16px;margin-bottom:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative">
+        <button style="position:absolute;top:10px;right:12px;background:none;border:none;cursor:pointer;font-size:8px;color:var(--text-light);font-family:var(--font);opacity:.35" onclick="localStorage.setItem('sm-hide-radar','1');render()">hide</button>
+        ${smRadarChart(pillarAvg, 280, td)}
+      </div>`;
+    }
   }
 
-  // ── PILLAR SECTIONS WITH TREND CHARTS ──
-
-  // ── YEAR + MONTH BUTTONS ──
-  const years=[...new Set(smFilledDates().map(d=>d.slice(0,4)))].sort();
-  if(years.length>0){
-    h+='<div style="margin-bottom:14px">';
-    h+='<div style="display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap;align-items:center">';
-    h+='<span style="font-size:10px;color:var(--text-light);font-weight:500;margin-right:2px">Year:</span>';
-    years.forEach(y=>{
-      const cnt=smFilledDates().filter(d=>d.startsWith(y)).length;
-      h+='<button class="btn btn-default" style="font-size:10px;padding:3px 8px" onclick="yearlySummary('+y+')">'+y+' ('+cnt+')</button>';
-    });
-    h+='</div>';
-    // Monthly buttons for the current viewing year
-    const viewYear=td.slice(0,4);
-    const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    h+='<div style="display:flex;gap:2px;flex-wrap:wrap;align-items:center">';
-    h+='<span style="font-size:10px;color:var(--text-light);font-weight:500;margin-right:2px">'+viewYear+':</span>';
-    months.forEach((m,i)=>{
-      const mm=String(i+1).padStart(2,'0');
-      const ym=viewYear+'-'+mm;
-      const cnt=smFilledDates().filter(d=>d.startsWith(ym)).length;
-      if(cnt>0){
-        h+='<button class="btn btn-default" style="font-size:9px;padding:2px 6px" onclick="monthlySummary(\''+ym+'\')">'+m+' ('+cnt+')</button>';
-      } else {
-        h+='<span style="font-size:9px;padding:2px 6px;color:var(--text-light);opacity:.3">'+m+'</span>';
-      }
-    });
-    h+='</div></div>';
-  }
 
   // ── FREE-WRITE / DAILY REFLECTION ──
   // From "I'm begging you to start writing" — free writing rewires the mind.
@@ -2003,17 +2041,24 @@ function renderDiary(){
   if(fwHidden){
     h+=`<div style="margin-bottom:10px"><button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-light);font-family:var(--font);opacity:.55;padding:0" onclick="localStorage.removeItem('sm-hide-fw');render()">+ Show free-write</button></div>`;
   } else {
-    h+=`<div class="card" style="padding:18px 20px;margin-bottom:14px;background:linear-gradient(135deg,rgba(91,141,239,.04),rgba(155,138,222,.06));border:1px solid var(--border)">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-        <div style="font-size:13px;font-weight:700">Free-write</div>
-        <span style="font-size:10px;color:var(--text-light);font-style:italic;flex:1">whatever's on your mind, no filter, no rules · 5 minutes</span>
-        <button style="background:none;border:none;cursor:pointer;font-size:9px;color:var(--text-light);font-family:var(--font);opacity:.5" onclick="localStorage.setItem('sm-hide-fw','1');render()">hide</button>
+    h+=`<div class="card" style="padding:14px 16px;margin-bottom:14px;background:linear-gradient(135deg,rgba(110,102,200,.035),rgba(155,138,222,.05));border:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+        <div style="font-size:var(--fs-sm);font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.05em">Free-write</div>
+        <span style="font-size:10px;color:var(--text-light);font-style:italic;flex:1">no filter, no rules · 5 min</span>
+        <button style="background:none;border:none;cursor:pointer;font-size:9px;color:var(--text-light);font-family:var(--font);opacity:.4" onclick="localStorage.setItem('sm-hide-fw','1');render()">hide</button>
       </div>
-      <textarea id="sm-freewrite" placeholder="Sit, write, let it flow. Quantity over quality. Make stuff up if nothing comes. The act itself does the work..." onblur="smSaveField('${td}','_freewrite','text',this.value)" style="width:100%;min-height:72px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);font-size:12.5px;line-height:1.55;font-family:var(--font);resize:vertical;color:var(--text)">${esc(fwText)}</textarea>
+      <textarea id="sm-freewrite" placeholder="Sit, write, let it flow. Quantity over quality..." onblur="smSaveField('${td}','_freewrite','text',this.value)" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,260)+'px'" style="width:100%;min-height:56px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-xs);background:var(--card);font-size:12.5px;line-height:1.6;font-family:var(--font);resize:vertical;color:var(--text)">${esc(fwText)}</textarea>
     </div>`;
   }
   
-  // (Score Trends and fill-rate charts removed per user request)
+  // ── PILLARS ──
+  h+=`<div style="display:flex;align-items:center;gap:8px;margin:2px 2px 8px">
+    <span class="section-label" style="margin-bottom:0">Pillars</span>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button style="background:none;border:none;cursor:pointer;font-size:9.5px;color:var(--text-light);font-family:var(--font)" onclick="SM_PILLARS.forEach(function(p,i){state.diary['sm-p-'+i]='open'});saveState();render()">Expand all</button>
+      <button style="background:none;border:none;cursor:pointer;font-size:9.5px;color:var(--text-light);font-family:var(--font)" onclick="SM_PILLARS.forEach(function(p,i){state.diary['sm-p-'+i]='closed'});saveState();render()">Collapse all</button>
+    </div>
+  </div>`;
 
   SM_PILLARS.forEach((pillar,pi)=>{
     const pavg=pillarAvg[pillar.name]||0;
@@ -3471,7 +3516,7 @@ function renderNav() {
     if (t.id==="inbox" && s.inbox>0) badge = `<span class="badge" style="background:${t.bg||'#6B7280'}">${s.inbox}</span>`;
     if (t.id==="today" && s.today>0) badge = `<span class="badge" style="background:${t.bg||'#6B7280'}">${s.today}</span>`;
     if (t.id==="actions" && s.overdue>0) badge = `<span class="badge" style="background:${t.bg||'#6B7280'}">${s.overdue}</span>`;
-    return `<button class="${state.tab===t.id?'active':''}" onclick="state.tab='${t.id}';render()">
+    return `<button class="${state.tab===t.id?'active':''}" data-tab="${t.id}" onclick="state.tab='${t.id}';render()">
       <span style="opacity:.5;width:16px;display:flex;align-items:center;justify-content:center">${t.icon}</span>${t.label}${badge}</button>`;
   }).join("");
   document.getElementById("action-count").textContent = s.total + " actions";
@@ -3653,7 +3698,7 @@ function renderInbox(s) {
     if(inboxAll.length){
       h += `<div style="text-align:center;padding:40px 20px;color:var(--text-light)"><div style="font-size:13px">No matches for current filter</div><div style="font-size:11px;margin-top:6px">Clear filter to see all ${inboxAll.length} inbox items</div></div>`;
     } else {
-      h += `<div style="text-align:center;padding:60px 20px;color:var(--text-light)"><div style="font-size:15px;font-weight:600">Inbox empty</div></div>`;
+      h += emptyState('Inbox zero', 'Every action has a project, a date or an ongoing flag, and an outcome. Well kept.');
     }
   }
   if(inbox.length){
@@ -3686,7 +3731,7 @@ function renderInbox(s) {
         </select>
         <input type="date" class="input" style="font-size:10px;width:130px" value="${a.due||''}" onchange="patch('${a.id}',{due:this.value})">
         <div style="display:flex;gap:5px;align-items:center;margin-top:1px">
-          <button style="padding:3px 9px;font-size:10px;border-radius:6px;border:1px solid var(--border-vis);background:var(--card);color:var(--text-mid);cursor:pointer;font-family:var(--font);white-space:nowrap;transition:all .1s" onmouseover="this.style.borderColor='#0EA5E9';this.style.color='#0EA5E9'" onmouseout="this.style.borderColor='var(--border-vis)';this.style.color='var(--text-mid)'" onclick="event.stopPropagation();patch('${a.id}',{ongoing:true});toast('Marked ongoing — out of inbox')" title="No due date needed (ongoing / follow-up)">\u221E No due needed</button>
+          <button style="padding:3px 9px;font-size:10px;border-radius:6px;border:1px solid var(--border-vis);background:var(--card);color:var(--text-mid);cursor:pointer;font-family:var(--font);white-space:nowrap;transition:all .1s" onmouseover="this.style.borderColor='#5B8DEF';this.style.color='#5B8DEF'" onmouseout="this.style.borderColor='var(--border-vis)';this.style.color='var(--text-mid)'" onclick="event.stopPropagation();patch('${a.id}',{ongoing:true});toast('Marked ongoing — out of inbox')" title="No due date needed (ongoing / follow-up)">\u221E No due needed</button>
           <button style="padding:3px 9px;font-size:10px;border-radius:6px;border:1px solid var(--border-vis);background:var(--card);color:var(--text-mid);cursor:pointer;font-family:var(--font);white-space:nowrap;transition:all .1s" onmouseover="this.style.borderColor='#8B5CF6';this.style.color='#8B5CF6'" onmouseout="this.style.borderColor='var(--border-vis)';this.style.color='var(--text-mid)'" onclick="event.stopPropagation();showRecurMenu(event,'${a.id}')" title="Set a recurring schedule">\u21BB Recurring</button>
         </div>
         ${actionBtns(a)}
@@ -3714,7 +3759,7 @@ function renderDashboard(s) {
       <button class="btn btn-default" style="font-size:11px" onclick="weeklyReview()">Weekly Review</button>
     </div></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:20px">`;
-  [["Total",s.total,"#4A7BF7"],["Open",s.open,"#F59E0B"],["In Prog",s.prog,"#3B82F6"],["Done",s.done,"#30A46C"],["Overdue",s.overdue,"#DC2626"],["Priority",s.prio,"#D946EF"]].forEach(([l,v,c])=>{
+  [["Total",s.total,"#4A7BF7"],["Open",s.open,"#F59E0B"],["In Prog",s.prog,"#5B8DEF"],["Done",s.done,"#30A46C"],["Overdue",s.overdue,"#DC2626"],["Priority",s.prio,"#B478C8"]].forEach(([l,v,c])=>{
     h+=`<div class="card" style="padding:14px;text-align:center"><div style="font-size:24px;font-weight:800;color:${c}">${v}</div><div style="font-size:10px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-top:2px">${l}</div></div>`;
   });
   h += `</div>`;
@@ -3844,7 +3889,7 @@ function renderStatsTab(s) {
         </div>
         <div style="font-size:36px;font-weight:700;color:#F59E0B;line-height:1">${completionRate}<span style="font-size:16px;opacity:.6">%</span></div>
         <div style="font-size:10px;color:rgba(255,255,255,.4);margin:4px 0 12px">completion rate · what's visible right now</div>
-        ${[["Done",s.done,"#30D158"],["Open",s.open,"#F59E0B"],["Overdue",s.overdue,"#FF453A"],["In Progress",inProg,"#3B82F6"]].map(([l,v,c])=>`
+        ${[["Done",s.done,"#5A9E7E"],["Open",s.open,"#D4A04A"],["Overdue",s.overdue,"#D96B6B"],["In Progress",inProg,"#5B8DEF"]].map(([l,v,c])=>`
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
             <span style="font-size:9px;color:rgba(255,255,255,.4);width:62px;flex-shrink:0">${l}</span>
             <div style="flex:1;height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden"><div style="width:${s.total?Math.round(v/s.total*100):0}%;height:100%;background:${c};border-radius:2px;transition:width .6s"></div></div>
@@ -4015,7 +4060,7 @@ function renderActions(s) {
       const sel = state.selected.has(a.id);
       h += `<tr onclick="if(event.ctrlKey||event.metaKey||event.shiftKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" oncontextmenu="if(state.selected.size>0){showBulkMenu(event);}else{event.preventDefault();toggleSelect('${a.id}');showBulkMenu(event);}" style="cursor:pointer;background:${sel?'var(--accent-soft)':od?'rgba(255,69,58,.03)':'transparent'}">
         <td onclick="event.stopPropagation()"><input type="checkbox" ${sel?'checked':''} onchange="toggleSelect('${a.id}')"></td>
-        <td style="max-width:280px"><div style="font-weight:${a.priority?600:500}">${a.priority?'<span style="color:#D946EF;margin-right:4px">\u2605</span>':''}${esc(a.action)}</div></td>
+        <td style="max-width:280px"><div style="font-weight:${a.priority?600:500}">${a.priority?'<span style="color:#B478C8;margin-right:4px">\u2605</span>':''}${esc(a.action)}</div></td>
         ${cv.owner!==false?`<td><span style="font-weight:600;font-size:12px">${esc(a.owner)}</span></td>`:''}
         ${cv.added!==false?`<td><span style="font-size:11px;color:var(--text-light)">${a.createdAt?fmtDate(a.createdAt):'—'}</span></td>`:''}
         ${cv.due!==false?`<td>${a.due?`<span style="color:${dueColor(a.due,a.status)};font-weight:${isOverdue(a.due,a.status)?700:500}">${fmtDate(a.due)}</span>`:''}</td>`:''}
@@ -4335,7 +4380,7 @@ function renderProjects() {
             </div>
             <div style="display:flex;gap:16px;margin-bottom:16px">
               <div><div style="font-size:24px;font-weight:600;color:${col};line-height:1">${open.length}</div><div style="font-size:9px;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;margin-top:3px">Open</div></div>
-              ${inProg.length?`<div><div style="font-size:24px;font-weight:600;color:#3B82F6;line-height:1">${inProg.length}</div><div style="font-size:9px;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;margin-top:3px">Active</div></div>`:''}
+              ${inProg.length?`<div><div style="font-size:24px;font-weight:600;color:#5B8DEF;line-height:1">${inProg.length}</div><div style="font-size:9px;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;margin-top:3px">Active</div></div>`:''}
               ${od.length?`<div><div style="font-size:24px;font-weight:600;color:var(--danger);line-height:1">${od.length}</div><div style="font-size:9px;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;margin-top:3px">Overdue</div></div>`:''}
               <div style="margin-left:auto;text-align:right"><div style="font-size:24px;font-weight:600;color:var(--text-mid);line-height:1">${done.length}</div><div style="font-size:9px;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;margin-top:3px">Done</div></div>
             </div>
@@ -4450,7 +4495,7 @@ function projRowCompact(a, col){
   const sel = state.selected.has(a.id);
   const st = ST[a.status]||ST.Open;
   return `<div onclick="if(event.shiftKey||event.ctrlKey||event.metaKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="display:flex;align-items:center;gap:8px;padding:7px 18px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12px;transition:background .08s;background:${sel?'var(--accent-soft)':''}" onmouseover="this.style.background='var(--accent-soft)'" onmouseout="this.style.background='${sel?'var(--accent-soft)':''}'">
-    ${a.priority?'<span style="color:#D946EF;font-size:10px;flex-shrink:0">\u2605</span>':''}
+    ${a.priority?'<span style="color:#B478C8;font-size:10px;flex-shrink:0">\u2605</span>':''}
     <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${a.status==='Done'?'text-decoration:line-through;opacity:.5':''}">${esc(a.action)}</span>
     ${a.owner?`<span style="font-size:10.5px;color:var(--text-light);flex-shrink:0">${esc(a.owner)}</span>`:''}
     ${a.due?`<span style="font-size:10px;color:${isOverdue(a.due,a.status)?'var(--danger)':'var(--text-light)'};flex-shrink:0;font-weight:${isOverdue(a.due,a.status)?600:400}">${fmtDate(a.due)}</span>`:''}
@@ -4462,7 +4507,7 @@ function projRow(a, col, depth) {
   return `<div draggable="true" ondragstart="state.dragId='${a.id}';event.dataTransfer.effectAllowed='move'" ondragend="state.dragId=null" ondragover="event.preventDefault();this.style.background=state.dark?'rgba(90,100,180,.1)':'rgba(90,100,180,.06)'" ondragleave="this.style.background='${sel?'var(--accent-soft)':''}'" ondrop="event.preventDefault();this.style.background='';handleReorder(state.dragId,'${a.id}')" onclick="if(event.shiftKey||event.ctrlKey||event.metaKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" oncontextmenu="if(state.selected.size>0){showBulkMenu(event);}else{event.preventDefault();toggleSelect('${a.id}');showBulkMenu(event);}" style="display:flex;align-items:center;gap:5px;padding:6px 6px 6px ${16+depth*20}px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12px;transition:background .08s;background:${sel?'var(--accent-soft)':''}">
     <span style="cursor:grab;color:var(--text-light);font-size:12px;flex-shrink:0" onclick="event.stopPropagation()">\u2847</span>
     ${sel?'<span style="color:var(--accent);font-size:10px">\u2713</span>':''}
-    ${a.priority?'<span style="color:#D946EF;font-size:11px">\u2605</span>':''}
+    ${a.priority?'<span style="color:#B478C8;font-size:11px">\u2605</span>':''}
     <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:${sel?600:400}">${esc(a.action)}</span>
     <span style="font-size:10.5px;color:var(--text-mid);max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.owner)}</span>
     ${statusBadge(a.status)}${actionBtns(a)}</div>`;
@@ -4535,11 +4580,11 @@ function openEdit(id) {
         <div style="display:flex;gap:4px"><input class="input" id="note-inp" style="flex:1" placeholder="Add a note..." onkeydown="if(event.key==='Enter'){addNote('${a.id}',this.value);this.closest('.modal-overlay').remove();openEdit('${a.id}');}"><button class="btn btn-primary" style="padding:5px 10px;font-size:11px" onclick="addNote('${a.id}',document.getElementById('note-inp').value);this.closest('.modal-overlay').remove();openEdit('${a.id}');">Add</button></div></div>
       <div style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:10px;margin-top:4px">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:${a.priority?'#D946EF':'var(--text-mid)'};cursor:pointer">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:${a.priority?'#B478C8':'var(--text-mid)'};cursor:pointer">
             <input type="checkbox" ${a.priority?'checked':''} onchange="patch('${a.id}',{priority:this.checked})"> \u2605 Priority</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:${a.todayFocus?'var(--accent)':'var(--text-mid)'};cursor:pointer">
             <input type="checkbox" ${a.todayFocus?'checked':''} onchange="patch('${a.id}',{todayFocus:this.checked})"> \u25C9 Today</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:${a.ongoing?'#0EA5E9':'var(--text-mid)'};cursor:pointer" title="Action has no fixed due date - excluded from inbox nags">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:${a.ongoing?'#5B8DEF':'var(--text-mid)'};cursor:pointer" title="Action has no fixed due date - excluded from inbox nags">
             <input type="checkbox" ${a.ongoing?'checked':''} onchange="patch('${a.id}',{ongoing:this.checked})"> \u221E Ongoing</label>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -4873,7 +4918,7 @@ STEP 4: Create API Key
 STEP 5: Paste into this file
   1. Open this HTML file in a text editor
   2. Find these lines near the top of the <script>:
-     const APP_VERSION = 'v7.1';
+     const APP_VERSION = 'v7.3';
 console.log('%c Action Tracker ' + APP_VERSION, 'background:#4A7BF7;color:#fff;padding:4px 8px;border-radius:4px;font-weight:bold');
 
 // ═══ MINIMAL SVG ICONS ═══
