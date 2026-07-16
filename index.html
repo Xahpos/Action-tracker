@@ -175,7 +175,7 @@ textarea.input{resize:vertical}
 .action-btns{display:flex;gap:2px;align-items:center;flex-shrink:0}
 .action-btns .toggle-btn{background:none;border:none;cursor:pointer;font-size:12px;padding:2px;line-height:1;transition:all .1s;border-radius:4px;color:#D1D1D6}
 .action-btns .toggle-btn:hover{background:rgba(0,0,0,.03)}
-.action-btns .toggle-btn.on-prio{color:#B478C8}
+.action-btns .toggle-btn.on-prio{color:#D4A04A}
 .action-btns .toggle-btn.on-today{color:var(--accent)}
 .action-btns .toggle-btn.off{color:#D1D1D6}
 .action-btns select{padding:2px 4px;border-radius:5px;border:1px solid var(--border-vis);font-size:10px;font-family:var(--font);background:transparent;color:var(--text-mid);width:72px}
@@ -188,8 +188,11 @@ tr{transition:background .08s;cursor:pointer}
 tr:hover{background:var(--accent-soft)!important}
 
 /* ═ MODAL ═ */
-.modal-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.25);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
-.modal{background:var(--card-solid);border-radius:16px;padding:24px;width:92%;max-width:520px;max-height:85vh;overflow:auto;box-shadow:0 24px 80px rgba(0,0,0,.1);animation:scaleIn .2s cubic-bezier(.16,1,.3,1)}
+.modal-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(38,35,62,.12);backdrop-filter:blur(2.5px) saturate(120%);-webkit-backdrop-filter:blur(2.5px) saturate(120%)}
+.modal{background:rgba(255,255,255,.86);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid rgba(255,255,255,.5);border-radius:16px;padding:24px;width:92%;max-width:520px;max-height:85vh;overflow:auto;box-shadow:0 24px 80px rgba(35,33,52,.14);animation:scaleIn .2s cubic-bezier(.16,1,.3,1)}
+body.dark .modal{background:rgba(38,34,64,.88);border-color:rgba(255,255,255,.08)}
+.modal h3{cursor:grab;user-select:none}
+.modal h3:active{cursor:grabbing}
 
 /* ═ TOAST ═ */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--sidebar-bg);color:rgba(255,255,255,.9);padding:9px 22px;border-radius:12px;font-size:13px;font-weight:500;z-index:9999;animation:scaleIn .2s ease-out;box-shadow:0 8px 32px rgba(0,0,0,.18)}
@@ -255,9 +258,28 @@ body.dark .coach-msg.ai{background:rgba(255,255,255,.04)}
 .coach-typing span:nth-child(3){animation-delay:.4s}
 
 /* ═ KANBAN ═ */
-.kanban-col{min-width:260px;flex:1}
-.kanban-card{padding:12px 14px;border-radius:var(--radius-sm);background:var(--card);backdrop-filter:var(--blur);border:1px solid var(--border);margin-bottom:6px;cursor:grab;transition:all .12s;box-shadow:var(--shadow-sm)}
-.kanban-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px)}
+.kanban-col{min-width:255px;flex:1;background:rgba(38,35,62,.025);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 10px 8px}
+body.dark .kanban-col{background:rgba(255,255,255,.02)}
+.kanban-card{padding:11px 13px;border-radius:var(--radius-xs);background:var(--card-solid);border:1px solid var(--border);margin-bottom:7px;cursor:grab;transition:all .12s;box-shadow:var(--shadow-sm)}
+.kanban-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px);border-color:var(--border-vis)}
+.kanban-card:active{cursor:grabbing}
+.kanban-card.kb-sel{background:var(--accent-soft);border-color:var(--accent)}
+.kanban-title{font-size:12.5px;font-weight:500;line-height:1.4;margin-bottom:7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.kanban-drop{border:1.5px dashed var(--border-vis);border-radius:var(--radius-xs);padding:18px;text-align:center;color:var(--text-light);font-size:10.5px;opacity:.55}
+.kanban-card{position:relative}
+.kb-done-btn{position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:10px;border:1px solid var(--border-vis);background:var(--card-solid);color:var(--green);font-size:10px;line-height:1;cursor:pointer;opacity:0;transition:all .12s;display:flex;align-items:center;justify-content:center;font-family:var(--font)}
+.kanban-card:hover .kb-done-btn{opacity:.9}
+.kb-done-btn:hover{background:var(--green);color:#fff;border-color:var(--green)}
+.kb-age{font-size:8.5px;font-weight:600;padding:1.5px 6px;border-radius:20px}
+.kb-age.warn{background:rgba(212,160,74,.13);color:#8A6420}
+.kb-age.late{background:rgba(217,107,107,.12);color:#A84848}
+body.dark .kb-age.warn{color:#DCAF62}
+body.dark .kb-age.late{color:#DE8080}
+.kb-lane{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-light);padding:7px 3px 4px;display:flex;align-items:center;gap:5px}
+.kb-lane:first-child{padding-top:0}
+.kb-board{scroll-snap-type:x proximity}
+.kanban-col{scroll-snap-align:start}
+.kb-wip-over{border-color:rgba(212,160,74,.55)!important}
 
 /* ═ LAUNCH ═ */
 .launch-screen{position:fixed;inset:0;z-index:8000;background:linear-gradient(160deg,#1E1B2E 0%,#26233E 60%,#1E1B30 100%);display:flex;align-items:center;justify-content:center;flex-direction:column;color:rgba(255,255,255,.9);gap:16px;cursor:pointer;animation:fadeIn .4s}
@@ -343,7 +365,7 @@ body.dark .coach-msg.ai{background:rgba(255,255,255,.04)}
   <div class="logo">
     <h2>Action Tracker</h2>
     <p id="action-count">149 actions</p>
-    <p style="font-size:8px;color:#4A7BF7;opacity:.6;margin-top:1px;font-family:var(--mono)">v7.4</p>
+    <p style="font-size:8px;color:#4A7BF7;opacity:.6;margin-top:1px;font-family:var(--mono)">v7.7</p>
   </div>
   <nav id="nav"></nav>
   <div style="padding:6px 12px;border-top:1px solid rgba(255,255,255,.06)">
@@ -371,7 +393,7 @@ body.dark .coach-msg.ai{background:rgba(255,255,255,.04)}
 // ═══════════════════════════════════════
 // *** REPLACE THESE WITH YOUR OWN VALUES ***
 // See setup guide at the bottom of this file
-const APP_VERSION = 'v7.4';
+const APP_VERSION = 'v7.7';
 console.log('%c Action Tracker ' + APP_VERSION, 'background:#4A7BF7;color:#fff;padding:4px 8px;border-radius:4px;font-weight:bold');
 
 // ═══ MINIMAL SVG ICONS ═══
@@ -613,23 +635,23 @@ const isOverdue = (due, st) => { if (!due||st==="Done"||st==="Cancelled") return
 let state = {
   actions: [], meetings: [], archived: [], subProjects: {}, milestones: [],
   tab: "today", editId: null, dark: false, search: "", fStatus: "Active", fProj: "All", fOwner: "All", fPrio: false, fDate: "",
-  projCollapsed: {}, subCollapsed: {}, diary: {areas:[],entries:{},habits:{}}, toast: null, selected: new Set(), dragId: null, projOrder: [], dragProj: null, kanbanProj: 'All', projSideOpen: true, projView: 'list', colVis: {action:true,owner:true,added:true,due:true,status:true,project:true}
+  projCollapsed: {}, subCollapsed: {}, diary: {areas:[],entries:{},habits:{}}, toast: null, selected: new Set(), dragId: null, projOrder: [], dragProj: null, kanbanProj: 'All', projSideOpen: true, projView: 'list', upGroup: 'due', fSort: 'added', kbLanes: 'none', kbWip: 4, kbDoneCol: false, uiPrefs: {salah:true, quote:true, commit:false}, colVis: {action:true,owner:true,added:true,due:true,status:true,project:true}
 };
 
 // ═══════════════════════════════════════
 // PERSISTENCE (localStorage)
 // ═══════════════════════════════════════
 const STORE_KEY = "at-standalone-v1";
-function savePrefs(){localStorage.setItem('at-prefs', JSON.stringify({projCollapsed:state.projCollapsed, subCollapsed:state.subCollapsed, projOrder:state.projOrder, projSideOpen:state.projSideOpen, projView:state.projView, colVis:state.colVis}));}
+function savePrefs(){localStorage.setItem('at-prefs', JSON.stringify({projCollapsed:state.projCollapsed, subCollapsed:state.subCollapsed, projOrder:state.projOrder, projSideOpen:state.projSideOpen, projView:state.projView, colVis:state.colVis, uiPrefs:state.uiPrefs, upGroup:state.upGroup, kbLanes:state.kbLanes, kbWip:state.kbWip, kbDoneCol:state.kbDoneCol}));}
 function saveState() {
   const d = { actions: state.actions, meetings: state.meetings, archived: state.archived, subProjects: state.subProjects, milestones: state.milestones, diary: state.diary };
   localStorage.setItem(STORE_KEY, JSON.stringify(d));
   // Save UI prefs separately (not synced to Drive — device-local)
-  localStorage.setItem('at-prefs', JSON.stringify({projCollapsed:state.projCollapsed, subCollapsed:state.subCollapsed, projOrder:state.projOrder, projSideOpen:state.projSideOpen, projView:state.projView, colVis:state.colVis}));
+  localStorage.setItem('at-prefs', JSON.stringify({projCollapsed:state.projCollapsed, subCollapsed:state.subCollapsed, projOrder:state.projOrder, projSideOpen:state.projSideOpen, projView:state.projView, colVis:state.colVis, uiPrefs:state.uiPrefs, upGroup:state.upGroup, kbLanes:state.kbLanes, kbWip:state.kbWip, kbDoneCol:state.kbDoneCol}));
   debouncedDriveSync();
 }
 function loadPrefs() {
-  try { const p=JSON.parse(localStorage.getItem('at-prefs')||'{}'); state.projCollapsed=p.projCollapsed||{}; state.subCollapsed=p.subCollapsed||{}; state.projOrder=p.projOrder||[]; state.projSideOpen=p.projSideOpen!==undefined?p.projSideOpen:true; state.projView=p.projView||'list'; state.colVis=Object.assign({action:true,owner:true,added:true,due:true,status:true,project:true},p.colVis||{}); } catch(e) {}
+  try { const p=JSON.parse(localStorage.getItem('at-prefs')||'{}'); state.projCollapsed=p.projCollapsed||{}; state.subCollapsed=p.subCollapsed||{}; state.projOrder=p.projOrder||[]; state.projSideOpen=p.projSideOpen!==undefined?p.projSideOpen:true; state.projView=p.projView||'list'; state.uiPrefs=Object.assign({salah:true,quote:true,commit:false},p.uiPrefs||{}); state.upGroup=p.upGroup||'due'; state.kbLanes=p.kbLanes||'none'; state.kbWip=(p.kbWip===undefined?4:p.kbWip); state.kbDoneCol=!!p.kbDoneCol; state.colVis=Object.assign({action:true,owner:true,added:true,due:true,status:true,project:true},p.colVis||{}); } catch(e) {}
 }
 function loadState() {
   loadPrefs();
@@ -713,16 +735,20 @@ function toast(msg) {
   setTimeout(() => c.innerHTML = "", 2400);
 }
 function patch(id, upd) {
-  state.actions = state.actions.map(a => a.id === id ? {...a, ...upd} : a);
+  state.actions = state.actions.map(a => {
+    if (a.id !== id) return a;
+    // Stamp when status actually changes — powers card aging + weekly throughput
+    if (upd.status && upd.status !== a.status) upd = {...upd, statusAt: todayISO()};
+    return {...a, ...upd};
+  });
   saveState(); render();
 }
 function deleteActionForever(id) {
-  if (!confirm('Delete this action forever? This cannot be undone.')) return;
-  state.actions = state.actions.filter(a => a.id !== id);
-  state.archived = state.archived.filter(a => a.id !== id);
-  saveState();
-  render();
-  toast('Deleted permanently');
+  confirmOnce('action','This permanently removes the action. It cannot be undone.',()=>{
+    state.actions = state.actions.filter(a => a.id !== id);
+    state.archived = state.archived.filter(a => a.id !== id);
+    saveState(); render(); toast('Deleted');
+  });
 }
 function archiveAction(id) {
   const a = state.actions.find(x => x.id === id);
@@ -788,7 +814,7 @@ function cycleStatus(id){
 function projTag(p,sub) { const c=WS_COLORS[p]||"#94A3B8"; return `<span class="proj-tag" style="background:${c}18;color:${c}">${esc(p)}${sub?` <span style="opacity:.6">/ ${esc(subLabel(sub))}</span>`:""}</span>`; }
 function actionBtns(a) {
   return `<div class="action-btns"><button class="toggle-btn off" onclick="event.stopPropagation();archiveAction('${a.id}')" title="Archive" style="font-size:9px;opacity:.15;transition:opacity .1s" onmouseover="this.style.opacity=.7" onmouseout="this.style.opacity=.15">\u2715</button>
-    <button class="toggle-btn ${a.priority?'on-prio':'off'}" onclick="event.stopPropagation();patch('${a.id}',{priority:${!a.priority}})" title="Priority">\u2605</button>
+    <button class="toggle-btn ${a.priority?'on-prio':'off'}" onclick="event.stopPropagation();patch('${a.id}',{priority:${!a.priority}})" title="Priority">\u2726</button>
     <button class="toggle-btn ${a.todayFocus?'on-today':'off'}" onclick="event.stopPropagation();patch('${a.id}',{todayFocus:${!a.todayFocus}})" title="Today focus">\u25C9</button>
   </div>`;
 }
@@ -876,7 +902,7 @@ function isSubHiddenByAncestor(proj,sub){
 }
 function toggleSelect(id){if(state.selected.has(id))state.selected.delete(id);else state.selected.add(id);render();}
 function selectAllFiltered(checked){if(checked&&window._filteredIds){window._filteredIds.forEach(id=>state.selected.add(id));}else{state.selected.clear();}render();}
-function bulkPatch(upd){state.selected.forEach(id=>{state.actions=state.actions.map(a=>a.id===id?{...a,...upd}:a);});state.selected=new Set();saveState();render();toast("Updated");}
+function bulkPatch(upd){state.selected.forEach(id=>{state.actions=state.actions.map(a=>{if(a.id!==id)return a;let u=upd;if(u.status&&u.status!==a.status)u={...u,statusAt:todayISO()};return {...a,...u};});});state.selected=new Set();saveState();render();toast("Updated");}
 function bulkArchive(){state.selected.forEach(id=>{const a=state.actions.find(x=>x.id===id);if(a){state.archived.push({...a,archivedAt:todayISO()});state.actions=state.actions.filter(x=>x.id!==id);}});state.selected=new Set();saveState();render();toast("Archived");}
 function handleReorder(fromId,toId){
   if(!fromId||!toId||fromId===toId)return;
@@ -898,7 +924,26 @@ function handleDropToProject(proj,sub){
   ids.forEach(id=>{state.actions=state.actions.map(a=>a.id===id?{...a,project:proj,subproject:sub||""}:a);});
   state.selected=new Set();state.dragId=null;saveState();render();toast("Moved "+ids.length+" to "+proj+(sub?" / "+subLabel(sub):""));
 }
-function promptSub(proj,parent){const n=prompt("Sub-project name"+(parent?" under "+subLabel(parent):"")+":");if(n)addSub(proj,n,parent||"");}
+function promptSub(evt, proj, parent){
+  // Backward compat: old signature promptSub(proj, parent)
+  if(typeof evt==='string'){parent=proj;proj=evt;evt=window.event;}
+  if(evt&&evt.stopPropagation)evt.stopPropagation();
+  document.querySelectorAll('.sub-pop').forEach(p=>p.remove());
+  const btn=evt&&(evt.currentTarget||evt.target);
+  const r=btn&&btn.getBoundingClientRect?btn.getBoundingClientRect():{left:window.innerWidth/2-110,bottom:120};
+  const pop=document.createElement('div');
+  pop.className='sub-pop';
+  pop.style.cssText='position:fixed;z-index:2000;background:var(--card-solid);border:1px solid var(--border-vis);border-radius:12px;box-shadow:var(--shadow-lg);padding:11px 12px;min-width:230px;left:'+Math.min(r.left,window.innerWidth-260)+'px;top:'+(r.bottom+6)+'px';
+  pop.innerHTML=`<div style="font-size:10px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px">New sub-project${parent?' under '+esc(subLabel(parent)):''}</div>
+    <div style="display:flex;gap:6px"><input class="input" style="flex:1;font-size:12px" placeholder="Name\u2026" id="sub-pop-inp">
+    <button class="btn btn-primary" style="font-size:11px;padding:5px 12px" id="sub-pop-add">Add</button></div>`;
+  document.body.appendChild(pop);
+  const inp=pop.querySelector('#sub-pop-inp');inp.focus();
+  const commit=()=>{const n=inp.value.trim();if(n){addSub(proj,n,parent||"");}pop.remove();};
+  pop.querySelector('#sub-pop-add').onclick=commit;
+  inp.onkeydown=e=>{if(e.key==='Enter')commit();if(e.key==='Escape')pop.remove();};
+  setTimeout(()=>{const close=(e)=>{if(!pop.contains(e.target)){pop.remove();document.removeEventListener('click',close);}};document.addEventListener('click',close);},50);
+}
 function collapseAll(collapse){const projs=getProjects();projs.forEach(p=>{state.projCollapsed[p]=collapse;getSubs(p).forEach(s=>{state.subCollapsed[p+'//'+s]=collapse;});});saveState();render();}
 function collapseSubsOnly(collapse){const projs=getProjects();projs.forEach(p=>{getSubs(p).forEach(s=>{state.subCollapsed[p+'//'+s]=collapse;});});saveState();render();}
 function toggleSubCollapse(proj,sub){const key=proj+'//'+sub;state.subCollapsed[key]=!state.subCollapsed[key];saveState();render();}
@@ -957,22 +1002,27 @@ function exportProjectCSV(){
   Object.assign(document.createElement("a"),{href:URL.createObjectURL(blob),download:"projects_"+todayISO()+".csv"}).click();
   toast("CSV exported");
 }
-function openAddInProject(proj){
+function openAddInProject(proj, sub){
   const subs=getSubs(proj);
   const m=document.createElement("div");m.className="modal-overlay";m.onclick=e=>{if(e.target===m)m.remove();};
   m.innerHTML=`<div class="modal">
-    <h3 style="font-size:15px;font-weight:700;margin-bottom:12px">Add action to ${esc(proj)}</h3>
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:12px">Add action \u00b7 ${esc(proj)}${sub?` / ${esc(subLabel(sub))}`:''}</h3>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <label style="font-size:10.5px;font-weight:600;color:#5A6578;grid-column:1/-1">Action <input class="input" id="pa-act" style="width:100%;margin-top:2px"></label>
-      <label style="font-size:10.5px;font-weight:600;color:#5A6578">Owner <input class="input" id="pa-own" style="width:100%;margin-top:2px"></label>
-      <label style="font-size:10.5px;font-weight:600;color:#5A6578">Due <input type="date" class="input" id="pa-due" style="width:100%;margin-top:2px"></label>
-      ${subs.length?`<label style="font-size:10.5px;font-weight:600;color:#5A6578">Sub-project <select class="select" id="pa-sub" style="width:100%;margin-top:2px"><option value="">(none)</option>${subs.map(s=>`<option value="${esc(s)}">${"\u00A0".repeat(subDepth(s)*2)+subLabel(s)}</option>`).join("")}</select></label>`:""}
+      <label style="font-size:10.5px;font-weight:600;color:#5A6578">Owner <input class="input" id="pa-own" style="width:100%;margin-top:2px" value="Me"></label>
+      <label style="font-size:10.5px;font-weight:600;color:#5A6578">Due <span style="font-weight:400;color:var(--text-light)">(optional)</span><input type="date" class="input" id="pa-due" style="width:100%;margin-top:2px"></label>
+      <label style="font-size:10.5px;font-weight:600;color:#5A6578;grid-column:1/-1">Sub-project <select class="select" id="pa-sub" style="width:100%;margin-top:2px" onchange="if(this.value==='__new__'){var n=prompt('New sub-project name:');if(n&&n.trim()){addSub('${esc(proj)}',n.trim(),'');var o=document.createElement('option');o.value=n.trim();o.textContent=n.trim();o.selected=true;this.insertBefore(o,this.lastElementChild);}else{this.value='${esc(sub||'')}';}}">
+        <option value="">(none)</option>
+        ${subs.map(s=>`<option value="${esc(s)}" ${s===sub?'selected':''}>${"\u00A0".repeat(subDepth(s)*2)+subLabel(s)}</option>`).join("")}
+        <option value="__new__">+ New sub-project\u2026</option>
+      </select></label>
     </div>
     <div style="display:flex;gap:6px;margin-top:14px;justify-content:flex-end">
       <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-      <button class="btn btn-primary" onclick="addAction({action:document.getElementById('pa-act').value,owner:document.getElementById('pa-own').value||'Me',due:document.getElementById('pa-due').value,project:'${proj}',subproject:document.getElementById('pa-sub')?.value||''});this.closest('.modal-overlay').remove()">Add</button>
+      <button class="btn btn-primary" onclick="if(!document.getElementById('pa-act').value.trim())return;addAction({action:document.getElementById('pa-act').value,owner:document.getElementById('pa-own').value||'Me',due:document.getElementById('pa-due').value,project:'${proj}',subproject:(document.getElementById('pa-sub').value==='__new__'?'':document.getElementById('pa-sub').value)});this.closest('.modal-overlay').remove()">Add</button>
     </div></div>`;
   document.body.appendChild(m);
+  setTimeout(()=>document.getElementById('pa-act')?.focus(),60);
 }
 // ═══════════════════════════════════════
 // SELF MAP — Personal Development Tracker
@@ -3267,28 +3317,71 @@ function showLaunch(){
   if(launchShown)return;
   const s=getStats();
   const filled=smFilledDates();
-  // Calculate current streak
   let streak=0;const d=new Date();
   for(let i=0;i<365;i++){const ds=d.toISOString().slice(0,10);if(filled.includes(ds))streak++;else if(i>0)break;d.setDate(d.getDate()-1);}
   const todayFocus=state.actions.filter(a=>a.todayFocus&&a.status!=='Done'&&a.status!=='Cancelled').slice(0,3);
-  const pct=streak>0?Math.min(streak/34*100,100):0; // 34 was best streak
+  const pct=streak>0?Math.min(streak/34*100,100):0;
+  // Streak tier color: grows warmer as the streak grows
+  const tier=streak>=21?['#5A9E7E','#7BC49E']:streak>=7?['#6E66C8','#8A82DC']:streak>=1?['#D4A04A','#E4B76A']:['#4A4664','#5B567E'];
 
-  const el=document.createElement('div');el.className='launch-screen';
-  el.onclick=()=>{el.style.opacity='0';setTimeout(()=>el.remove(),300);launchShown=true;localStorage.setItem('at-launch-date',todayISO());};
+  // Rotating quote (public domain, short) — deterministic per day
+  const QUOTES=[
+    ['You have power over your mind \u2014 not outside events.','Marcus Aurelius'],
+    ['We suffer more often in imagination than in reality.','Seneca'],
+    ['No man is free who is not master of himself.','Epictetus'],
+    ['Waste no more time arguing what a good man should be. Be one.','Marcus Aurelius'],
+    ['What stands in the way becomes the way.','Marcus Aurelius'],
+    ['First say to yourself what you would be; then do what you have to do.','Epictetus'],
+    ['Well begun is half done.','Aristotle'],
+    ['Dig within. Within is the wellspring of good.','Marcus Aurelius'],
+    ['Little by little, one travels far.','Proverb'],
+    ['He who has a why to live can bear almost any how.','Nietzsche']
+  ];
+  const qIdx=Math.abs(todayISO().split('-').join(''))%QUOTES.length;
+  const q=QUOTES[qIdx%QUOTES.length];
+
+  // Commitment signing state
+  if(!state.diary.commitments)state.diary.commitments={};
+  const signedToday=!!state.diary.commitments[todayISO()];
+  let signStreak=0;{const sd=new Date();for(let i=0;i<365;i++){const ds=sd.toISOString().slice(0,10);if(state.diary.commitments[ds])signStreak++;else if(i>0)break;sd.setDate(sd.getDate()-1);}}
+
+  const el=document.createElement('div');el.className='launch-screen';el.id='launch-el';
+  const dismiss=()=>{el.style.opacity='0';setTimeout(()=>el.remove(),300);launchShown=true;localStorage.setItem('at-launch-date',todayISO());};
+  window._launchDismiss=dismiss;
+  el.onclick=(e)=>{if(e.target===el)dismiss();};
   el.innerHTML=`
-    <div class="streak-ring">
-      <svg viewBox="0 0 128 128"><circle cx="64" cy="64" r="60" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="4"/>
-      <circle cx="64" cy="64" r="60" fill="none" stroke="url(#sg)" stroke-width="4" stroke-linecap="round" stroke-dasharray="${pct*3.77} 377" transform="rotate(-90 64 64)" style="transition:stroke-dasharray 1s ease-out"/>
-      <defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#4A7BF7"/><stop offset="100%" stop-color="#8B5CF6"/></linearGradient></defs></svg>
-      <div style="font-size:32px;font-weight:800;line-height:1">${streak}</div>
-      <div style="font-size:9px;opacity:.5;text-transform:uppercase;letter-spacing:.08em">day streak</div>
+    <div style="font-size:11px;opacity:.45;letter-spacing:.14em;text-transform:uppercase;margin-bottom:22px">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div>
+
+    <div class="streak-ring" style="position:relative">
+      <svg viewBox="0 0 128 128"><circle cx="64" cy="64" r="60" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="4"/>
+      <circle cx="64" cy="64" r="60" fill="none" stroke="url(#sg)" stroke-width="4" stroke-linecap="round" stroke-dasharray="${Math.max(pct*3.77,4)} 377" transform="rotate(-90 64 64)" style="transition:stroke-dasharray 1s ease-out"/>
+      <defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${tier[0]}"/><stop offset="100%" stop-color="${tier[1]}"/></linearGradient></defs></svg>
+      <div style="font-size:34px;font-weight:800;line-height:1;color:${tier[1]}">${streak}</div>
+      <div style="font-size:9px;opacity:.5;text-transform:uppercase;letter-spacing:.1em;margin-top:2px">day streak</div>
     </div>
-    <div style="font-size:14px;font-weight:600;opacity:.8;margin-top:4px">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div>
-    <div style="display:flex;gap:16px;margin-top:8px;font-size:11px;opacity:.5">
-      <span>${s.overdue} overdue</span><span>${s.prio} priority</span><span>${filled.length} SM entries</span>
+
+    ${state.uiPrefs&&state.uiPrefs.quote?`<div style="max-width:340px;text-align:center;margin-top:22px">
+      <div style="font-size:14px;font-weight:500;line-height:1.6;opacity:.85;font-style:italic;letter-spacing:-.01em">\u201C${q[0]}\u201D</div>
+      <div style="font-size:9.5px;opacity:.4;margin-top:7px;text-transform:uppercase;letter-spacing:.1em">${q[1]}</div>
+    </div>`:''}
+
+    <div style="display:flex;gap:18px;margin-top:22px;font-size:10.5px;opacity:.5">
+      ${s.overdue?`<span style="color:#E08A8A;opacity:1">${s.overdue} overdue</span>`:''}
+      <span>${s.prio} priority</span><span>${filled.length} entries</span>
     </div>
-    ${todayFocus.length?`<div style="margin-top:12px;text-align:center"><div style="font-size:9px;opacity:.4;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Today's focus</div>${todayFocus.map(a=>`<div style="font-size:11px;padding:4px 12px;background:rgba(255,255,255,.06);border-radius:6px;margin-bottom:3px">${a.action.slice(0,50)}</div>`).join('')}</div>`:''}
-    <div style="font-size:10px;opacity:.3;margin-top:16px">tap anywhere to continue</div>`;
+
+    ${todayFocus.length?`<div style="margin-top:16px;text-align:center;max-width:360px;width:100%">
+      <div style="font-size:9px;opacity:.4;text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px">Today's focus</div>
+      ${todayFocus.map(a=>`<div style="font-size:11.5px;padding:7px 14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.06);border-radius:8px;margin-bottom:4px;line-height:1.4">${esc(a.action.slice(0,60))}</div>`).join('')}
+    </div>`:''}
+
+    ${state.uiPrefs&&state.uiPrefs.commit?`
+      ${signedToday
+        ?`<div style="margin-top:20px;display:flex;align-items:center;gap:8px;font-size:11.5px;color:#7BC49E"><span style="width:18px;height:18px;border-radius:50%;background:rgba(90,158,126,.22);display:inline-flex;align-items:center;justify-content:center;font-size:10px">\u2713</span>Signed for today${signStreak>1?` \u00b7 ${signStreak}-day signing streak`:''}</div>`
+        :`<button onclick="event.stopPropagation();state.diary.commitments['${todayISO()}']=true;saveState();window._launchDismiss&&window._launchDismiss();toast('Commitment signed \u2014 show up.')" style="margin-top:20px;padding:9px 22px;border-radius:24px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:rgba(255,255,255,.9);font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;letter-spacing:.01em;transition:all .15s" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='rgba(255,255,255,.06)'">I commit to showing up today</button>`}
+    `:''}
+
+    <button onclick="event.stopPropagation();window._launchDismiss&&window._launchDismiss()" style="margin-top:${state.uiPrefs&&state.uiPrefs.commit&&!signedToday?'12':'24'}px;padding:8px 26px;border-radius:24px;border:none;background:rgba(255,255,255,.92);color:#26233E;font-size:12.5px;font-weight:700;font-family:var(--font);cursor:pointer;letter-spacing:-.01em">Start the day</button>`;
   el.style.transition='opacity .3s';
   document.body.appendChild(el);
 }
@@ -3420,44 +3513,138 @@ function renderSmSearch(){
 // ═══════════════════════════════════════
 // KANBAN VIEW
 // ═══════════════════════════════════════
+function showKbSettings(event){
+  event.stopPropagation();
+  document.querySelectorAll('.ui-settings-pop').forEach(p=>p.remove());
+  const r=(event.currentTarget||event.target).getBoundingClientRect();
+  const pop=document.createElement('div');
+  pop.className='ui-settings-pop';
+  pop.style.cssText='position:fixed;z-index:2000;background:var(--card-solid);border:1px solid var(--border-vis);border-radius:12px;box-shadow:var(--shadow-lg);padding:13px 15px;min-width:230px;right:'+Math.max(12,window.innerWidth-r.right)+'px;top:'+(r.bottom+6)+'px';
+  pop.innerHTML=`
+    <div style="font-size:10px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px">Board settings</div>
+    <div style="font-size:11px;color:var(--text-mid);margin-bottom:5px">Swimlanes</div>
+    <div style="display:flex;background:var(--bg);border:1px solid var(--border);border-radius:20px;overflow:hidden;margin-bottom:12px">
+      ${[['none','None'],['project','Project'],['owner','Owner']].map(([k,l])=>`<button onclick="state.kbLanes='${k}';saveState();render();this.closest('.ui-settings-pop').remove()" style="flex:1;padding:4px 0;font-size:10px;border:none;cursor:pointer;font-family:var(--font);background:${(state.kbLanes||'none')===k?'var(--accent-soft)':'transparent'};color:${(state.kbLanes||'none')===k?'var(--accent)':'var(--text-light)'};font-weight:${(state.kbLanes||'none')===k?'600':'400'}">${l}</button>`).join('')}
+    </div>
+    <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:var(--text-mid);margin-bottom:12px">In-progress limit <span style="font-size:9px;color:var(--text-light)">(0 = off)</span>
+      <input type="number" min="0" max="20" value="${state.kbWip||0}" style="width:52px;padding:3px 7px;border:1px solid var(--border-vis);border-radius:6px;font-size:11px;font-family:var(--font);background:var(--card)" onchange="state.kbWip=Math.max(0,parseInt(this.value)||0);saveState();render()">
+    </label>
+    <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-mid);cursor:pointer"><input type="checkbox" ${state.kbDoneCol?'checked':''} onchange="state.kbDoneCol=this.checked;saveState();render()">Collapse Done column</label>`;
+  document.body.appendChild(pop);
+  setTimeout(()=>{const close=(e)=>{if(!pop.contains(e.target)){pop.remove();document.removeEventListener('click',close);}};document.addEventListener('click',close);},50);
+}
+
 function renderKanban(){
   const projs=getProjects();
-  const selProj=state.kanbanProj||projs[0]||'All';
+  const selProj=state.kanbanProj||'All';
+  if(state.kbSearch===undefined)state.kbSearch='';
+  const q=(state.kbSearch||'').toLowerCase();
   const statuses=['Open','In progress','Blocked','Done'];
-  const colColors={Open:'#D4A04A','In progress':'#5B8DEF',Blocked:'#CF6F6F',Done:'#30D158'};
-  const items=selProj==='All'?state.actions:state.actions.filter(a=>a.project===selProj);
+  const colColors={Open:'#D4A04A','In progress':'#5B8DEF',Blocked:'#D96B6B',Done:'#5A9E7E'};
+  let items=selProj==='All'?state.actions:state.actions.filter(a=>a.project===selProj);
+  if(q)items=items.filter(a=>(a.action||'').toLowerCase().includes(q)||(a.owner||'').toLowerCase().includes(q)||(a.project||'').toLowerCase().includes(q));
+
+  const tNow=new Date(todayISO()+'T12:00:00');
+  const ageDays=a=>{const ref=a.statusAt||a.createdAt;if(!ref)return 0;return Math.max(0,Math.round((tNow-new Date(ref+'T12:00:00'))/864e5));};
+  const wip=state.kbWip||0;
+  const inProgCnt=items.filter(a=>a.status==='In progress').length;
+  const wipOver=wip>0&&inProgCnt>wip;
+  // Weekly throughput: Done in last 7 days (needs statusAt — stamps from now on)
+  const wkAgo=new Date(tNow);wkAgo.setDate(wkAgo.getDate()-6);
+  const wkISO=wkAgo.toISOString().slice(0,10);
+  const doneThisWk=items.filter(a=>a.status==='Done'&&a.statusAt&&a.statusAt>=wkISO).length;
+
+  // Effective lanes (project lanes are meaningless when one project is selected)
+  let lanes=state.kbLanes||'none';
+  if(lanes==='project'&&selProj!=='All')lanes='none';
+  const laneKey=a=>lanes==='project'?(a.project||'Untagged'):lanes==='owner'?(a.owner||'\u2014'):'';
+
   let h=`<div class="fade-in">
-    <div class="page-header">
-      <div style="display:flex;align-items:center;gap:10px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <h1>Kanban</h1>
-        <select class="select" style="font-size:12px;padding:6px 10px;border-radius:20px" onchange="state.kanbanProj=this.value;render()">
+        <select class="select" style="font-size:11.5px;padding:5px 11px;border-radius:20px" onchange="state.kanbanProj=this.value;saveState();render()">
           <option value="All" ${selProj==='All'?'selected':''}>All projects</option>
           ${projs.map(p=>'<option '+(p===selProj?'selected':'')+'>'+esc(p)+'</option>').join('')}
-        </select></div>
-      <div style="display:flex;gap:6px">
-        <button class="btn btn-default" style="font-size:11px" onclick="state.tab='actions';render()">Table</button>
-        <button class="btn btn-default" style="font-size:11px" onclick="weeklyReview()">Review</button>
-      </div></div>
-    <div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:12px;align-items:stretch">`;
+        </select>
+        <input class="input" style="font-size:11px;padding:5px 11px;border-radius:20px;width:170px" placeholder="Search board\u2026" value="${esc(state.kbSearch)}" oninput="state.kbSearch=this.value;renderDebounced()">
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="btn btn-ghost" style="font-size:10.5px;padding:4px 10px" onclick="weeklyReview()">Weekly review</button>
+        <button title="Board settings" onclick="showKbSettings(event)" style="background:none;border:none;cursor:pointer;color:var(--text-light);padding:4px;display:flex;transition:color .12s" onmouseover="this.style.color='var(--text-mid)'" onmouseout="this.style.color='var(--text-light)'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--text-light);margin-bottom:12px;padding-left:2px">
+      ${items.filter(a=>a.status!=='Done'&&a.status!=='Cancelled').length} in flow
+      ${wip>0?` \u00b7 WIP limit ${wip}${wipOver?` <span style="color:var(--amber);font-weight:600">\u2014 over by ${inProgCnt-wip}</span>`:''}`:''}
+      ${doneThisWk?` \u00b7 <span style="color:var(--green)">${doneThisWk} done this week</span>`:''}
+      ${lanes!=='none'?` \u00b7 lanes by ${lanes}`:''}
+    </div>
+    <div class="kb-board" style="display:flex;gap:12px;overflow-x:auto;padding-bottom:12px;align-items:stretch">`;
+
+  const cardHtml=(a,i,st)=>{
+    const col=WS_COLORS[a.project]||'#94A3B8';
+    const sel=state.selected.has(a.id);
+    const stCnt=a.subtasks&&a.subtasks.length?a.subtasks.filter(t=>t.done).length+'/'+a.subtasks.length:'';
+    const age=ageDays(a);
+    const showAge=st!=='Done'&&age>=7;
+    const od=a.due&&isOverdue(a.due,a.status);
+    return `<div class="kanban-card${sel?' kb-sel':''}" draggable="true" ondragstart="state.dragId='${a.id}';event.dataTransfer.effectAllowed='move'" ondragend="state.dragId=null" onclick="if(event.ctrlKey||event.metaKey||event.shiftKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" oncontextmenu="event.preventDefault();toggleSelect('${a.id}');if(state.selected.size)showBulkMenu(event)" style="animation:smSlideUp .18s both;animation-delay:${Math.min(i,10)*18}ms;${od?'border-left:3px solid var(--red);padding-left:11px;':''}">
+      ${st!=='Done'?`<button class="kb-done-btn" title="Mark done" onclick="event.stopPropagation();patch('${a.id}',{status:'Done'});toast('Done')">\u2713</button>`:''}
+      <div class="kanban-title">${a.priority?'<span style="color:#D4A04A;font-size:9px;margin-right:5px;vertical-align:1px">\u2726</span>':''}${esc(a.action)}</div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        ${selProj==='All'&&lanes!=='project'?`<span style="font-size:8.5px;padding:2px 8px;border-radius:20px;background:${col}14;color:${col};font-weight:600">${esc(subLabel(a.project)||a.project).slice(0,20)}</span>`:''}
+        ${lanes!=='owner'?`<span style="font-size:9.5px;color:var(--text-light)">${esc(a.owner)}</span>`:''}
+        ${showAge?`<span class="kb-age ${age>=14?'late':'warn'}" title="${age} days in ${st}">${age}d</span>`:''}
+        ${a.due?`<span style="font-size:9px;color:${dueColor(a.due,a.status)};font-weight:600;margin-left:auto">${fmtDate(a.due)}</span>`:a.ongoing?`<span style="font-size:9px;color:#5B8DEF;margin-left:auto" title="Ongoing \u2014 no due date">\u221E</span>`:''}
+        ${stCnt?`<span style="font-size:9px;color:var(--text-light)">\u25B8 ${stCnt}</span>`:''}
+      </div></div>`;
+  };
+
   statuses.forEach(st=>{
-    const stItems=items.filter(a=>a.status===st).slice(0,40);
-    h+=`<div class="kanban-col" style="display:flex;flex-direction:column" ondragover="event.preventDefault();this.style.background='var(--accent-soft)';this.style.borderRadius='var(--radius)'" ondragleave="this.style.background='';this.style.borderRadius=''" ondrop="event.preventDefault();this.style.background='';this.style.borderRadius='';if(state.dragId){patch(state.dragId,{status:'${st}'});state.dragId=null;}">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid ${colColors[st]};flex-shrink:0">
-        <span style="font-size:14px;font-weight:700">${st}</span>
-        <span style="font-size:10px;color:var(--text-light);background:var(--border-vis);padding:2px 8px;border-radius:10px">${stItems.length}</span></div>
-      <div style="flex:1;min-height:100px">`;
-    stItems.forEach((a,i)=>{
-      const col=WS_COLORS[a.project]||'#94A3B8';
-      h+=`<div class="kanban-card" draggable="true" ondragstart="state.dragId='${a.id}';event.dataTransfer.effectAllowed='move'" ondragend="state.dragId=null" onclick="openEdit('${a.id}')" style="animation:smSlideUp .2s both;animation-delay:${i*20}ms">
-        <div style="font-size:12.5px;font-weight:500;margin-bottom:6px;line-height:1.4">${esc(a.action).slice(0,70)}</div>
-        <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
-          <span style="font-size:9px;padding:2px 7px;border-radius:4px;background:${col}12;color:${col};font-weight:600">${esc(a.project).slice(0,22)}</span>
-          <span style="font-size:9.5px;color:var(--text-mid);font-weight:500">${esc(a.owner)}</span>
-          ${a.due?`<span style="font-size:9px;color:${dueColor(a.due,a.status)};font-weight:600">${fmtDate(a.due)}</span>`:''}
-          ${a.priority?'<span style="color:#9B8ADE;font-size:10px">\u2605</span>':''}
-        </div></div>`;
-    });
-    if(!stItems.length) h+=`<div style="padding:20px;text-align:center;color:var(--text-light);font-size:11px;opacity:.5">Drop here</div>`;
+    const c=colColors[st];
+    const all=items.filter(a=>a.status===st);
+    all.sort((a,b)=>((b.priority?1:0)-(a.priority?1:0))||((a.due||'9999').localeCompare(b.due||'9999'))||((b.sortIdx||0)-(a.sortIdx||0)));
+
+    // Collapsed Done: slim strip
+    if(st==='Done'&&state.kbDoneCol){
+      h+=`<div onclick="state.kbDoneCol=false;saveState();render()" title="Expand Done" style="min-width:44px;flex:0 0 44px;background:rgba(90,158,126,.06);border:1px solid var(--border);border-radius:var(--radius-sm);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:10px;padding:12px 0;cursor:pointer">
+        <span style="width:7px;height:7px;border-radius:2.5px;background:${c}"></span>
+        <span style="writing-mode:vertical-rl;font-size:11px;font-weight:600;color:var(--text-mid);letter-spacing:.04em">Done \u00b7 ${all.length}</span>
+      </div>`;
+      return;
+    }
+
+    const stItems=all.slice(0,40);
+    const more=all.length-stItems.length;
+    const isWipCol=st==='In progress';
+    const over=isWipCol&&wipOver;
+
+    h+=`<div class="kanban-col${over?' kb-wip-over':''}" style="display:flex;flex-direction:column" ondragover="event.preventDefault();this.style.borderColor='${c}';this.style.background='${c}0A'" ondragleave="this.style.borderColor='';this.style.background=''" ondrop="event.preventDefault();this.style.borderColor='';this.style.background='';if(state.dragId){patch(state.dragId,{status:'${st}'});state.dragId=null;}">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;padding:2px 3px;flex-shrink:0">
+        <span style="width:7px;height:7px;border-radius:2.5px;background:${c};flex-shrink:0"></span>
+        <span style="font-size:12px;font-weight:600;letter-spacing:-.01em">${st}</span>
+        <span style="font-size:9.5px;color:${over?'var(--amber)':'var(--text-light)'};font-variant-numeric:tabular-nums;font-weight:${over?'700':'400'}">${all.length}${isWipCol&&wip>0?'/'+wip:''}</span>
+        ${st==='Done'?`<span style="font-size:9px;color:var(--green);opacity:.8">${doneThisWk?'+'+doneThisWk+' wk':''}</span><button title="Collapse column" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--text-light);font-size:10px;padding:0 2px" onclick="state.kbDoneCol=true;saveState();render()">\u2192</button>`
+        :st==='Open'?`<button title="Add to ${selProj==='All'?'board':esc(selProj)}" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--text-light);font-size:13px;line-height:1;padding:0 2px;transition:color .12s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-light)'" onclick="openAddModal(${selProj==='All'?'':`'${esc(selProj)}'`})">+</button>`
+        :'<span style="margin-left:auto"></span>'}
+      </div>
+      <div style="flex:1;min-height:120px">`;
+
+    if(lanes==='none'){
+      stItems.forEach((a,i)=>h+=cardHtml(a,i,st));
+    } else {
+      // Lanes as labeled groups inside each column — scannable without a heavy grid
+      const by={};stItems.forEach(a=>{(by[laneKey(a)]=by[laneKey(a)]||[]).push(a);});
+      Object.keys(by).sort().forEach(lk=>{
+        const lc=lanes==='project'?(WS_COLORS[lk]||'#94A3B8'):'var(--text-light)';
+        h+=`<div class="kb-lane"><span style="width:5px;height:5px;border-radius:2px;background:${lc};display:inline-block"></span>${esc(lanes==='project'?lk:lk)} <span style="opacity:.55;font-weight:400">${by[lk].length}</span></div>`;
+        by[lk].forEach((a,i)=>h+=cardHtml(a,i,st));
+      });
+    }
+
+    if(!stItems.length) h+=`<div class="kanban-drop">Drag cards here</div>`;
+    if(more>0) h+=`<div style="text-align:center;font-size:9.5px;color:var(--text-light);padding:5px;opacity:.6">+ ${more} more \u2014 refine with search</div>`;
     h+=`</div></div>`;
   });
   h+=`</div></div>`;
@@ -3576,6 +3763,21 @@ dark: ${state.dark}</pre>
 // ═══════════════════════════════════════
 // TODAY TAB
 // ═══════════════════════════════════════
+
+function showUiSettings(event){
+  event.stopPropagation();
+  document.querySelectorAll('.ui-settings-pop').forEach(p=>p.remove());
+  const r=(event.currentTarget||event.target).getBoundingClientRect();
+  const pop=document.createElement('div');
+  pop.className='ui-settings-pop';
+  pop.style.cssText='position:fixed;z-index:2000;background:var(--card-solid);border:1px solid var(--border-vis);border-radius:12px;box-shadow:var(--shadow-lg);padding:12px 14px;min-width:210px;right:'+Math.max(12,window.innerWidth-r.right)+'px;top:'+(r.bottom+6)+'px';
+  const opts=[['salah','Prayer times on Today'],['quote','Quote on launch screen'],['commit','Daily commitment signing']];
+  pop.innerHTML='<div style="font-size:10px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px">Customize</div>'+
+    opts.map(([k,l])=>`<label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);padding:5px 0;cursor:pointer"><input type="checkbox" ${state.uiPrefs[k]?'checked':''} onchange="state.uiPrefs['${k}']=this.checked;saveState();render()">${l}</label>`).join('');
+  document.body.appendChild(pop);
+  setTimeout(()=>{const close=(e)=>{if(!pop.contains(e.target)){pop.remove();document.removeEventListener('click',close);}};document.addEventListener('click',close);},50);
+}
+
 function renderToday(s) {
   const td = todayISO();
   const focused = state.actions.filter(a=>a.status!=="Done"&&a.status!=="Cancelled"&&a.todayFocus);
@@ -3585,32 +3787,31 @@ function renderToday(s) {
 
   let h = pomodoroWidget();
   h += `<div class="fade-in">
-  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px;margin-bottom:16px;flex-wrap:wrap">
     <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><h1>Today</h1><span style="font-size:var(--fs-sm);color:var(--text-light)">${dateStr}</span></div>
-    ${!pomodoroState.running?`<button class="btn btn-default" style="font-size:11px;padding:5px 12px;display:flex;align-items:center;gap:5px" onclick="pomodoroStart()">${ICON.play} Focus 25m</button>`:''}
+    <button title="Customize this view" onclick="showUiSettings(event)" style="background:none;border:none;cursor:pointer;color:var(--text-light);padding:4px;display:flex;transition:color .12s" onmouseover="this.style.color='var(--text-mid)'" onmouseout="this.style.color='var(--text-light)'"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
   </div>`;
-  h += quickAdd({todayFocus:true});
-  fetchPrayerTimes().then(t=>{const el=document.getElementById("prayer-slot");if(el&&t)el.innerHTML=prayerWidget(t);});
-  h += `<div id="prayer-slot"></div>`;
-
-  if (!focused.length && !dueToday.length) {
-    h += emptyState('Nothing for today', 'Mark actions with \u25C9 to bring them into focus, or add one above.', '\u25C9');
+  if(state.uiPrefs.salah){
+    fetchPrayerTimes().then(t=>{const el=document.getElementById("prayer-slot");if(el&&t)el.innerHTML=prayerWidget(t);});
+    h += `<div id="prayer-slot"></div>`;
   }
 
-  if (focused.length) {
-    h += `<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">\u25C9 Focus (${focused.length})</div>`;
-    focused.forEach(a => {
-      const sel = state.selected.has(a.id);
-      h += `<div class="card card-hover" onclick="if(event.ctrlKey||event.metaKey||event.shiftKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="padding:10px 14px;margin-bottom:6px;cursor:pointer;display:flex;gap:8px;align-items:center;border-left:3px solid var(--accent);${sel?'background:var(--accent-soft)':''}">
-        <input type="checkbox" ${sel?'checked':''} onclick="event.stopPropagation();toggleSelect('${a.id}')" style="flex-shrink:0">
-        <div style="flex:1"><div style="display:flex;align-items:center;gap:6px">
-          <span style="font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--text-mid)">${esc(a.num)}</span>
-          <span style="font-size:13px;font-weight:500">${esc(a.action)}</span></div>
-          <div style="display:flex;gap:6px;margin-top:3px"><span style="font-size:11px;color:var(--text-mid)">${esc(a.owner)}</span>${projTag(a.project)}${a.due?`<span style="font-size:10.5px;color:var(--text-mid)">${fmtDate(a.due)}</span>`:""}</div>
-        </div>${actionBtns(a)}</div>`;
-    });
-    h += `</div>`;
-  }
+  h += `<div style="margin-bottom:18px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <span style="font-size:11px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.06em">\u25C9 Focus${focused.length?` (${focused.length})`:''}</span>
+      ${!pomodoroState.running?`<button style="margin-left:auto;background:none;border:1px solid var(--border);border-radius:20px;padding:3px 11px;font-size:10px;color:var(--text-light);cursor:pointer;font-family:var(--font);display:flex;align-items:center;gap:5px;transition:all .12s" onmouseover="this.style.color='var(--accent)';this.style.borderColor='var(--accent)'" onmouseout="this.style.color='var(--text-light)';this.style.borderColor='var(--border)'" onclick="pomodoroStart()">${ICON.play} 25m</button>`:'<span style="margin-left:auto"></span>'}
+    </div>`;
+  focused.forEach(a => {
+    const sel = state.selected.has(a.id);
+    const stCnt=a.subtasks&&a.subtasks.length?a.subtasks.filter(t=>t.done).length+'/'+a.subtasks.length:'';
+    h += `<div class="card card-hover" onclick="if(event.ctrlKey||event.metaKey||event.shiftKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="padding:10px 14px;margin-bottom:6px;cursor:pointer;display:flex;gap:8px;align-items:center;border-left:3px solid var(--accent);${sel?'background:var(--accent-soft)':''}">
+      <input type="checkbox" ${sel?'checked':''} onclick="event.stopPropagation();toggleSelect('${a.id}')" style="flex-shrink:0">
+      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;line-height:1.35">${a.priority?'<span style="color:#D4A04A;font-size:9px;margin-right:5px;vertical-align:1px">\u2726</span>':''}${esc(a.action)}</div>
+        <div style="display:flex;gap:7px;margin-top:3px;align-items:center;flex-wrap:wrap"><span style="font-size:11px;color:var(--text-mid)">${esc(a.owner)}</span>${projTag(a.project)}${a.due?`<span style="font-size:10.5px;color:var(--text-mid)">${fmtDate(a.due)}</span>`:""}${stCnt?`<span style="font-size:9.5px;color:var(--text-light)">\u25B8 ${stCnt}</span>`:''}</div>
+      </div>${actionBtns(a)}</div>`;
+  });
+  h += `<input placeholder="+ Add a focus action\u2026" style="width:100%;box-sizing:border-box;padding:9px 13px;margin-top:${focused.length?'2':'0'}px;border:1px dashed var(--border-vis);border-radius:var(--radius-xs);background:transparent;font-size:12px;font-family:var(--font);color:var(--text);outline:none;transition:border-color .12s" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border-vis)'" onkeydown="if(event.key==='Enter'&&this.value.trim()){addAction({action:this.value.trim(),owner:'Me',num:'',status:'Open',todayFocus:true});this.value='';}">
+  </div>`;
 
   if (dueToday.length) {
     h += `<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:600;color:var(--red);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">Due today (${dueToday.length})</div>`;
@@ -3618,7 +3819,7 @@ function renderToday(s) {
       const sel = state.selected.has(a.id);
       h += `<div class="card card-hover" onclick="if(event.ctrlKey||event.metaKey||event.shiftKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="padding:10px 14px;margin-bottom:6px;cursor:pointer;display:flex;gap:8px;align-items:center;border-left:3px solid var(--danger);${sel?'background:var(--accent-soft)':''}">
         <input type="checkbox" ${sel?'checked':''} onclick="event.stopPropagation();toggleSelect('${a.id}')" style="flex-shrink:0">
-        <div style="flex:1"><span style="font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--text-mid)">${esc(a.num)}</span> <span style="font-size:13px">${esc(a.action)}</span>
+        <div style="flex:1;min-width:0"><span style="font-size:13px">${a.priority?'<span style="color:#D4A04A;font-size:9px;margin-right:5px;vertical-align:1px">\u2726</span>':''}${esc(a.action)}</span>
           <div style="display:flex;gap:6px;margin-top:3px"><span style="font-size:11px;color:var(--text-mid)">${esc(a.owner)}</span>${projTag(a.project)}</div>
         </div>${actionBtns(a)}</div>`;
     });
@@ -3626,13 +3827,37 @@ function renderToday(s) {
   }
 
   if (upcoming.length) {
-    h += `<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:12px"><div style="font-size:11px;font-weight:500;color:var(--text-light);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">Upcoming</div>`;
-    upcoming.forEach(a => {
-      h += `<div onclick="openEdit('${a.id}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer;border-radius:6px;transition:background .08s" onmouseover="this.style.background='var(--accent-soft)'" onmouseout="this.style.background=''">
-        <span style="font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text-mid);width:32px">${esc(a.num)}</span>
-        <span style="flex:1">${esc(a.action)}</span>
-        <span style="color:${isOverdue(a.due,a.status)?'var(--danger)':'var(--text-mid)'};font-size:10.5px;font-weight:600">${fmtDate(a.due)}</span>
-        ${projTag(a.project)}<div onclick="event.stopPropagation()">${actionBtns(a)}</div></div>`;
+    const g=state.upGroup||'due';
+    h += `<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:14px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span style="font-size:11px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em">Upcoming</span>
+        <div style="margin-left:auto;display:flex;background:var(--card);border:1px solid var(--border);border-radius:20px;overflow:hidden">
+          ${[['due','Due'],['project','Project'],['priority','Priority']].map(([k,l])=>`<button onclick="state.upGroup='${k}';saveState();render()" style="padding:3px 11px;font-size:9.5px;border:none;cursor:pointer;font-family:var(--font);background:${g===k?'var(--accent-soft)':'transparent'};color:${g===k?'var(--accent)':'var(--text-light)'};font-weight:${g===k?'600':'400'}">${l}</button>`).join('')}
+        </div>
+      </div>`;
+    // Build groups
+    let groups=[];
+    if(g==='project'){
+      const by={};upcoming.forEach(a=>{(by[a.project||'Untagged']=by[a.project||'Untagged']||[]).push(a);});
+      groups=Object.keys(by).sort().map(k=>({label:k,color:WS_COLORS[k]||'#94A3B8',items:by[k].sort((a,b)=>a.due.localeCompare(b.due))}));
+    } else if(g==='priority'){
+      const pr=upcoming.filter(a=>a.priority),ot=upcoming.filter(a=>!a.priority);
+      if(pr.length)groups.push({label:'\u2726 Priority',color:'#D4A04A',items:pr.sort((a,b)=>a.due.localeCompare(b.due))});
+      if(ot.length)groups.push({label:'Other',color:'var(--text-light)',items:ot.sort((a,b)=>a.due.localeCompare(b.due))});
+    } else {
+      const by={};upcoming.forEach(a=>{(by[a.due]=by[a.due]||[]).push(a);});
+      groups=Object.keys(by).sort().map(k=>({label:new Date(k+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'}),color:isOverdue(k,'Open')?'var(--red)':'var(--text-mid)',items:by[k]}));
+    }
+    groups.forEach(grp=>{
+      h+=`<div style="font-size:10px;font-weight:600;color:${grp.color};margin:9px 0 4px;padding-left:2px">${grp.label} <span style="font-weight:400;opacity:.55">${grp.items.length}</span></div>`;
+      grp.items.forEach(a=>{
+        h += `<div onclick="openEdit('${a.id}')" style="display:flex;align-items:center;gap:8px;padding:6px 9px;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer;border-radius:6px;transition:background .08s" onmouseover="this.style.background='var(--accent-soft)'" onmouseout="this.style.background=''">
+          ${a.priority&&g!=='priority'?'<span style="color:#D4A04A;font-size:9px">\u2726</span>':''}
+          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.action)}</span>
+          ${g!=='project'?projTag(a.project):''}
+          ${g!=='due'?`<span style="color:${isOverdue(a.due,a.status)?'var(--red)':'var(--text-light)'};font-size:10px;font-weight:600">${fmtDate(a.due)}</span>`:''}
+          <div onclick="event.stopPropagation()">${actionBtns(a)}</div></div>`;
+      });
     });
     h += `</div>`;
   }
@@ -3730,7 +3955,6 @@ function renderInbox(s) {
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:600;line-height:1.35">${esc(a.action)}</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px;font-size:10.5px;color:var(--text-light)">
-            <span style="font-family:var(--mono);font-size:9.5px;opacity:.7">${esc(a.num)}</span>
             <span style="color:var(--text-mid)">${esc(a.owner)}</span>
             ${projTag(a.project)}
             ${reasons.map(r=>`<span style="color:var(--red);opacity:.85;font-size:9.5px;font-weight:500">\u00b7 ${r}</span>`).join("")}
@@ -3745,7 +3969,7 @@ function renderInbox(s) {
         </select>
         <input type="date" class="input" style="font-size:10px;padding:3px 7px" value="${a.due||''}" onchange="patch('${a.id}',{due:this.value})">
         <span style="flex:1"></span>
-        <button style="padding:3px 9px;font-size:9.5px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text-light);cursor:pointer;font-family:var(--font);white-space:nowrap;transition:all .1s" onmouseover="this.style.borderColor='#5B8DEF';this.style.color='#5B8DEF'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-light)'" onclick="event.stopPropagation();patch('${a.id}',{ongoing:true});toast('Marked ongoing \u2014 out of inbox')" title="No due date needed (ongoing / follow-up)">\u221E no due needed</button>
+        <button style="padding:3px 9px;font-size:9.5px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text-light);cursor:pointer;font-family:var(--font);white-space:nowrap;transition:all .1s" onmouseover="this.style.borderColor='#5B8DEF';this.style.color='#5B8DEF'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-light)'" onclick="event.stopPropagation();patch('${a.id}',{ongoing:true,due:''});toast('Marked ongoing \u2014 no due date')" title="No due date needed (ongoing / follow-up)">\u221E no due needed</button>
         <button style="padding:3px 9px;font-size:9.5px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text-light);cursor:pointer;font-family:var(--font);white-space:nowrap;transition:all .1s" onmouseover="this.style.borderColor='#8B72C4';this.style.color='#8B72C4'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-light)'" onclick="event.stopPropagation();showRecurMenu(event,'${a.id}')" title="Set a recurring schedule">\u21BB recurring</button>
       </div>
     </div>`;
@@ -4027,7 +4251,7 @@ function renderActions(s) {
     <div style="display:flex;align-items:baseline;gap:12px"><h1>Actions</h1><span class="subtitle" style="margin:0">${filtered.length} of ${state.actions.length}</span>
       <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px" onclick="exportJSON()">JSON</button>
       <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px" onclick="exportMD()">MD</button></div>
-    <button class="btn btn-primary" onclick="openAddModal()">+ Add</button></div>
+    </div>
     <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">
       <input class="input" id="search-input" style="flex:1;min-width:120px" placeholder="Search... (press /)" value="${esc(state.search)}" oninput="state.search=this.value;renderDebounced()">
       <button class="btn ${state.fPrio?'btn-primary':'btn-default'}" onclick="state.fPrio=!state.fPrio;render()">\u2605 Priority</button>
@@ -4045,6 +4269,9 @@ function renderActions(s) {
         <option value="today" ${state.fDate==="today"?"selected":""}>Added today</option>
         <option value="week" ${state.fDate==="week"?"selected":""}>This week</option>
       </select>
+      <select class="select" title="Sort" onchange="state.fSort=this.value;saveState();render()">
+        ${[['added','Newest first'],['due','By due date'],['priority','Priority first'],['project','By project'],['owner','By owner'],['status','By status']].map(([k,l])=>`<option value="${k}" ${(state.fSort||'added')===k?'selected':''}>${l}</option>`).join('')}
+      </select>
       <span style="width:1px;height:20px;background:var(--border-vis);margin:0 2px"></span>
       ${[['owner','Owner'],['added','Added'],['due','Due'],['status','Status'],['project','Project']].map(([k,l])=>{const on=(state.colVis||{})[k]!==false;return `<button onclick="state.colVis['${k}']=!state.colVis['${k}'];savePrefs();render()" title="Show/hide ${l} column" style="padding:3px 9px;border-radius:20px;border:1px solid ${on?'var(--border-vis)':'var(--border)'};background:none;color:${on?'var(--text-mid)':'var(--text-light)'};font-size:9.5px;cursor:pointer;font-family:var(--font);opacity:${on?'1':'.55'};text-decoration:${on?'none':'line-through'}">${l}</button>`;}).join('')}
     </div>${bulkBar()}`;
@@ -4054,6 +4281,15 @@ function renderActions(s) {
   if (!filtered.length) {
     h += `<div style="text-align:center;padding:40px;color:var(--text-light)">No actions match filters</div>`;
   } else {
+    const _srt=state.fSort||'added';
+    filtered.sort((a,b)=>{
+      if(_srt==='due'){if(!a.due&&!b.due)return 0;if(!a.due)return 1;if(!b.due)return -1;return a.due.localeCompare(b.due);}
+      if(_srt==='priority'){return (b.priority?1:0)-(a.priority?1:0)||((a.due||'9999').localeCompare(b.due||'9999'));}
+      if(_srt==='project')return (a.project||'').localeCompare(b.project||'');
+      if(_srt==='owner')return (a.owner||'').localeCompare(b.owner||'');
+      if(_srt==='status')return STATUSES.indexOf(a.status)-STATUSES.indexOf(b.status);
+      return (b.sortIdx||0)-(a.sortIdx||0);
+    });
     const cv=state.colVis||{};
     h += `<div class="card" style="overflow:auto;border-radius:var(--radius-sm)"><table><thead><tr>
       <th style="width:28px"><input type="checkbox" onchange="selectAllFiltered(this.checked)"></th>
@@ -4072,7 +4308,7 @@ function renderActions(s) {
       const sel = state.selected.has(a.id);
       h += `<tr onclick="if(event.ctrlKey||event.metaKey||event.shiftKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" oncontextmenu="if(state.selected.size>0){showBulkMenu(event);}else{event.preventDefault();toggleSelect('${a.id}');showBulkMenu(event);}" style="cursor:pointer;background:${sel?'var(--accent-soft)':od?'rgba(255,69,58,.03)':'transparent'}">
         <td onclick="event.stopPropagation()"><input type="checkbox" ${sel?'checked':''} onchange="toggleSelect('${a.id}')"></td>
-        <td style="max-width:280px"><div style="font-weight:${a.priority?600:500}">${a.priority?'<span style="color:#B478C8;margin-right:4px">\u2605</span>':''}${esc(a.action)}</div></td>
+        <td style="max-width:280px"><div style="font-weight:${a.priority?600:500}">${a.priority?'<span style="color:#D4A04A;margin-right:5px;font-size:10px;vertical-align:1px">\u2726</span>':''}${esc(a.action)}${a.subtasks&&a.subtasks.length?`<span style="font-size:9.5px;color:var(--text-light);margin-left:7px;font-weight:400">\u25B8 ${a.subtasks.filter(t=>t.done).length}/${a.subtasks.length}</span>`:''}</div></td>
         ${cv.owner!==false?`<td><span style="font-weight:600;font-size:12px">${esc(a.owner)}</span></td>`:''}
         ${cv.added!==false?`<td><span style="font-size:11px;color:var(--text-light)">${a.createdAt?fmtDate(a.createdAt):'—'}</span></td>`:''}
         ${cv.due!==false?`<td>${a.due?`<span style="color:${dueColor(a.due,a.status)};font-weight:${isOverdue(a.due,a.status)?700:500}">${fmtDate(a.due)}</span>`:''}</td>`:''}
@@ -4102,7 +4338,7 @@ function renderActions(s) {
         ${archDate?`<span style="font-size:9px;color:var(--text-light);font-style:italic">archived ${archDate}</span>`:''}
         ${projTag(a.project)}
         <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;color:var(--accent)" onclick="restoreAction('${a.id}')" title="Move back to active">Restore</button>
-        <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;color:var(--danger)" onclick="if(!confirm('Delete this archived action FOREVER? This cannot be undone.'))return;state.archived=state.archived.filter(x=>x.id!=='${a.id}');saveState();render();toast('Deleted permanently')" title="Delete forever">Delete</button>
+        <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;color:var(--danger)" onclick="confirmOnce('archived','This permanently removes the archived action.',()=>{state.archived=state.archived.filter(x=>x.id!=='${a.id}');saveState();render();toast('Deleted');})" title="Delete permanently">Delete</button>
       </div>`;
     });
     h += `</div></details>`;
@@ -4169,6 +4405,48 @@ function showRecurMenu(event, actionId){
   setTimeout(()=>{const close=(e)=>{if(!pop.contains(e.target)){pop.remove();document.removeEventListener('click',close);}};document.addEventListener('click',close);},50);
 }
 
+
+// ═══ Draggable modals (grab the title) ═══
+(function(){
+  let dragM=null,sx=0,sy=0,ox=0,oy=0;
+  document.addEventListener('pointerdown',e=>{
+    const h=e.target.closest('.modal h3, .modal .modal-drag');
+    if(!h)return;
+    if(e.target.closest('button,input,select,textarea,a'))return;
+    dragM=h.closest('.modal');if(!dragM)return;
+    const t=dragM.style.transform.match(/translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/);
+    ox=t?parseFloat(t[1]):0;oy=t?parseFloat(t[2]):0;
+    sx=e.clientX;sy=e.clientY;
+    dragM.style.transition='none';
+    e.preventDefault();
+  });
+  document.addEventListener('pointermove',e=>{
+    if(!dragM)return;
+    dragM.style.transform='translate('+(ox+e.clientX-sx)+'px,'+(oy+e.clientY-sy)+'px)';
+  });
+  document.addEventListener('pointerup',()=>{dragM=null;});
+})();
+
+// ═══ Confirm-once dialogs (with "don't ask again") ═══
+function confirmOnce(key, msg, onYes){
+  if(localStorage.getItem('at-noconfirm-'+key)){onYes();return;}
+  const m=document.createElement('div');m.className='modal-overlay';m.style.zIndex='2100';
+  m.onclick=e=>{if(e.target===m)m.remove();};
+  m.innerHTML=`<div class="modal" style="max-width:360px;padding:20px">
+    <h3 style="font-size:14px;font-weight:700;margin-bottom:8px">Delete</h3>
+    <p style="font-size:12px;color:var(--text-mid);line-height:1.55;margin-bottom:14px">${msg}</p>
+    <label style="display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text-light);margin-bottom:16px;cursor:pointer"><input type="checkbox" id="co-skip">Don't ask me again</label>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+      <button class="btn btn-danger" id="co-yes">Delete</button>
+    </div></div>`;
+  document.body.appendChild(m);
+  m.querySelector('#co-yes').onclick=()=>{
+    if(m.querySelector('#co-skip').checked)localStorage.setItem('at-noconfirm-'+key,'1');
+    m.remove();onYes();
+  };
+}
+
 function renderBulkBar(){
   let bar = document.getElementById('bulk-bar');
   const sel = state.selected;
@@ -4189,10 +4467,10 @@ function renderBulkBar(){
     <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="bulkProjectMenuFromBar(event)">Move to project</button>
     <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="state.selected.forEach(id=>patch(id,{priority:true}));toast(state.selected.size+' set to priority');state.selected.clear();render()">★ Priority</button>
     <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="state.selected.forEach(id=>patch(id,{todayFocus:true}));toast(state.selected.size+' added to Today');state.selected.clear();render()">◉ Today</button>
-    <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="state.selected.forEach(id=>patch(id,{ongoing:true}));toast(state.selected.size+' marked ongoing');state.selected.clear();render()" title="No due date needed">∞ Ongoing</button>
+    <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="state.selected.forEach(id=>patch(id,{ongoing:true,due:''}));toast(state.selected.size+' marked ongoing');state.selected.clear();render()" title="No due date needed">∞ Ongoing</button>
     <div style="width:1px;height:18px;background:var(--border-vis)"></div>
     <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;color:var(--text-mid)" onclick="bulkArchiveConfirm()" title="Move to archive (recoverable)">Archive</button>
-    <button class="btn btn-danger" style="font-size:11px;padding:5px 10px" onclick="bulkDeleteForever()" title="Delete permanently">Delete forever</button>
+    <button class="btn btn-danger" style="font-size:11px;padding:5px 10px" onclick="bulkDeleteForever()" title="Delete permanently">Delete</button>
     <div style="width:1px;height:18px;background:var(--border-vis)"></div>
     <button class="btn btn-ghost" style="font-size:11px;padding:5px 8px;color:var(--text-light)" onclick="state.selected.clear();render()" title="Clear selection">\u2715</button>`;
 }
@@ -4224,13 +4502,11 @@ function bulkArchiveConfirm(){
 function bulkDeleteForever(){
   const sel = state.selected;
   if(sel.size === 0) return;
-  if(!confirm('Delete '+sel.size+' actions FOREVER? This cannot be undone.')) return;
-  state.actions = state.actions.filter(a => !sel.has(a.id));
-  state.archived = state.archived.filter(a => !sel.has(a.id));
-  sel.clear();
-  saveState();
-  render();
-  toast('Deleted permanently');
+  confirmOnce('bulk','This permanently removes '+sel.size+' actions. It cannot be undone.',()=>{
+    state.actions = state.actions.filter(a => !sel.has(a.id));
+    state.archived = state.archived.filter(a => !sel.has(a.id));
+    sel.clear(); saveState(); render(); toast('Deleted');
+  });
 }
 
 // ═══ BULK CONTEXT MENU ═══
@@ -4340,13 +4616,12 @@ function renderProjects() {
         ondragleave="this.style.background='${col}0C'"
         ondrop="event.preventDefault();this.style.background='${col}0C';reorderProj('${esc(p)}')"
         onclick="document.getElementById('proj-${p.replace(/\s/g,'')}')?.scrollIntoView({behavior:'smooth',block:'start'})"
-        style="display:flex;align-items:stretch;gap:8px;margin-bottom:4px;border-radius:8px;cursor:grab;background:${col}0C;overflow:hidden;transition:all 0.1s">
-        <div style="width:4px;background:${col};flex-shrink:0"></div>
-        <div style="flex:1;min-width:0;padding:8px 4px 8px 0">
+        style="display:flex;align-items:center;gap:8px;margin-bottom:4px;border-radius:var(--radius-xs);cursor:grab;background:${col}0A;padding:8px 4px 8px 10px;transition:all 0.1s">
+        <div style="flex:1;min-width:0">
           <div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p)}</div>
-          <div style="display:flex;align-items:center;gap:4px;margin-top:3px">
+          <div style="display:flex;align-items:center;gap:5px;margin-top:4px">
             <span style="font-size:9px;color:var(--text-light)">${open} open</span>
-            <div style="flex:1;height:2px;background:var(--border);border-radius:1px"><div style="height:2px;background:${col};border-radius:1px;width:${pct}%"></div></div>
+            <div style="flex:1;height:2px;background:var(--border);border-radius:1px"><div style="height:2px;background:${col};border-radius:1px;width:${pct}%;opacity:.7"></div></div>
           </div>
         </div>
         <button class="btn btn-ghost" style="padding:0 8px;font-size:9px;color:var(--text-light);flex-shrink:0" onclick="event.stopPropagation();deleteProject('${esc(p)}')" title="Delete project">\u2715</button>
@@ -4447,29 +4722,23 @@ function renderProjects() {
 
     h += `<div id="proj-${proj.replace(/\s/g,'')}" style="margin-bottom:16px">
       <div onclick="state.projCollapsed[this.dataset.p]=!state.projCollapsed[this.dataset.p];render()" oncontextmenu="event.preventDefault();event.stopPropagation();renameProject('${esc(proj)}')" data-p="${esc(proj)}" ondragover="event.preventDefault();this.style.background=state.dark?'rgba(90,100,180,.08)':'rgba(90,100,180,.05)'" ondragleave="this.style.background='${col}0A'" ondrop="event.preventDefault();this.style.background='${col}0A';handleDropToProject('${esc(proj)}','')" style="display:flex;align-items:center;gap:11px;padding:12px 14px;cursor:pointer;background:${col}0A;border-radius:${collapsed?'10px':'10px 10px 0 0'};transition:background .12s;border:1px solid var(--border)">
-        <div style="width:8px;height:8px;border-radius:3px;background:${col};flex-shrink:0"></div>
-        <span style="font-size:14.5px;font-weight:600;flex:1;letter-spacing:-.01em">${esc(proj)}</span>
+        <span style="font-size:14.5px;font-weight:650;flex:1;letter-spacing:-.01em;color:${col}">${esc(proj)}</span>
         <span style="font-size:11px;color:var(--text-light)">${open.length} open</span>
         ${od.length?`<span style="font-size:10px;color:var(--danger);font-weight:600;background:rgba(255,69,58,.08);padding:2px 7px;border-radius:8px">${od.length} overdue</span>`:""}
         <div style="display:flex;gap:8px" onclick="event.stopPropagation()">
           <button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-mid);font-weight:600;font-family:inherit" onclick="openAddInProject(this.dataset.p)" data-p="${esc(proj)}">+ action</button>
-          <button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-mid);font-family:inherit" onclick="promptSub(this.dataset.p)" data-p="${esc(proj)}">+ sub</button>
+          <button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-mid);font-family:inherit" onclick="promptSub(event,this.dataset.p)" data-p="${esc(proj)}">+ sub</button>
         </div>
         <span style="font-size:10px;color:var(--text-light);transform:rotate(${collapsed?'-90deg':'0'});transition:transform .15s">\u25BE</span>
       </div>`;
 
     if (!collapsed) {
       h += `<div class="card" style="border-radius:0 0 10px 10px;overflow:hidden;border-top:none">`;
-      const dk=state.dark; const depthColors = dk?['rgba(60,60,100,.15)','rgba(80,65,40,.15)','rgba(40,80,60,.15)','rgba(70,50,80,.15)','rgba(80,50,55,.15)']:['rgba(90,100,180,.06)','rgba(180,140,60,.06)','rgba(60,150,100,.06)','rgba(130,70,160,.06)','rgba(180,60,80,.06)'];
-      const depthAccents = [col,'#B8934A','#5A9E7E','#8B72C4','#C57B98'];
       const sorted = [...subs].sort();
       sorted.forEach(sub => {
-        // NEW: skip rendering if an ancestor sub is collapsed
         if(isSubHiddenByAncestor(proj,sub)) return;
         const depth = subDepth(sub);
         const subItems = open.filter(a=>a.subproject===sub);
-        const dBg = depthColors[depth%depthColors.length];
-        const dCol = depthAccents[depth%depthAccents.length];
         const subKey = proj+'//'+sub;
         const subColl = state.subCollapsed[subKey];
         // Does this sub have nested children?
@@ -4477,13 +4746,14 @@ function renderProjects() {
         const hasChildren = childSubs.length>0;
         // Count direct children (one level deeper only)
         const directChildren = childSubs.filter(c=>subDepth(c)===subDepth(sub)+1).length;
-        h += `<div onclick="toggleSubCollapse('${esc(proj)}','${esc(sub)}')" oncontextmenu="event.preventDefault();event.stopPropagation();renameSubProject('${esc(proj)}','${esc(sub)}')" ondragover="event.preventDefault();this.style.background=state.dark?'rgba(90,100,180,.1)':'rgba(90,100,180,.06)'" ondragleave="this.style.background='${dBg}'" ondrop="event.preventDefault();this.style.background='${dBg}';handleDropToProject('${esc(proj)}','${esc(sub)}')" style="display:flex;align-items:center;gap:6px;padding:7px ${16+depth*20}px;background:${dBg};border-bottom:1px solid var(--border);border-left:2px solid ${dCol};transition:background .1s;cursor:pointer">
-          ${depth>0?'<span style="color:var(--text-light);font-size:10px">\u2514</span>':''}
-          <span style="font-size:10px;color:${dCol};transform:rotate(${subColl?'-90deg':'0'});transition:transform .15s;${(hasChildren||subItems.length)?'':'opacity:.3'}">\u25BE</span>
-          <span style="font-size:${depth>0?'11.5':'12.5'}px;font-weight:700;color:${dCol}">${subLabel(sub)}</span>
-          <span style="font-size:10px;color:var(--text-light)">${subItems.length?subItems.length+(directChildren?' + '+directChildren+' sub':''):(directChildren?directChildren+' sub'+(directChildren>1?'s':''):'<i style="opacity:.5">empty</i>')}</span>
-          <button onclick="event.stopPropagation();promptSub(this.dataset.p,this.dataset.s)" data-p="${esc(proj)}" data-s="${esc(sub)}" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:9px;color:${dCol};font-weight:600;font-family:inherit">+ sub</button>
-          <button onclick="event.stopPropagation();deleteSub('${esc(proj)}','${esc(sub)}')" style="background:none;border:none;cursor:pointer;font-size:9px;color:var(--text-light);font-family:inherit">\u2715</button>
+        h += `<div onclick="toggleSubCollapse('${esc(proj)}','${esc(sub)}')" oncontextmenu="event.preventDefault();event.stopPropagation();renameSubProject('${esc(proj)}','${esc(sub)}')" ondragover="event.preventDefault();this.style.background='var(--accent-soft)'" ondragleave="this.style.background='rgba(38,35,62,.018)'" ondrop="event.preventDefault();this.style.background='rgba(38,35,62,.018)';handleDropToProject('${esc(proj)}','${esc(sub)}')" style="display:flex;align-items:center;gap:7px;padding:7px 14px 7px ${16+depth*18}px;background:rgba(38,35,62,.018);border-bottom:1px solid var(--border);transition:background .1s;cursor:pointer">
+          ${depth>0?'<span style="color:var(--text-light);font-size:10px;opacity:.6">\u2514</span>':''}
+          <span style="font-size:9px;color:var(--text-light);transform:rotate(${subColl?'-90deg':'0'});transition:transform .15s;${(hasChildren||subItems.length)?'':'opacity:.25'}">\u25BE</span>
+          <span style="font-size:${depth>0?'11.5':'12'}px;font-weight:600;color:var(--text)">${subLabel(sub)}</span>
+          <span style="font-size:9.5px;color:var(--text-light)">${subItems.length?subItems.length+(directChildren?' \u00b7 '+directChildren+' sub':''):(directChildren?directChildren+' sub'+(directChildren>1?'s':''):'<i style="opacity:.5">empty</i>')}</span>
+          <button onclick="event.stopPropagation();openAddInProject('${esc(proj)}','${esc(sub)}')" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:9.5px;color:var(--text-mid);font-weight:600;font-family:inherit" title="Add an action in ${esc(subLabel(sub))}">+ action</button>
+          <button onclick="promptSub(event,this.dataset.p,this.dataset.s)" data-p="${esc(proj)}" data-s="${esc(sub)}" style="background:none;border:none;cursor:pointer;font-size:9.5px;color:var(--text-light);font-family:inherit" title="Add a nested sub-project">+ sub</button>
+          <button onclick="event.stopPropagation();deleteSub('${esc(proj)}','${esc(sub)}')" style="background:none;border:none;cursor:pointer;font-size:9.5px;color:var(--text-light);opacity:.6;font-family:inherit">\u2715</button>
         </div>`;
         if(!subColl) subItems.forEach(a => h += projRow(a, col, depth+1));
       });
@@ -4507,7 +4777,7 @@ function projRowCompact(a, col){
   const sel = state.selected.has(a.id);
   const st = ST[a.status]||ST.Open;
   return `<div onclick="if(event.shiftKey||event.ctrlKey||event.metaKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="display:flex;align-items:center;gap:8px;padding:7px 18px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12px;transition:background .08s;background:${sel?'var(--accent-soft)':''}" onmouseover="this.style.background='var(--accent-soft)'" onmouseout="this.style.background='${sel?'var(--accent-soft)':''}'">
-    ${a.priority?'<span style="color:#B478C8;font-size:10px;flex-shrink:0">\u2605</span>':''}
+    ${a.priority?'<span style="color:#D4A04A;font-size:9px;flex-shrink:0">\u2726</span>':''}
     <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${a.status==='Done'?'text-decoration:line-through;opacity:.5':''}">${esc(a.action)}</span>
     ${a.owner?`<span style="font-size:10.5px;color:var(--text-light);flex-shrink:0">${esc(a.owner)}</span>`:''}
     ${a.due?`<span style="font-size:10px;color:${isOverdue(a.due,a.status)?'var(--danger)':'var(--text-light)'};flex-shrink:0;font-weight:${isOverdue(a.due,a.status)?600:400}">${fmtDate(a.due)}</span>`:''}
@@ -4516,13 +4786,14 @@ function projRowCompact(a, col){
 }
 function projRow(a, col, depth) {
   const sel = state.selected.has(a.id);
-  return `<div draggable="true" ondragstart="state.dragId='${a.id}';event.dataTransfer.effectAllowed='move'" ondragend="state.dragId=null" ondragover="event.preventDefault();this.style.background=state.dark?'rgba(90,100,180,.1)':'rgba(90,100,180,.06)'" ondragleave="this.style.background='${sel?'var(--accent-soft)':''}'" ondrop="event.preventDefault();this.style.background='';handleReorder(state.dragId,'${a.id}')" onclick="if(event.shiftKey||event.ctrlKey||event.metaKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" oncontextmenu="if(state.selected.size>0){showBulkMenu(event);}else{event.preventDefault();toggleSelect('${a.id}');showBulkMenu(event);}" style="display:flex;align-items:center;gap:5px;padding:6px 6px 6px ${16+depth*20}px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12px;transition:background .08s;background:${sel?'var(--accent-soft)':''}">
-    <span style="cursor:grab;color:var(--text-light);font-size:12px;flex-shrink:0" onclick="event.stopPropagation()">\u2847</span>
-    ${sel?'<span style="color:var(--accent);font-size:10px">\u2713</span>':''}
-    ${a.priority?'<span style="color:#B478C8;font-size:11px">\u2605</span>':''}
-    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:${sel?600:400}">${esc(a.action)}</span>
-    <span style="font-size:10.5px;color:var(--text-mid);max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.owner)}</span>
-    ${statusBadge(a.status)}${actionBtns(a)}</div>`;
+  const stCnt=a.subtasks&&a.subtasks.length?a.subtasks.filter(t=>t.done).length+'/'+a.subtasks.length:'';
+  return `<div draggable="true" ondragstart="state.dragId='${a.id}';event.dataTransfer.effectAllowed='move'" ondragend="state.dragId=null" ondragover="event.preventDefault();this.style.background='var(--accent-soft)'" ondragleave="this.style.background='${sel?'var(--accent-soft)':''}'" ondrop="event.preventDefault();this.style.background='';handleReorder(state.dragId,'${a.id}')" onclick="if(event.shiftKey||event.ctrlKey||event.metaKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" oncontextmenu="if(state.selected.size>0){showBulkMenu(event);}else{event.preventDefault();toggleSelect('${a.id}');showBulkMenu(event);}" style="display:flex;align-items:center;gap:7px;padding:7px 14px 7px ${18+depth*18}px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12px;transition:background .08s;background:${sel?'var(--accent-soft)':''}" onmouseover="if(!${sel})this.style.background='var(--accent-soft)'" onmouseout="this.style.background='${sel?'var(--accent-soft)':''}'">
+    <span style="cursor:grab;color:var(--text-light);font-size:11px;flex-shrink:0;opacity:.35" onclick="event.stopPropagation()" title="Drag to reorder">\u2847</span>
+    ${a.priority?'<span style="color:#D4A04A;font-size:9px;flex-shrink:0">\u2726</span>':''}
+    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:${sel?600:400}">${esc(a.action)}${stCnt?`<span style="font-size:9.5px;color:var(--text-light);margin-left:7px;font-weight:400">\u25B8 ${stCnt}</span>`:''}</span>
+    <span style="font-size:10.5px;color:var(--text-mid);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.owner)}</span>
+    ${a.due?`<span style="font-size:10px;font-weight:600;color:${isOverdue(a.due,a.status)?'var(--red)':'var(--text-light)'}">${fmtDate(a.due)}</span>`:(a.ongoing?'<span style="font-size:10px;color:var(--text-light)" title="Ongoing">\u221E</span>':'')}
+    ${statusBadge(a.status,a.id)}${actionBtns(a)}</div>`;
 }
 
 // ═══════════════════════════════════════
@@ -4557,6 +4828,38 @@ function doMDImport() {
 // ═══════════════════════════════════════
 // EDIT MODAL
 // ═══════════════════════════════════════
+
+function stAdd(id, text){
+  if(!text||!text.trim())return;
+  const a=state.actions.find(x=>x.id===id);if(!a)return;
+  if(!a.subtasks)a.subtasks=[];
+  a.subtasks.push({id:uid(),text:text.trim(),done:false});
+  saveState();
+}
+function stToggle(id, sid){
+  const a=state.actions.find(x=>x.id===id);if(!a||!a.subtasks)return;
+  const t=a.subtasks.find(x=>x.id===sid);if(t)t.done=!t.done;
+  saveState();
+}
+function stDel(id, sid){
+  const a=state.actions.find(x=>x.id===id);if(!a||!a.subtasks)return;
+  a.subtasks=a.subtasks.filter(x=>x.id!==sid);
+  saveState();
+}
+function stListHtml(a){
+  const list=(a.subtasks||[]).map(t=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 2px;border-bottom:1px solid var(--border)">
+      <input type="checkbox" ${t.done?'checked':''} onclick="stToggle('${a.id}','${t.id}');this.nextElementSibling.style.textDecoration=this.checked?'line-through':'none';this.nextElementSibling.style.opacity=this.checked?'.5':'1'">
+      <span style="flex:1;font-size:12px;${t.done?'text-decoration:line-through;opacity:.5':''}">${esc(t.text)}</span>
+      <button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-light);opacity:.5;padding:2px" onclick="stDel('${a.id}','${t.id}');this.closest('div').remove()" title="Remove">\u2715</button>
+    </div>`).join('');
+  return `<div style="margin-bottom:12px">
+    <label style="font-size:10.5px;font-weight:600;color:#5A6578">Sub-actions ${a.subtasks&&a.subtasks.length?`<span style="font-weight:400;color:var(--text-light)">${a.subtasks.filter(t=>t.done).length}/${a.subtasks.length}</span>`:''}</label>
+    <div id="st-list-${a.id}" style="margin-top:4px">${list}</div>
+    <input class="input" style="width:100%;margin-top:6px;font-size:12px" placeholder="+ Add a sub-action\u2026" onkeydown="if(event.key==='Enter'&&this.value.trim()){stAdd('${a.id}',this.value);const w=this;const t=state.actions.find(x=>x.id==='${a.id}').subtasks.slice(-1)[0];document.getElementById('st-list-${a.id}').insertAdjacentHTML('beforeend','<div style=\'display:flex;align-items:center;gap:8px;padding:5px 2px;border-bottom:1px solid var(--border)\'><input type=checkbox onclick=\'stToggle(\\'${a.id}\\',\\''+t.id+'\\')\'><span style=\'flex:1;font-size:12px\'>'+w.value.replace(/</g,'&lt;')+'</span></div>');w.value='';}">
+  </div>`;
+}
+
 function openEdit(id) {
   const a = state.actions.find(x=>x.id===id);
   if (!a) return;
@@ -4570,7 +4873,7 @@ function openEdit(id) {
       <h3 style="font-size:15px;font-weight:700">Edit action</h3>
       <div style="display:flex;gap:5px">
         <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;color:var(--text-mid)" onclick="archiveAction('${a.id}');this.closest('.modal-overlay').remove()" title="Move to archive (recoverable)">Archive</button>
-        <button class="btn btn-danger" style="font-size:11px;padding:5px 10px" onclick="deleteActionForever('${a.id}');this.closest('.modal-overlay').remove()" title="Delete permanently">Delete forever</button>
+        <button class="btn btn-danger" style="font-size:11px;padding:5px 10px" onclick="this.closest('.modal-overlay').remove();deleteActionForever('${a.id}')" title="Delete permanently">Delete</button>
         <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="this.closest('.modal-overlay').remove()">\u2715</button>
       </div></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -4589,6 +4892,7 @@ function openEdit(id) {
         </div></label>
       <div style="grid-column:1/-1"><div style="font-size:10.5px;font-weight:600;color:#5A6578;margin-bottom:4px">Notes</div>
         ${(a.notesLog||[]).length?`<div style="max-height:120px;overflow:auto;margin-bottom:6px;border:1px solid var(--border);border-radius:6px;padding:6px">${(a.notesLog||[]).map(n=>`<div style="font-size:11px;padding:3px 0;border-bottom:1px solid var(--border);display:flex;gap:8px"><span style="color:var(--text-light);font-size:10px;white-space:nowrap">${fmtDate(n.d)}</span><span>${esc(n.t)}</span></div>`).join("")}</div>`:""}
+        ${stListHtml(a)}
         <div style="display:flex;gap:4px"><input class="input" id="note-inp" style="flex:1" placeholder="Add a note..." onkeydown="if(event.key==='Enter'){addNote('${a.id}',this.value);this.closest('.modal-overlay').remove();openEdit('${a.id}');}"><button class="btn btn-primary" style="padding:5px 10px;font-size:11px" onclick="addNote('${a.id}',document.getElementById('note-inp').value);this.closest('.modal-overlay').remove();openEdit('${a.id}');">Add</button></div></div>
       <div style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:10px;margin-top:4px">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">
@@ -4597,12 +4901,12 @@ function openEdit(id) {
           <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:${a.todayFocus?'var(--accent)':'var(--text-mid)'};cursor:pointer">
             <input type="checkbox" ${a.todayFocus?'checked':''} onchange="patch('${a.id}',{todayFocus:this.checked})"> \u25C9 Today</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:${a.ongoing?'#5B8DEF':'var(--text-mid)'};cursor:pointer" title="Action has no fixed due date - excluded from inbox nags">
-            <input type="checkbox" ${a.ongoing?'checked':''} onchange="patch('${a.id}',{ongoing:this.checked})"> \u221E Ongoing</label>
+            <input type="checkbox" ${a.ongoing?'checked':''} onchange="patch('${a.id}',{ongoing:this.checked,...(this.checked?{due:''}:{})});var dd=document.getElementById('ed-due-${a.id}');if(this.checked&&dd)dd.value='';"> \u221E Ongoing <span style="font-weight:400;font-size:10px;color:var(--text-light)">(no due date)</span></label>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
           <label style="font-size:10.5px;font-weight:600;color:#5A6578">Start date <input type="date" class="input" style="width:100%;margin-top:2px" value="${a.startDate||''}" onchange="patch('${a.id}',{startDate:this.value})"></label>
           <label style="font-size:10.5px;font-weight:600;color:#5A6578">Recur <span style="font-weight:400;color:var(--text-light)">(skips inbox)</span><select class="select" style="width:100%;margin-top:2px" onchange="patch('${a.id}',{recur:this.value})"><option value="">Not recurring</option><option ${a.recur==='daily'?'selected':''} value="daily">Repeats daily</option><option ${a.recur==='weekly'?'selected':''} value="weekly">Repeats weekly</option><option ${a.recur==='monthly'?'selected':''} value="monthly">Repeats monthly</option></select></label>
-          <label style="font-size:10.5px;font-weight:600;color:#5A6578">Due date <input type="date" class="input" style="width:100%;margin-top:2px" value="${a.due||''}" onchange="patch('${a.id}',{due:this.value})"></label>
+          <label style="font-size:10.5px;font-weight:600;color:#5A6578">Due date <span style="font-weight:400;color:var(--text-light)">(optional)</span><input type="date" id="ed-due-${a.id}" class="input" style="width:100%;margin-top:2px" value="${a.due||''}" onchange="patch('${a.id}',{due:this.value,...(this.value?{ongoing:false}:{})})"></label>
         </div>
       </div>
     </div></div>`;
@@ -4930,7 +5234,7 @@ STEP 4: Create API Key
 STEP 5: Paste into this file
   1. Open this HTML file in a text editor
   2. Find these lines near the top of the <script>:
-     const APP_VERSION = 'v7.4';
+     const APP_VERSION = 'v7.7';
 console.log('%c Action Tracker ' + APP_VERSION, 'background:#4A7BF7;color:#fff;padding:4px 8px;border-radius:4px;font-weight:bold');
 
 // ═══ MINIMAL SVG ICONS ═══
