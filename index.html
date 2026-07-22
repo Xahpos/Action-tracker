@@ -172,10 +172,11 @@ textarea.input{resize:vertical}
 .proj-tag{display:inline-flex;align-items:center;padding:2.5px 8px;border-radius:20px;font-size:var(--fs-2xs);font-weight:500;white-space:nowrap;letter-spacing:.01em}
 
 /* ═ ACTIONS ═ */
-.action-btns{display:flex;gap:2px;align-items:center;flex-shrink:0}
+.action-btns{display:flex;gap:3px;align-items:center;flex-shrink:0}
+input[type=checkbox]{width:13px;height:13px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
 .action-btns .toggle-btn{background:none;border:none;cursor:pointer;font-size:12px;padding:2px;line-height:1;transition:all .1s;border-radius:4px;color:#D1D1D6}
 .action-btns .toggle-btn:hover{background:rgba(0,0,0,.03)}
-.action-btns .toggle-btn.on-prio{color:#D4A04A}
+.action-btns .toggle-btn.on-prio{color:#D4A04A}.on-done{color:var(--green)}
 .action-btns .toggle-btn.on-today{color:var(--accent)}
 .action-btns .toggle-btn.off{color:#D1D1D6}
 .action-btns select{padding:2px 4px;border-radius:5px;border:1px solid var(--border-vis);font-size:10px;font-family:var(--font);background:transparent;color:var(--text-mid);width:72px}
@@ -345,6 +346,29 @@ body.dark .kb-age.late{color:#DE8080}
   .card-hover:hover{background:inherit}
   button,.btn,select{touch-action:manipulation}
 }
+
+/* ═══ v8.1 POLISH PACK — micro-interactions & finish ═══ */
+::selection{background:rgba(110,102,200,.22)}
+html{scroll-behavior:smooth}
+input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:pointer}
+*::-webkit-scrollbar{width:9px;height:9px}
+*::-webkit-scrollbar-thumb{background:rgba(110,102,200,.18);border-radius:8px;border:2px solid transparent;background-clip:content-box}
+*::-webkit-scrollbar-thumb:hover{background:rgba(110,102,200,.32);background-clip:content-box;border:2px solid transparent}
+*::-webkit-scrollbar-track{background:transparent}
+.card-hover:active{transform:scale(.997)}
+.btn:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--radius-xs)}
+.toast{animation:toastIn .25s cubic-bezier(.16,1,.3,1)}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+thead th{position:sticky;top:0;background:var(--card-solid);z-index:2}
+tbody tr{transition:background .08s}
+tbody tr:hover{background:var(--accent-soft)}
+.status-badge[onclick]{transition:filter .12s,transform .12s}
+.status-badge[onclick]:hover{filter:brightness(.93);transform:scale(1.04)}
+@media(hover:hover){
+  .action-btns{opacity:.45;transition:opacity .15s}
+  tr:hover .action-btns,.card:hover .action-btns,div:hover>.action-btns{opacity:1}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
@@ -365,7 +389,7 @@ body.dark .kb-age.late{color:#DE8080}
   <div class="logo">
     <h2>Action Tracker</h2>
     <p id="action-count">149 actions</p>
-    <p style="font-size:8px;color:#4A7BF7;opacity:.6;margin-top:1px;font-family:var(--mono)">v7.7</p>
+    <p style="font-size:8px;color:#4A7BF7;opacity:.6;margin-top:1px;font-family:var(--mono)">v8.5</p>
   </div>
   <nav id="nav"></nav>
   <div style="padding:6px 12px;border-top:1px solid rgba(255,255,255,.06)">
@@ -393,7 +417,7 @@ body.dark .kb-age.late{color:#DE8080}
 // ═══════════════════════════════════════
 // *** REPLACE THESE WITH YOUR OWN VALUES ***
 // See setup guide at the bottom of this file
-const APP_VERSION = 'v7.7';
+const APP_VERSION = 'v8.5';
 console.log('%c Action Tracker ' + APP_VERSION, 'background:#4A7BF7;color:#fff;padding:4px 8px;border-radius:4px;font-weight:bold');
 
 // ═══ MINIMAL SVG ICONS ═══
@@ -732,9 +756,30 @@ function importMD(md) {
 function toast(msg) {
   const c = document.getElementById("toast-container");
   c.innerHTML = `<div class="toast">${msg}</div>`;
-  setTimeout(() => c.innerHTML = "", 2400);
+  clearTimeout(window._toastT);
+  window._toastT = setTimeout(() => c.innerHTML = "", 2400);
+}
+function toastUndo(msg, undoFn) {
+  const c = document.getElementById("toast-container");
+  window._undoFn = undoFn;
+  c.innerHTML = `<div class="toast" style="display:flex;align-items:center;gap:12px">${msg}<button onclick="if(window._undoFn){window._undoFn();window._undoFn=null;}document.getElementById('toast-container').innerHTML='';" style="background:none;border:none;color:#8A82DC;font-weight:700;font-size:12px;cursor:pointer;font-family:var(--font);padding:0">Undo</button></div>`;
+  clearTimeout(window._toastT);
+  window._toastT = setTimeout(() => { c.innerHTML = ""; window._undoFn = null; }, 6000);
 }
 function patch(id, upd) {
+  // Recurring: completing a recurring action rolls it to its next occurrence
+  if (upd && upd.status === 'Done') {
+    const _a = state.actions.find(x => x.id === id);
+    if (_a && _a.recur) {
+      const nd = new Date((_a.due || todayISO()) + 'T12:00:00');
+      if (_a.recur === 'daily') nd.setDate(nd.getDate() + 1);
+      else if (_a.recur === 'weekly') nd.setDate(nd.getDate() + 7);
+      else nd.setMonth(nd.getMonth() + 1);
+      upd = {...upd, status: 'Open', due: nd.toISOString().slice(0, 10), ongoing: false};
+      if (_a.subtasks) _a.subtasks.forEach(t => t.done = false);
+      toast('\u21BB Done \u2014 recurs ' + fmtDate(upd.due));
+    }
+  }
   state.actions = state.actions.map(a => {
     if (a.id !== id) return a;
     // Stamp when status actually changes — powers card aging + weekly throughput
@@ -744,10 +789,17 @@ function patch(id, upd) {
   saveState(); render();
 }
 function deleteActionForever(id) {
-  confirmOnce('action','This permanently removes the action. It cannot be undone.',()=>{
+  confirmOnce('action','This permanently removes the action.',()=>{
+    const snapA = state.actions.find(a => a.id === id);
+    const snapR = state.archived.find(a => a.id === id);
     state.actions = state.actions.filter(a => a.id !== id);
     state.archived = state.archived.filter(a => a.id !== id);
-    saveState(); render(); toast('Deleted');
+    saveState(); render();
+    toastUndo('Deleted', () => {
+      if (snapA) state.actions.push(snapA);
+      if (snapR) state.archived.push(snapR);
+      saveState(); render();
+    });
   });
 }
 function archiveAction(id) {
@@ -755,7 +807,11 @@ function archiveAction(id) {
   if (!a) return;
   state.archived.push({...a, archivedAt: todayISO()});
   state.actions = state.actions.filter(x => x.id !== id);
-  saveState(); render(); toast("Archived");
+  saveState(); render();
+  toastUndo("Archived", () => {
+    const ar = state.archived.find(x => x.id === id);
+    if (ar) { const {archivedAt, ...rest} = ar; state.actions.push(rest); state.archived = state.archived.filter(x => x.id !== id); saveState(); render(); }
+  });
 }
 function restoreAction(id) {
   const a = state.archived.find(x => x.id === id);
@@ -779,14 +835,19 @@ function emptyState(title, hint, icon){
 }
 function quickAdd(opts){
   opts=opts||{};
-  var tf=opts.todayFocus?'true':'false';
-  var ph=opts.todayFocus?'Add a focus action...':'Add an action...';
-  return '<div style="display:flex;gap:8px;margin-bottom:18px">'+
-    '<input class="input" id="qa" style="flex:1" placeholder="'+ph+'"'+
-    ' onkeydown="if(event.key===\'Enter\'&&this.value.trim()){addAction({action:this.value.trim(),owner:\'Me\',num:\'\',status:\'Open\',todayFocus:'+tf+'});this.value=\'\';}"'+
+  var on=opts.todayFocus?'1':'';
+  var chip=opts.todayFocus
+    ?'border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent)'
+    :'border:1px solid var(--border-vis);background:transparent;color:var(--text-light)';
+  return '<div style="display:flex;gap:8px;margin-bottom:18px;align-items:stretch">'+
+    '<input class="input" id="qa" style="flex:1" placeholder="Add an action\u2026"'+
+    ' onkeydown="if(event.key===\'Enter\'&&this.value.trim()){addAction({action:this.value.trim(),owner:\'Me\',num:\'\',status:\'Open\',todayFocus:!!document.getElementById(\'qa-focus\').dataset.on});this.value=\'\';}"'+
     '>'+
-    '<button class="btn btn-primary" style="padding:7px 14px;font-size:15px;line-height:1" title="Quick add"'+
-    ' onclick="var i=document.getElementById(\'qa\');if(i.value.trim()){addAction({action:i.value.trim(),owner:\'Me\',num:\'\',status:\'Open\',todayFocus:'+tf+'});i.value=\'\';}"'+
+    '<button id="qa-focus" data-on="'+on+'" title="Also add to Today focus \u2014 click to toggle"'+
+    ' onclick="this.dataset.on=this.dataset.on?\'\':\'1\';var o=!!this.dataset.on;this.style.borderColor=o?\'var(--accent)\':\'var(--border-vis)\';this.style.background=o?\'var(--accent-soft)\':\'transparent\';this.style.color=o?\'var(--accent)\':\'var(--text-light)\'"'+
+    ' style="padding:0 13px;border-radius:var(--radius-xs);'+chip+';font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font);display:flex;align-items:center;gap:5px;white-space:nowrap">\u25C9 Focus</button>'+
+    '<button class="btn btn-primary" style="padding:7px 14px;font-size:15px;line-height:1" title="Add"'+
+    ' onclick="var i=document.getElementById(\'qa\');if(i.value.trim()){addAction({action:i.value.trim(),owner:\'Me\',num:\'\',status:\'Open\',todayFocus:!!document.getElementById(\'qa-focus\').dataset.on});i.value=\'\';}"'+
     '>+</button>'+
     '<button class="btn btn-default" style="padding:7px 10px;font-size:11px" title="Add with details" onclick="openAddModal()">&#8943;</button>'+
     '</div>';
@@ -813,8 +874,8 @@ function cycleStatus(id){
 }
 function projTag(p,sub) { const c=WS_COLORS[p]||"#94A3B8"; return `<span class="proj-tag" style="background:${c}18;color:${c}">${esc(p)}${sub?` <span style="opacity:.6">/ ${esc(subLabel(sub))}</span>`:""}</span>`; }
 function actionBtns(a) {
-  return `<div class="action-btns"><button class="toggle-btn off" onclick="event.stopPropagation();archiveAction('${a.id}')" title="Archive" style="font-size:9px;opacity:.15;transition:opacity .1s" onmouseover="this.style.opacity=.7" onmouseout="this.style.opacity=.15">\u2715</button>
-    <button class="toggle-btn ${a.priority?'on-prio':'off'}" onclick="event.stopPropagation();patch('${a.id}',{priority:${!a.priority}})" title="Priority">\u2726</button>
+  return `<div class="action-btns"><button class="toggle-btn ${a.status==='Done'?'on-done':'off'}" onclick="event.stopPropagation();patch('${a.id}',{status:'${a.status==='Done'?'Open':'Done'}'})" title="${a.status==='Done'?'Reopen':'Mark done'}">\u2713</button><button class="toggle-btn off" onclick="event.stopPropagation();archiveAction('${a.id}')" title="Archive" style="font-size:9px;opacity:.2;transition:opacity .1s" onmouseover="this.style.opacity=.75" onmouseout="this.style.opacity=.2">\u2715</button><button class="toggle-btn off" onclick="event.stopPropagation();deleteActionForever('${a.id}')" title="Delete" style="font-size:11px;opacity:.2;transition:all .1s" onmouseover="this.style.opacity=.85;this.style.color='var(--red)'" onmouseout="this.style.opacity=.2;this.style.color=''">\u232B</button>
+    <button class="toggle-btn ${a.priority?'on-prio':'off'}" onclick="event.stopPropagation();patch('${a.id}',{priority:${!a.priority}})" title="Priority">\u2605</button>
     <button class="toggle-btn ${a.todayFocus?'on-today':'off'}" onclick="event.stopPropagation();patch('${a.id}',{todayFocus:${!a.todayFocus}})" title="Today focus">\u25C9</button>
   </div>`;
 }
@@ -876,6 +937,70 @@ function deleteSub(proj,sub){
     saveState();m.remove();render();toast(cnt+' archived');
   };
 }
+
+function subMoveTo(proj, sub, newParent){
+  const subs=getSubs(proj), label=subLabel(sub);
+  const newFull=newParent?newParent+' / '+label:label;
+  if(newFull===sub) return;
+  if(newParent && (newParent===sub || newParent.startsWith(sub+' / '))){toast('Cannot nest inside itself');return;}
+  const list=state.subProjects[proj]||[];
+  const remap=s=> s===sub?newFull : (s.startsWith(sub+' / ')?newFull+s.slice(sub.length):s);
+  state.subProjects[proj]=[...new Set(subs.map(remap))];
+  state.actions.forEach(a=>{if(a.project===proj&&a.subproject)a.subproject=remap(a.subproject);});
+  saveState();render();toast('Moved to '+(newParent?subLabel(newParent):'top level'));
+}
+function subPromote(proj, sub){
+  const label=subLabel(sub);
+  if(getProjects().includes(label)){toast('A project named "'+label+'" already exists');return;}
+  const kids=getSubs(proj).filter(s=>s.startsWith(sub+' / '));
+  state.actions.forEach(a=>{
+    if(a.project!==proj||!a.subproject)return;
+    if(a.subproject===sub){a.project=label;a.subproject='';}
+    else if(a.subproject.startsWith(sub+' / ')){a.project=label;a.subproject=a.subproject.slice(sub.length+3);}
+  });
+  state.subProjects[label]=[...new Set(kids.map(s=>s.slice(sub.length+3)))];
+  state.subProjects[proj]=(state.subProjects[proj]||[]).filter(s=>s!==sub&&!s.startsWith(sub+' / '));
+  saveState();render();toast('"'+label+'" is now a project');
+}
+function subMenu(event, proj, sub){
+  event.stopPropagation();
+  document.querySelectorAll('.sub-menu').forEach(p=>p.remove());
+  const r=(event.currentTarget||event.target).getBoundingClientRect();
+  const m=document.createElement('div');m.className='sub-menu';
+  m.style.cssText='position:fixed;z-index:2000;background:var(--card-solid);border:1px solid var(--border-vis);border-radius:12px;box-shadow:var(--shadow-lg);padding:5px;min-width:210px;max-height:320px;overflow:auto;left:'+Math.min(r.left-160,window.innerWidth-230)+'px;top:'+(r.bottom+6)+'px';
+  const btn=(label,fn,danger)=>{const b=document.createElement('button');
+    b.style.cssText='display:block;width:100%;text-align:left;padding:7px 11px;border:none;background:none;cursor:pointer;font-size:12px;font-family:var(--font);border-radius:7px;color:'+(danger?'var(--red)':'var(--text)');
+    b.textContent=label;b.onmouseover=()=>b.style.background='var(--accent-soft)';b.onmouseout=()=>b.style.background='none';
+    b.onclick=()=>{m.remove();fn();};m.appendChild(b);};
+  const sep=(t)=>{const d=document.createElement('div');d.style.cssText='font-size:9px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;padding:7px 11px 3px';d.textContent=t;m.appendChild(d);};
+  btn('\u2191 Promote to project',()=>subPromote(proj,sub));
+  btn('Rename\u2026',()=>renameSubProject(proj,sub));
+  sep('Move under');
+  if(subDepth(sub)>0) btn('\u2937 Top level of '+proj,()=>subMoveTo(proj,sub,''));
+  getSubs(proj).filter(s=>s!==sub&&!s.startsWith(sub+' / ')&&s!==sub.split(' / ').slice(0,-1).join(' / ')).forEach(s=>btn('\u2937 '+subLabel(s),()=>subMoveTo(proj,sub,s)));
+  sep('');
+  btn('Remove sub-project',()=>deleteSub(proj,sub),true);
+  document.body.appendChild(m);
+  setTimeout(()=>{const cl=(e)=>{if(!m.contains(e.target)){m.remove();document.removeEventListener('click',cl);}};document.addEventListener('click',cl);},50);
+}
+
+
+function newSubInline(sel, proj, onDone){
+  if(sel._inlineOpen) return;
+  sel._inlineOpen = true;
+  const box=document.createElement('div');
+  box.style.cssText='display:flex;gap:6px;margin-top:5px;animation:smSlideUp .16s cubic-bezier(.16,1,.3,1) both';
+  box.innerHTML='<input class="input" style="flex:1;font-size:12px" placeholder="New sub-project name\u2026"><button class="btn btn-primary" style="font-size:11px;padding:5px 12px">Add</button><button class="btn btn-ghost" style="font-size:11px;padding:5px 8px">\u2715</button>';
+  sel.style.display='none';
+  sel.parentElement.appendChild(box);
+  const inp=box.querySelector('input'), btns=box.querySelectorAll('button');
+  const close=()=>{sel.style.display='';sel.value=sel._prevVal||'';box.remove();sel._inlineOpen=false;};
+  const commit=()=>{const n=inp.value.trim();if(!n){close();return;}addSub(proj,n,'');sel._inlineOpen=false;onDone(n);};
+  btns[0].onclick=commit; btns[1].onclick=close;
+  inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();commit();}if(e.key==='Escape'){e.preventDefault();close();}};
+  setTimeout(()=>inp.focus(),20);
+}
+
 function subDepth(s){return s?s.split(" / ").length-1:0;}
 function subLabel(s){return s?s.split(" / ").pop():s;}
 function subAncestors(s){
@@ -1011,7 +1136,7 @@ function openAddInProject(proj, sub){
       <label style="font-size:10.5px;font-weight:600;color:#5A6578;grid-column:1/-1">Action <input class="input" id="pa-act" style="width:100%;margin-top:2px"></label>
       <label style="font-size:10.5px;font-weight:600;color:#5A6578">Owner <input class="input" id="pa-own" style="width:100%;margin-top:2px" value="Me"></label>
       <label style="font-size:10.5px;font-weight:600;color:#5A6578">Due <span style="font-weight:400;color:var(--text-light)">(optional)</span><input type="date" class="input" id="pa-due" style="width:100%;margin-top:2px"></label>
-      <label style="font-size:10.5px;font-weight:600;color:#5A6578;grid-column:1/-1">Sub-project <select class="select" id="pa-sub" style="width:100%;margin-top:2px" onchange="if(this.value==='__new__'){var n=prompt('New sub-project name:');if(n&&n.trim()){addSub('${esc(proj)}',n.trim(),'');var o=document.createElement('option');o.value=n.trim();o.textContent=n.trim();o.selected=true;this.insertBefore(o,this.lastElementChild);}else{this.value='${esc(sub||'')}';}}">
+      <label style="font-size:10.5px;font-weight:600;color:#5A6578;grid-column:1/-1">Sub-project <select class="select" id="pa-sub" style="width:100%;margin-top:2px" onfocus="this._prevVal='${esc(sub||'')}'" onchange="if(this.value==='__new__'){var S=this;newSubInline(S,'${esc(proj)}',function(n){var o=document.createElement('option');o.value=n;o.textContent=n;S.insertBefore(o,S.lastElementChild);S.style.display='';S.value=n;S.parentElement.querySelector('div').remove();});}">
         <option value="">(none)</option>
         ${subs.map(s=>`<option value="${esc(s)}" ${s===sub?'selected':''}>${"\u00A0".repeat(subDepth(s)*2)+subLabel(s)}</option>`).join("")}
         <option value="__new__">+ New sub-project\u2026</option>
@@ -1401,6 +1526,16 @@ function smQuickScore(){
   document.body.appendChild(m);
 }
 
+function smCopyMonthAI(){
+  const ym=(state.diary.viewDate||todayISO()).slice(0,7);
+  const days=smFilledDates().filter(d=>d.startsWith(ym)).sort();
+  if(!days.length){toast('No entries this month');return;}
+  let out='Self Map — '+ym+'. Synthesize patterns, wins, struggles, and one concrete recommendation.\n\n';
+  days.forEach(d=>{const e=state.diary.entries[d];out+='## '+d+'\n';
+    getSMAllAreas().forEach(a=>{const ae=e[a];if(ae&&(ae.score||ae.repeat||ae.improve||ae.action))out+='- '+a+(ae.score?' '+ae.score+'/10':'')+(ae.repeat?' | +'+ae.repeat:'')+(ae.improve?' | Δ'+ae.improve:'')+(ae.action?' | →'+ae.action:'')+'\n';});
+    if(e._freewrite)out+='Free-write: '+e._freewrite+'\n';out+='\n';});
+  navigator.clipboard.writeText(out).then(()=>toast(days.length+' days copied — paste into your local AI'));
+}
 function showHistoryDay(date){
   const e=state.diary.entries[date]||{};
   const dObj=new Date(date+'T12:00:00');
@@ -2071,6 +2206,8 @@ function renderDiary(){
       metaBits.push(`<button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-light);font-family:var(--font);text-decoration:underline;padding:0" onclick="var bd=prompt('Enter birthday (YYYY-MM-DD):');if(bd){state.diary.birthday=bd;saveState();render();}">set birthday</button>`);
     }
     metaBits.push(`<span><b style="color:var(--text)">${filled.length}</b> entries</span>`);
+    let _tw=0;filled.forEach(d=>{const fw=(state.diary.entries[d]||{})._freewrite;if(fw)_tw+=fw.trim().split(/\s+/).length;});
+    if(_tw)metaBits.push(`<span><b style="color:var(--text)">${_tw.toLocaleString()}</b> words written</span>`);
     const _lastFill=filled.length?filled[filled.length-1]:null;
     const _gap=_lastFill?Math.round((new Date(todayISO()+'T12:00:00')-new Date(_lastFill+'T12:00:00'))/864e5):0;
     if(_gap>1) metaBits.push(`<span style="color:var(--red);font-weight:600">${_gap}d since last entry</span>`);
@@ -2352,9 +2489,41 @@ function renderDiary(){
   if(hideMap['sm-contrib']){h+=smSectionToggle('sm-contrib','365-Day Activity');}
   else{h+='<div class="card" style="padding:16px 18px;margin-bottom:14px;overflow-x:auto"><div style="display:flex;align-items:center;font-size:var(--fs-sm);font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">365-day activity'+smHideBtn('sm-contrib')+'</div>'+smContributionGraph()+'</div>';}
   
+  const tBru2=todayBrussels();
+  // ── GREEN LINE: habit impact + on-this-day ──
+  {
+    const _ents=state.diary.entries||{};
+    const _dAvg=(d)=>{const e=_ents[d];if(!e)return 0;const ss=getSMAllAreas().map(a=>e[a]&&e[a].score?e[a].score:0).filter(s=>s>0);return ss.length?ss.reduce((x,y)=>x+y,0)/ss.length:0;};
+    // Habit impact: avg on done-days vs other logged days
+    const _hl=state.diary.habitLog||{};
+    let impRows='';
+    (state.diary.habitsList||[]).forEach(hb=>{
+      const dDone=[],dOther=[];
+      filled.forEach(d=>{const av=_dAvg(d);if(!av)return;const v=(_hl[hb.id]||{})[d];
+        if(v==='done')dDone.push(av);else if(v!=='skip'&&d<tBru2)dOther.push(av);});
+      if(dDone.length>=3&&dOther.length>=3){
+        const a1=dDone.reduce((x,y)=>x+y,0)/dDone.length,a2=dOther.reduce((x,y)=>x+y,0)/dOther.length,df=a1-a2;
+        const c=df>0.15?'var(--green)':df<-0.15?'var(--red)':'var(--text-light)';
+        impRows+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:11px"><span style="flex:1;font-weight:600">${esc(hb.name)}</span><span style="color:var(--text-light)">done ${a1.toFixed(1)} \u00b7 else ${a2.toFixed(1)}</span><span style="font-weight:700;color:${c};min-width:38px;text-align:right">${df>0?'+':''}${df.toFixed(1)}</span></div>`;
+      }
+    });
+    if(impRows){
+      h+=`<div class="card" style="padding:14px 16px;margin-bottom:14px"><div style="font-size:var(--fs-sm);font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Habit impact <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-light)">\u00b7 your day-average when done vs not</span></div>${impRows}</div>`;
+    }
+    // On this day — 1 month / 1 year ago
+    let otd='';
+    [[1,'month'],[12,'year']].forEach(([m,lbl])=>{
+      const dd=new Date(td+'T12:00:00');dd.setMonth(dd.getMonth()-m);
+      const k=dd.toISOString().slice(0,10);const e=_ents[k];if(!e)return;
+      let snip=e._freewrite?esc(e._freewrite.slice(0,110))+(e._freewrite.length>110?'\u2026':''):'';
+      if(!snip){let best=null;getSMAllAreas().forEach(a=>{const ae=e[a];if(ae&&ae.score&&(!best||ae.score>best.s))best={n:a,s:ae.score};});if(best)snip=best.n+' '+best.s+'/10';}
+      if(snip)otd+=`<div onclick="showHistoryDay('${k}')" style="padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:11px;line-height:1.55" onmouseover="this.style.opacity=.7" onmouseout="this.style.opacity=1"><span style="font-weight:700;color:var(--accent);font-size:9.5px;text-transform:uppercase;letter-spacing:.05em">1 ${lbl} ago</span> <span style="color:var(--text-mid);font-style:italic">${snip}</span></div>`;
+    });
+    if(otd)h+=`<div class="card" style="padding:14px 16px;margin-bottom:14px"><div style="font-size:var(--fs-sm);font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">On this day</div>${otd}</div>`;
+  }
   // (Daily snapshot / photo removed per user request)
   // Report + digest — quiet text links, not buttons
-  h+='<div style="display:flex;gap:14px;margin-bottom:12px;padding:0 2px"><button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-light);font-family:var(--font);text-decoration:underline;text-underline-offset:2px;padding:0" onclick="generateMonthlyReport()">Monthly report</button><button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-light);font-family:var(--font);text-decoration:underline;text-underline-offset:2px;padding:0" onclick="emailDigest()">Email digest</button></div>';
+  h+='<div style="display:flex;gap:14px;margin-bottom:12px;padding:0 2px"><button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-light);font-family:var(--font);text-decoration:underline;text-underline-offset:2px;padding:0" onclick="generateMonthlyReport()">Monthly report</button><button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-light);font-family:var(--font);text-decoration:underline;text-underline-offset:2px;padding:0" onclick="smCopyMonthAI()">Copy month for AI</button><button style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-light);font-family:var(--font);text-decoration:underline;text-underline-offset:2px;padding:0" onclick="emailDigest()">Email digest</button></div>';
 
   // 7 Habits lens
   const habits7map=[
@@ -3591,7 +3760,7 @@ function renderKanban(){
     const od=a.due&&isOverdue(a.due,a.status);
     return `<div class="kanban-card${sel?' kb-sel':''}" draggable="true" ondragstart="state.dragId='${a.id}';event.dataTransfer.effectAllowed='move'" ondragend="state.dragId=null" onclick="if(event.ctrlKey||event.metaKey||event.shiftKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" oncontextmenu="event.preventDefault();toggleSelect('${a.id}');if(state.selected.size)showBulkMenu(event)" style="animation:smSlideUp .18s both;animation-delay:${Math.min(i,10)*18}ms;${od?'border-left:3px solid var(--red);padding-left:11px;':''}">
       ${st!=='Done'?`<button class="kb-done-btn" title="Mark done" onclick="event.stopPropagation();patch('${a.id}',{status:'Done'});toast('Done')">\u2713</button>`:''}
-      <div class="kanban-title">${a.priority?'<span style="color:#D4A04A;font-size:9px;margin-right:5px;vertical-align:1px">\u2726</span>':''}${esc(a.action)}</div>
+      <div class="kanban-title">${esc(a.action)}</div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         ${selProj==='All'&&lanes!=='project'?`<span style="font-size:8.5px;padding:2px 8px;border-radius:20px;background:${col}14;color:${col};font-weight:600">${esc(subLabel(a.project)||a.project).slice(0,20)}</span>`:''}
         ${lanes!=='owner'?`<span style="font-size:9.5px;color:var(--text-light)">${esc(a.owner)}</span>`:''}
@@ -3764,6 +3933,31 @@ dark: ${state.dark}</pre>
 // TODAY TAB
 // ═══════════════════════════════════════
 
+
+function showRescue(event){
+  event.stopPropagation();
+  document.querySelectorAll('.rescue-pop').forEach(p=>p.remove());
+  const od=state.actions.filter(a=>a.status!=='Done'&&a.status!=='Cancelled'&&isOverdue(a.due,a.status));
+  if(!od.length){toast('Nothing overdue');return;}
+  const r=(event.currentTarget||event.target).getBoundingClientRect();
+  const pop=document.createElement('div');
+  pop.className='rescue-pop';
+  pop.style.cssText='position:fixed;z-index:2000;background:var(--card-solid);border:1px solid var(--border-vis);border-radius:12px;box-shadow:var(--shadow-lg);padding:10px 12px;min-width:200px;left:'+Math.min(r.left,window.innerWidth-220)+'px;top:'+(r.bottom+6)+'px';
+  const d=new Date(); const tmr=new Date(d); tmr.setDate(tmr.getDate()+1);
+  const mon=new Date(d); mon.setDate(mon.getDate()+((8-mon.getDay())%7||7));
+  const opts=[['Today',todayISO()],['Tomorrow',tmr.toISOString().slice(0,10)],['Next Monday',mon.toISOString().slice(0,10)],['\u221E Make ongoing','ONGOING']];
+  pop.innerHTML='<div style="font-size:10px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px">Reschedule '+od.length+' overdue</div>'+
+    opts.map(([l,v])=>`<button onclick="rescueOverdue('${v}')" style="display:block;width:100%;padding:7px 10px;border:none;background:none;text-align:left;cursor:pointer;font-family:var(--font);font-size:12px;color:var(--text);border-radius:6px" onmouseover="this.style.background='var(--accent-soft)'" onmouseout="this.style.background='none'">${l}</button>`).join('');
+  document.body.appendChild(pop);
+  setTimeout(()=>{const close=(e)=>{if(!pop.contains(e.target)){pop.remove();document.removeEventListener('click',close);}};document.addEventListener('click',close);},50);
+}
+function rescueOverdue(v){
+  const od=state.actions.filter(a=>a.status!=='Done'&&a.status!=='Cancelled'&&isOverdue(a.due,a.status));
+  od.forEach(a=>{if(v==='ONGOING'){a.ongoing=true;a.due='';}else{a.due=v;a.ongoing=false;}});
+  document.querySelectorAll('.rescue-pop').forEach(p=>p.remove());
+  saveState();render();toast(od.length+' rescheduled');
+}
+
 function showUiSettings(event){
   event.stopPropagation();
   document.querySelectorAll('.ui-settings-pop').forEach(p=>p.remove());
@@ -3789,8 +3983,10 @@ function renderToday(s) {
   h += `<div class="fade-in">
   <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px;margin-bottom:16px;flex-wrap:wrap">
     <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><h1>Today</h1><span style="font-size:var(--fs-sm);color:var(--text-light)">${dateStr}</span></div>
+    ${s.overdue?`<button onclick="showRescue(event)" style="background:rgba(217,107,107,.08);border:1px solid rgba(217,107,107,.3);border-radius:20px;padding:3px 11px;font-size:10px;font-weight:600;color:var(--red);cursor:pointer;font-family:var(--font)">${s.overdue} overdue \u2192 fix</button>`:''}
     <button title="Customize this view" onclick="showUiSettings(event)" style="background:none;border:none;cursor:pointer;color:var(--text-light);padding:4px;display:flex;transition:color .12s" onmouseover="this.style.color='var(--text-mid)'" onmouseout="this.style.color='var(--text-light)'"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
   </div>`;
+  h += quickAdd({todayFocus:true});
   if(state.uiPrefs.salah){
     fetchPrayerTimes().then(t=>{const el=document.getElementById("prayer-slot");if(el&&t)el.innerHTML=prayerWidget(t);});
     h += `<div id="prayer-slot"></div>`;
@@ -3806,12 +4002,12 @@ function renderToday(s) {
     const stCnt=a.subtasks&&a.subtasks.length?a.subtasks.filter(t=>t.done).length+'/'+a.subtasks.length:'';
     h += `<div class="card card-hover" onclick="if(event.ctrlKey||event.metaKey||event.shiftKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="padding:10px 14px;margin-bottom:6px;cursor:pointer;display:flex;gap:8px;align-items:center;border-left:3px solid var(--accent);${sel?'background:var(--accent-soft)':''}">
       <input type="checkbox" ${sel?'checked':''} onclick="event.stopPropagation();toggleSelect('${a.id}')" style="flex-shrink:0">
-      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;line-height:1.35">${a.priority?'<span style="color:#D4A04A;font-size:9px;margin-right:5px;vertical-align:1px">\u2726</span>':''}${esc(a.action)}</div>
+      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;line-height:1.35">${esc(a.action)}</div>
         <div style="display:flex;gap:7px;margin-top:3px;align-items:center;flex-wrap:wrap"><span style="font-size:11px;color:var(--text-mid)">${esc(a.owner)}</span>${projTag(a.project)}${a.due?`<span style="font-size:10.5px;color:var(--text-mid)">${fmtDate(a.due)}</span>`:""}${stCnt?`<span style="font-size:9.5px;color:var(--text-light)">\u25B8 ${stCnt}</span>`:''}</div>
       </div>${actionBtns(a)}</div>`;
   });
-  h += `<input placeholder="+ Add a focus action\u2026" style="width:100%;box-sizing:border-box;padding:9px 13px;margin-top:${focused.length?'2':'0'}px;border:1px dashed var(--border-vis);border-radius:var(--radius-xs);background:transparent;font-size:12px;font-family:var(--font);color:var(--text);outline:none;transition:border-color .12s" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border-vis)'" onkeydown="if(event.key==='Enter'&&this.value.trim()){addAction({action:this.value.trim(),owner:'Me',num:'',status:'Open',todayFocus:true});this.value='';}">
-  </div>`;
+  if(!focused.length) h += `<div style="font-size:11px;color:var(--text-light);padding:4px 2px">Nothing in focus \u2014 add one above with \u25C9 on, or toggle \u25C9 on any action.</div>`;
+  h += `</div>`;
 
   if (dueToday.length) {
     h += `<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:600;color:var(--red);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">Due today (${dueToday.length})</div>`;
@@ -3819,7 +4015,7 @@ function renderToday(s) {
       const sel = state.selected.has(a.id);
       h += `<div class="card card-hover" onclick="if(event.ctrlKey||event.metaKey||event.shiftKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="padding:10px 14px;margin-bottom:6px;cursor:pointer;display:flex;gap:8px;align-items:center;border-left:3px solid var(--danger);${sel?'background:var(--accent-soft)':''}">
         <input type="checkbox" ${sel?'checked':''} onclick="event.stopPropagation();toggleSelect('${a.id}')" style="flex-shrink:0">
-        <div style="flex:1;min-width:0"><span style="font-size:13px">${a.priority?'<span style="color:#D4A04A;font-size:9px;margin-right:5px;vertical-align:1px">\u2726</span>':''}${esc(a.action)}</span>
+        <div style="flex:1;min-width:0"><span style="font-size:13px">${esc(a.action)}</span>
           <div style="display:flex;gap:6px;margin-top:3px"><span style="font-size:11px;color:var(--text-mid)">${esc(a.owner)}</span>${projTag(a.project)}</div>
         </div>${actionBtns(a)}</div>`;
     });
@@ -3852,7 +4048,7 @@ function renderToday(s) {
       h+=`<div style="font-size:10px;font-weight:600;color:${grp.color};margin:9px 0 4px;padding-left:2px">${grp.label} <span style="font-weight:400;opacity:.55">${grp.items.length}</span></div>`;
       grp.items.forEach(a=>{
         h += `<div onclick="openEdit('${a.id}')" style="display:flex;align-items:center;gap:8px;padding:6px 9px;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer;border-radius:6px;transition:background .08s" onmouseover="this.style.background='var(--accent-soft)'" onmouseout="this.style.background=''">
-          ${a.priority&&g!=='priority'?'<span style="color:#D4A04A;font-size:9px">\u2726</span>':''}
+          
           <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.action)}</span>
           ${g!=='project'?projTag(a.project):''}
           ${g!=='due'?`<span style="color:${isOverdue(a.due,a.status)?'var(--red)':'var(--text-light)'};font-size:10px;font-weight:600">${fmtDate(a.due)}</span>`:''}
@@ -3860,6 +4056,15 @@ function renderToday(s) {
       });
     });
     h += `</div>`;
+  }
+  const ongoing=state.actions.filter(a=>a.ongoing&&a.status!=='Done'&&a.status!=='Cancelled');
+  if(ongoing.length){
+    h+=`<details style="margin-top:14px"><summary style="font-size:10px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;cursor:pointer">\u221E Ongoing (${ongoing.length})</summary><div style="margin-top:6px">`;
+    ongoing.forEach(a=>{
+      h+=`<div onclick="openEdit('${a.id}')" style="display:flex;align-items:center;gap:8px;padding:5px 9px;border-bottom:1px solid var(--border);font-size:11.5px;cursor:pointer;border-radius:6px" onmouseover="this.style.background='var(--accent-soft)'" onmouseout="this.style.background=''">
+        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-mid)">${esc(a.action)}</span>${projTag(a.project)}<div onclick="event.stopPropagation()">${actionBtns(a)}</div></div>`;
+    });
+    h+=`</div></details>`;
   }
 
   h += `</div>`;
@@ -3900,7 +4105,7 @@ function renderInbox(s) {
   const inboxProjs = [...new Set(inboxAll.map(a=>a.project).filter(Boolean))].sort();
   const inboxOwners = [...new Set(inboxAll.map(a=>a.owner).filter(Boolean))].sort();
   
-  let h = quickAdd() + `<div class="fade-in"><div class="page-header"><div><h1>Inbox</h1><div class="subtitle">${inbox.length} of ${inboxAll.length} actions needing annotation</div></div></div>`;
+  let h = `<div class="fade-in"><div class="page-header"><div><h1>Inbox</h1><div class="subtitle">${inbox.length} of ${inboxAll.length} actions needing annotation</div></div></div>`;
   
   // Filter bar
   if(inboxAll.length){
@@ -4247,10 +4452,12 @@ function renderActions(s) {
   if (state.fDate) { if(state.fDate==="today") filtered=filtered.filter(a=>a.createdAt===todayISO()); else if(state.fDate==="week"){const w=new Date();w.setDate(w.getDate()-7);const ws=w.toISOString().slice(0,10);filtered=filtered.filter(a=>a.createdAt>=ws);} else filtered=filtered.filter(a=>a.createdAt===state.fDate); }
   if (state.search) { const q=state.search.toLowerCase(); filtered=filtered.filter(a=>(a.action+a.num+a.owner).toLowerCase().includes(q)); }
 
-  let h = quickAdd() + `<div class="fade-in"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+  let h = `<div class="fade-in"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
     <div style="display:flex;align-items:baseline;gap:12px"><h1>Actions</h1><span class="subtitle" style="margin:0">${filtered.length} of ${state.actions.length}</span>
       <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px" onclick="exportJSON()">JSON</button>
-      <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px" onclick="exportMD()">MD</button></div>
+      <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px" onclick="exportMD()">MD</button>
+      ${s.overdue?`<button onclick="showRescue(event)" style="background:rgba(217,107,107,.08);border:1px solid rgba(217,107,107,.3);border-radius:20px;padding:2px 10px;font-size:10px;font-weight:600;color:var(--red);cursor:pointer;font-family:var(--font)">${s.overdue} overdue \u2192 fix</button>`:''}</div>
+    <button class="btn btn-primary" onclick="openAddModal()">+ New action</button>
     </div>
     <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">
       <input class="input" id="search-input" style="flex:1;min-width:120px" placeholder="Search... (press /)" value="${esc(state.search)}" oninput="state.search=this.value;renderDebounced()">
@@ -4308,7 +4515,7 @@ function renderActions(s) {
       const sel = state.selected.has(a.id);
       h += `<tr onclick="if(event.ctrlKey||event.metaKey||event.shiftKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" oncontextmenu="if(state.selected.size>0){showBulkMenu(event);}else{event.preventDefault();toggleSelect('${a.id}');showBulkMenu(event);}" style="cursor:pointer;background:${sel?'var(--accent-soft)':od?'rgba(255,69,58,.03)':'transparent'}">
         <td onclick="event.stopPropagation()"><input type="checkbox" ${sel?'checked':''} onchange="toggleSelect('${a.id}')"></td>
-        <td style="max-width:280px"><div style="font-weight:${a.priority?600:500}">${a.priority?'<span style="color:#D4A04A;margin-right:5px;font-size:10px;vertical-align:1px">\u2726</span>':''}${esc(a.action)}${a.subtasks&&a.subtasks.length?`<span style="font-size:9.5px;color:var(--text-light);margin-left:7px;font-weight:400">\u25B8 ${a.subtasks.filter(t=>t.done).length}/${a.subtasks.length}</span>`:''}</div></td>
+        <td style="max-width:280px"><div style="font-weight:${a.priority?600:500}">${esc(a.action)}${a.subtasks&&a.subtasks.length?`<span style="font-size:9.5px;color:var(--text-light);margin-left:7px;font-weight:400">\u25B8 ${a.subtasks.filter(t=>t.done).length}/${a.subtasks.length}</span>`:''}</div></td>
         ${cv.owner!==false?`<td><span style="font-weight:600;font-size:12px">${esc(a.owner)}</span></td>`:''}
         ${cv.added!==false?`<td><span style="font-size:11px;color:var(--text-light)">${a.createdAt?fmtDate(a.createdAt):'—'}</span></td>`:''}
         ${cv.due!==false?`<td>${a.due?`<span style="color:${dueColor(a.due,a.status)};font-weight:${isOverdue(a.due,a.status)?700:500}">${fmtDate(a.due)}</span>`:''}</td>`:''}
@@ -4753,7 +4960,7 @@ function renderProjects() {
           <span style="font-size:9.5px;color:var(--text-light)">${subItems.length?subItems.length+(directChildren?' \u00b7 '+directChildren+' sub':''):(directChildren?directChildren+' sub'+(directChildren>1?'s':''):'<i style="opacity:.5">empty</i>')}</span>
           <button onclick="event.stopPropagation();openAddInProject('${esc(proj)}','${esc(sub)}')" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:9.5px;color:var(--text-mid);font-weight:600;font-family:inherit" title="Add an action in ${esc(subLabel(sub))}">+ action</button>
           <button onclick="promptSub(event,this.dataset.p,this.dataset.s)" data-p="${esc(proj)}" data-s="${esc(sub)}" style="background:none;border:none;cursor:pointer;font-size:9.5px;color:var(--text-light);font-family:inherit" title="Add a nested sub-project">+ sub</button>
-          <button onclick="event.stopPropagation();deleteSub('${esc(proj)}','${esc(sub)}')" style="background:none;border:none;cursor:pointer;font-size:9.5px;color:var(--text-light);opacity:.6;font-family:inherit">\u2715</button>
+          <button onclick="subMenu(event,'${esc(proj)}','${esc(sub)}')" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-light);opacity:.6;font-family:inherit;line-height:1" title="More">\u22EF</button>
         </div>`;
         if(!subColl) subItems.forEach(a => h += projRow(a, col, depth+1));
       });
@@ -4777,11 +4984,12 @@ function projRowCompact(a, col){
   const sel = state.selected.has(a.id);
   const st = ST[a.status]||ST.Open;
   return `<div onclick="if(event.shiftKey||event.ctrlKey||event.metaKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" style="display:flex;align-items:center;gap:8px;padding:7px 18px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12px;transition:background .08s;background:${sel?'var(--accent-soft)':''}" onmouseover="this.style.background='var(--accent-soft)'" onmouseout="this.style.background='${sel?'var(--accent-soft)':''}'">
-    ${a.priority?'<span style="color:#D4A04A;font-size:9px;flex-shrink:0">\u2726</span>':''}
+    
     <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${a.status==='Done'?'text-decoration:line-through;opacity:.5':''}">${esc(a.action)}</span>
     ${a.owner?`<span style="font-size:10.5px;color:var(--text-light);flex-shrink:0">${esc(a.owner)}</span>`:''}
     ${a.due?`<span style="font-size:10px;color:${isOverdue(a.due,a.status)?'var(--danger)':'var(--text-light)'};flex-shrink:0;font-weight:${isOverdue(a.due,a.status)?600:400}">${fmtDate(a.due)}</span>`:''}
     <span style="font-size:9.5px;padding:2px 7px;border-radius:10px;background:${st.bg};color:${st.fg};flex-shrink:0;font-weight:600">${a.status}</span>
+    <div onclick="event.stopPropagation()">${actionBtns(a)}</div>
   </div>`;
 }
 function projRow(a, col, depth) {
@@ -4789,7 +4997,7 @@ function projRow(a, col, depth) {
   const stCnt=a.subtasks&&a.subtasks.length?a.subtasks.filter(t=>t.done).length+'/'+a.subtasks.length:'';
   return `<div draggable="true" ondragstart="state.dragId='${a.id}';event.dataTransfer.effectAllowed='move'" ondragend="state.dragId=null" ondragover="event.preventDefault();this.style.background='var(--accent-soft)'" ondragleave="this.style.background='${sel?'var(--accent-soft)':''}'" ondrop="event.preventDefault();this.style.background='';handleReorder(state.dragId,'${a.id}')" onclick="if(event.shiftKey||event.ctrlKey||event.metaKey){event.preventDefault();toggleSelect('${a.id}');return;}openEdit('${a.id}')" oncontextmenu="if(state.selected.size>0){showBulkMenu(event);}else{event.preventDefault();toggleSelect('${a.id}');showBulkMenu(event);}" style="display:flex;align-items:center;gap:7px;padding:7px 14px 7px ${18+depth*18}px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12px;transition:background .08s;background:${sel?'var(--accent-soft)':''}" onmouseover="if(!${sel})this.style.background='var(--accent-soft)'" onmouseout="this.style.background='${sel?'var(--accent-soft)':''}'">
     <span style="cursor:grab;color:var(--text-light);font-size:11px;flex-shrink:0;opacity:.35" onclick="event.stopPropagation()" title="Drag to reorder">\u2847</span>
-    ${a.priority?'<span style="color:#D4A04A;font-size:9px;flex-shrink:0">\u2726</span>':''}
+    
     <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:${sel?600:400}">${esc(a.action)}${stCnt?`<span style="font-size:9.5px;color:var(--text-light);margin-left:7px;font-weight:400">\u25B8 ${stCnt}</span>`:''}</span>
     <span style="font-size:10.5px;color:var(--text-mid);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.owner)}</span>
     ${a.due?`<span style="font-size:10px;font-weight:600;color:${isOverdue(a.due,a.status)?'var(--red)':'var(--text-light)'}">${fmtDate(a.due)}</span>`:(a.ongoing?'<span style="font-size:10px;color:var(--text-light)" title="Ongoing">\u221E</span>':'')}
@@ -4846,6 +5054,25 @@ function stDel(id, sid){
   a.subtasks=a.subtasks.filter(x=>x.id!==sid);
   saveState();
 }
+
+function stAddInline(inp, id){
+  const v=(inp.value||'').trim(); if(!v) return;
+  stAdd(id, v); inp.value='';
+  const a=state.actions.find(x=>x.id===id); if(!a||!a.subtasks) return;
+  const t=a.subtasks[a.subtasks.length-1];
+  const list=document.getElementById('st-list-'+id); if(!list) return;
+  const row=document.createElement('div');
+  row.style.cssText='display:flex;align-items:center;gap:8px;padding:5px 2px;border-bottom:1px solid var(--border)';
+  const cb=document.createElement('input'); cb.type='checkbox';
+  const txt=document.createElement('span'); txt.style.cssText='flex:1;font-size:12px'; txt.textContent=t.text;
+  cb.onclick=()=>{stToggle(id,t.id); txt.style.textDecoration=cb.checked?'line-through':'none'; txt.style.opacity=cb.checked?'.5':'1';};
+  const del=document.createElement('button'); del.textContent='\u2715';
+  del.style.cssText='background:none;border:none;cursor:pointer;font-size:10px;color:var(--text-light);opacity:.5;padding:2px';
+  del.onclick=()=>{stDel(id,t.id); row.remove();};
+  row.appendChild(cb); row.appendChild(txt); row.appendChild(del);
+  list.appendChild(row);
+}
+
 function stListHtml(a){
   const list=(a.subtasks||[]).map(t=>`
     <div style="display:flex;align-items:center;gap:8px;padding:5px 2px;border-bottom:1px solid var(--border)">
@@ -4856,7 +5083,7 @@ function stListHtml(a){
   return `<div style="margin-bottom:12px">
     <label style="font-size:10.5px;font-weight:600;color:#5A6578">Sub-actions ${a.subtasks&&a.subtasks.length?`<span style="font-weight:400;color:var(--text-light)">${a.subtasks.filter(t=>t.done).length}/${a.subtasks.length}</span>`:''}</label>
     <div id="st-list-${a.id}" style="margin-top:4px">${list}</div>
-    <input class="input" style="width:100%;margin-top:6px;font-size:12px" placeholder="+ Add a sub-action\u2026" onkeydown="if(event.key==='Enter'&&this.value.trim()){stAdd('${a.id}',this.value);const w=this;const t=state.actions.find(x=>x.id==='${a.id}').subtasks.slice(-1)[0];document.getElementById('st-list-${a.id}').insertAdjacentHTML('beforeend','<div style=\'display:flex;align-items:center;gap:8px;padding:5px 2px;border-bottom:1px solid var(--border)\'><input type=checkbox onclick=\'stToggle(\\'${a.id}\\',\\''+t.id+'\\')\'><span style=\'flex:1;font-size:12px\'>'+w.value.replace(/</g,'&lt;')+'</span></div>');w.value='';}">
+    <input class="input" style="width:100%;margin-top:6px;font-size:12px" placeholder="+ Add a sub-action\u2026" onkeydown="if(event.key==='Enter'){event.preventDefault();stAddInline(this,'${a.id}');}">
   </div>`;
 }
 
@@ -4884,7 +5111,7 @@ function openEdit(id) {
       <label style="font-size:10.5px;font-weight:600;color:#5A6578">Project <select class="select" style="width:100%;margin-top:2px" onchange="if(this.value==='__new__'){var n=prompt('New project name:');if(n&&n.trim()){addAction({action:'(placeholder \u2014 delete after adding real actions)',owner:'Me',project:n.trim(),status:'Open'});patch('${a.id}',{project:n.trim(),subproject:''});this.closest('.modal-overlay').remove();openEdit('${a.id}');}else{this.value='${esc(a.project)}';}return;}patch('${a.id}',{project:this.value,subproject:''})">${projs.map(p=>`<option ${p===a.project?'selected':''}>${esc(p)}</option>`).join("")}<option value="__new__">+ New project...</option></select></label>
       <label style="font-size:10.5px;font-weight:600;color:#5A6578">Sub-project
         <div style="display:flex;gap:4px;margin-top:2px">
-          <select class="select" style="flex:1" onchange="if(this.value==='__new__'){var n=prompt('New sub-project name:');if(n){if(!state.subProjects[a.project])state.subProjects[a.project]=[];state.subProjects[a.project].push(n);patch('${a.id}',{subproject:n});this.closest('.modal-overlay').remove();openEdit('${a.id}');}else{this.value='${esc(a.subproject)}';}return;}patch('${a.id}',{subproject:this.value})">
+          <select class="select" style="flex:1" onfocus="this._prevVal='${esc(a.subproject||'')}'" onchange="if(this.value==='__new__'){newSubInline(this,'${esc(a.project)}',function(n){patch('${a.id}',{subproject:n});document.querySelectorAll('.modal-overlay').forEach(function(m){m.remove()});openEdit('${a.id}');});return;}patch('${a.id}',{subproject:this.value})">
             <option value="">(none)</option>
             ${subs.map(s=>`<option value="${esc(s)}" ${s===a.subproject?'selected':''}>${"\u00A0".repeat(subDepth(s)*2)+subLabel(s)}</option>`).join("")}
             <option value="__new__">+ New sub-project...</option>
@@ -4940,10 +5167,10 @@ function openAddModal(defaultProj) {
       </div>
       <div>
         <label style="font-size:10px;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.05em">Sub-project</label>
-        <select class="select" id="add-sub" style="width:100%;margin-top:4px;padding:8px">
+        <select class="select" id="add-sub" style="width:100%;margin-top:4px;padding:8px" onchange="if(this.value==='__new__'){var S=this;newSubInline(S,document.getElementById('add-proj').value,function(n){var o=document.createElement('option');o.value=n;o.textContent=n;S.insertBefore(o,S.lastElementChild);S.style.display='';S.value=n;S.parentElement.querySelector('div').remove();});}">
           <option value="">(none)</option>
           ${subs.map(s=>`<option value="${esc(s)}">${subLabel(s)}</option>`).join("")}
-          <option value="__new__">+ New sub-project</option>
+          <option value="__new__">+ New sub-project\u2026</option>
         </select>
       </div>
     </div>
@@ -5011,11 +5238,7 @@ function submitNewAction(btn){
     if(!proj){toast('Enter project name');return;}
   }
   let sub=document.getElementById('add-sub').value;
-  if(sub==='__new__'){
-    sub=prompt('New sub-project name:');
-    if(sub){if(!state.subProjects[proj])state.subProjects[proj]=[];state.subProjects[proj].push(sub);}
-    else sub='';
-  }
+  if(sub==='__new__') sub='';
   addAction({
     num:document.getElementById('add-num').value,
     action:action,
@@ -5128,6 +5351,20 @@ window.addEventListener('visibilitychange',()=>{
 });
 
 document.addEventListener('keydown',e=>{
+  // Escape: close topmost popover/modal (works even while typing)
+  if(e.key==='Escape'){
+    const pop=document.querySelector('.sub-pop,.recur-popup,.ui-settings-pop');
+    if(pop){pop.remove();return;}
+    const ovs=document.querySelectorAll('.modal-overlay');
+    if(ovs.length){ovs[ovs.length-1].remove();return;}
+  }
+  // Ctrl/Cmd+K: jump to quick-add (or open full add modal)
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){
+    e.preventDefault();
+    const qa=document.getElementById('qa');
+    if(qa){qa.focus();}else{openAddModal();}
+    return;
+  }
   // Guard: don't fire shortcuts when user is typing in any input/textarea/select
   const tag=e.target.tagName;
   if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
@@ -5234,7 +5471,7 @@ STEP 4: Create API Key
 STEP 5: Paste into this file
   1. Open this HTML file in a text editor
   2. Find these lines near the top of the <script>:
-     const APP_VERSION = 'v7.7';
+     const APP_VERSION = 'v8.5';
 console.log('%c Action Tracker ' + APP_VERSION, 'background:#4A7BF7;color:#fff;padding:4px 8px;border-radius:4px;font-weight:bold');
 
 // ═══ MINIMAL SVG ICONS ═══
